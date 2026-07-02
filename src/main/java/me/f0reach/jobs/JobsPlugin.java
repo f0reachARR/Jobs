@@ -33,6 +33,7 @@ public final class JobsPlugin extends JavaPlugin {
         Bukkit.getScheduler().runTask(this, () -> {
             if (services != null) {
                 services.runShadowDetection();
+                services.installAdvancementDatapack();
             }
         });
 

@@ -7,11 +7,17 @@ command:
     no_specialty: "<yellow>No specialty selected yet. Run /jobs select.</yellow>"
     current: "<gray>Current specialty:</gray> <white><current_job></white>"
     daily_total: "<gray>Today:</gray> <white><total></white><gray> / <cap></gray>"
+    daily_bar: "<gray>[<bar>] <percent>%</gray>"
     daily_cap_hit: "<yellow>Daily cap reached. No further rewards until reset.</yellow>"
+    next_change: "<gray>Next change available at:</gray> <white><next_at></white>"
     variety:
       active: "<gray>Variety penalty:</gray> <yellow>active</yellow> <gray>(<size>/<capacity> logs, top <ratio>%)</gray>"
       disclosed: "<yellow><disclosed></yellow>"
       none: "<gray>Variety penalty:</gray> <green>not active</green>"
+  reload:
+    no_permission: "<red>You do not have permission to run this command (jobs.admin).</red>"
+    ok: "<green>Jobs reloaded. <gray>(<jobs> jobs / <rewards> rewards)</gray></green>"
+    failed: "<red>Reload failed: <error></red>"
   select:
     already_selected: "<yellow>You have already selected a specialty. Use /jobs change.</yellow>"
     opened: "<gray>Opened specialty selection dialog.</gray>"

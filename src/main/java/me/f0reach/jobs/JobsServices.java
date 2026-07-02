@@ -18,6 +18,8 @@ import me.f0reach.jobs.antiautomation.VillagerRepeatTradeCheck;
 import me.f0reach.jobs.config.ConfigLoader;
 import me.f0reach.jobs.config.PluginConfig;
 import me.f0reach.jobs.detection.EventDispatcher;
+import me.f0reach.jobs.detection.advancement.AdvancementDatapackInstaller;
+import me.f0reach.jobs.detection.advancement.AdvancementListener;
 import me.f0reach.jobs.detection.native_.BlockBreakListener;
 import me.f0reach.jobs.detection.native_.BlockPlaceListener;
 import me.f0reach.jobs.detection.native_.BreedListener;
@@ -61,6 +63,7 @@ import me.f0reach.jobs.persistence.mysql.SchemaInitializer;
 import me.f0reach.jobs.pipeline.RewardPipeline;
 import me.f0reach.jobs.pipeline.Stage;
 import me.f0reach.jobs.pipeline.stage.ActionLogStage;
+import me.f0reach.jobs.pipeline.stage.AdvancementRevokeStage;
 import me.f0reach.jobs.pipeline.stage.AntiAutomationStage;
 import me.f0reach.jobs.pipeline.stage.BaseRewardStage;
 import me.f0reach.jobs.pipeline.stage.BuiltinModifierStage;
@@ -287,8 +290,8 @@ public final class JobsServices {
                 new SplitterStage(splitterChain),
                 new RewardRoundingStage(plugin, config.reward()),
                 new EconomyTransferStage(plugin, economy),
-                new ActionLogStage(plugin, actionLogQueue, batchFlushWorker, asyncExecutor)
-        // AdvancementRevokeStage は Phase 9
+                new ActionLogStage(plugin, actionLogQueue, batchFlushWorker, asyncExecutor),
+                new AdvancementRevokeStage(plugin)
         );
         this.rewardPipeline = new RewardPipeline(plugin, jobRegistry, stages);
         this.eventDispatcher = new EventDispatcher(specialtyService, jobRegistry, rewardMatcher, rewardPipeline);
@@ -327,9 +330,36 @@ public final class JobsServices {
                 new VillagerTradeListener(eventDispatcher, tradeRecorder, specialtyService, jobRegistry),
                 new BrewListener(eventDispatcher),
                 new TntPrimerTracker(plugin, eventDispatcher),
+                new AdvancementListener(eventDispatcher),
                 operatorTracker)) {
             pm.registerEvents(listener, plugin);
         }
+    }
+
+    /** onEnable の後半で呼び、同梱の advancement datapack を配置する。 */
+    public void installAdvancementDatapack() {
+        new AdvancementDatapackInstaller(plugin).install();
+    }
+
+    /**
+     * /jobs reload の実装。config を除いて再読込する。
+     * <ul>
+     *   <li>lang/*.yml を再読込</li>
+     *   <li>jobs/*.yml を再読込 (registry を差し替え)</li>
+     *   <li>tag cache を破棄</li>
+     *   <li>variety curve キャッシュを破棄</li>
+     *   <li>advancement datapack を再展開</li>
+     * </ul>
+     * config.yml 自体は再読込しない (persistence / kvs 種別の再構築が絡み、複雑さの割にニーズが薄いため)。
+     * config を変える場合は再起動を要求する。
+     */
+    public void reload() {
+        localeRegistry.load();
+        new MissingKeyReporter(plugin, localeRegistry).report();
+        loadJobs();
+        runShadowDetection();
+        if (varietyPenaltyEvaluator != null) varietyPenaltyEvaluator.invalidateCurves();
+        installAdvancementDatapack();
     }
 
     /** サンプルとして同梱している職業定義。plugins/Jobs/jobs/ が空のときのみ展開する。 */

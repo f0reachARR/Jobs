@@ -9,11 +9,17 @@ command:
     no_specialty: "<yellow>まだ専業が選択されていません。/jobs select を実行してください。</yellow>"
     current: "<gray>現在の専業:</gray> <white><current_job></white>"
     daily_total: "<gray>本日の獲得額:</gray> <white><total></white><gray> / <cap></gray>"
+    daily_bar: "<gray>[<bar>] <percent>%</gray>"
     daily_cap_hit: "<yellow>本日の獲得上限に達しました。次回リセットまで報酬は 0 になります。</yellow>"
+    next_change: "<gray>次回変更可能:</gray> <white><next_at></white>"
     variety:
       active: "<gray>単調性ペナルティ:</gray> <yellow>作動中</yellow> <gray>(<size>/<capacity> 件, 最多 <ratio>%)</gray>"
       disclosed: "<yellow><disclosed></yellow>"
       none: "<gray>単調性ペナルティ:</gray> <green>作動していません</green>"
+  reload:
+    no_permission: "<red>このコマンドを実行する権限がありません (jobs.admin)。</red>"
+    ok: "<green>Jobs を再読込しました。 <gray>(<jobs> ジョブ / <rewards> 報酬)</gray></green>"
+    failed: "<red>再読込に失敗しました: <error></red>"
   select:
     already_selected: "<yellow>すでに専業を選択しています。変更は /jobs change から行ってください。</yellow>"
     opened: "<gray>専業選択ダイアログを開きました。</gray>"

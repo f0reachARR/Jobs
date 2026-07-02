@@ -27,9 +27,16 @@ public final class DialogTexts {
     // /jobs status (Phase 6 - variety penalty / daily cap)
     public static final String COMMAND_STATUS_DAILY_TOTAL = "command.status.daily_total";
     public static final String COMMAND_STATUS_DAILY_CAP_HIT = "command.status.daily_cap_hit";
+    public static final String COMMAND_STATUS_DAILY_BAR = "command.status.daily_bar";
+    public static final String COMMAND_STATUS_NEXT_CHANGE = "command.status.next_change";
     public static final String COMMAND_STATUS_VARIETY_ACTIVE = "command.status.variety.active";
     public static final String COMMAND_STATUS_VARIETY_DISCLOSED = "command.status.variety.disclosed";
     public static final String COMMAND_STATUS_VARIETY_NONE = "command.status.variety.none";
+
+    // /jobs reload (Phase 10)
+    public static final String COMMAND_RELOAD_NO_PERMISSION = "command.reload.no_permission";
+    public static final String COMMAND_RELOAD_OK = "command.reload.ok";
+    public static final String COMMAND_RELOAD_FAILED = "command.reload.failed";
 
     // Dialog: select
     public static final String DIALOG_SELECT_TITLE = "dialog.select.title";

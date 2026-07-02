@@ -14,8 +14,13 @@ import me.f0reach.jobs.ui.DialogTexts;
 import me.f0reach.jobs.util.MiniMessages;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -42,6 +47,7 @@ public final class JobsCommands {
                 .then(Commands.literal("select").executes(this::executeSelect))
                 .then(Commands.literal("change").executes(this::executeChange))
                 .then(Commands.literal("status").executes(this::executeStatus))
+                .then(Commands.literal("reload").executes(this::executeReload))
                 .build();
     }
 
@@ -99,7 +105,44 @@ public final class JobsCommands {
 
         sendDailyStatus(player, bound);
         sendVarietyStatus(player, bound, current);
+        sendNextChangeTime(player, bound);
         return Command.SINGLE_SUCCESS;
+    }
+
+    private int executeReload(com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx) {
+        JobsServices bound = requireBound(ctx);
+        if (bound == null) return Command.SINGLE_SUCCESS;
+        CommandSender sender = ctx.getSource().getSender();
+        if (!sender.hasPermission("jobs.admin")) {
+            sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_RELOAD_NO_PERMISSION));
+            return Command.SINGLE_SUCCESS;
+        }
+        try {
+            bound.reload();
+            int jobs = bound.jobRegistry().all().size();
+            int rewards = bound.jobRegistry().all().stream().mapToInt(j -> j.rewards().size()).sum();
+            sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_RELOAD_OK,
+                    Placeholder.parsed("jobs", Integer.toString(jobs)),
+                    Placeholder.parsed("rewards", Integer.toString(rewards))
+            ));
+        } catch (RuntimeException e) {
+            sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_RELOAD_FAILED,
+                    Placeholder.parsed("error", String.valueOf(e.getMessage()))
+            ));
+        }
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private void sendNextChangeTime(Player player, JobsServices bound) {
+        bound.specialtyService().nextAvailableAt(player.getUniqueId()).ifPresent(next -> {
+            if (!next.isAfter(Instant.now())) return; // クールダウンは既に切れている
+            LocalDateTime local = LocalDateTime.ofInstant(next, ZoneId.systemDefault());
+            String formatted = local.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+            player.sendMessage(bound.i18n().format(
+                    player, DialogTexts.COMMAND_STATUS_NEXT_CHANGE,
+                    Placeholder.parsed("next_at", formatted)
+            ));
+        });
     }
 
     private void sendDailyStatus(Player player, JobsServices bound) {
@@ -117,9 +160,26 @@ public final class JobsCommands {
                 Placeholder.parsed("total", formatAmount(total)),
                 Placeholder.parsed("cap", formatAmount(cfg.amount()))
         ));
+
+        int percent = Math.min(100, (int) Math.round(total * 100.0 / cfg.amount()));
+        String bar = buildBar(percent, 20);
+        player.sendMessage(bound.i18n().format(
+                player, DialogTexts.COMMAND_STATUS_DAILY_BAR,
+                Placeholder.parsed("bar", bar),
+                Placeholder.parsed("percent", Integer.toString(percent))
+        ));
         if (total >= cfg.amount()) {
             player.sendMessage(bound.i18n().format(player, DialogTexts.COMMAND_STATUS_DAILY_CAP_HIT));
         }
+    }
+
+    /** width 個のブロックで progress bar を組む。埋まった分は "■"、空は "□"。 */
+    private static String buildBar(int percent, int width) {
+        int filled = Math.max(0, Math.min(width, percent * width / 100));
+        StringBuilder sb = new StringBuilder(width);
+        for (int i = 0; i < filled; i++) sb.append('■');
+        for (int i = filled; i < width; i++) sb.append('□');
+        return sb.toString();
     }
 
     private void sendVarietyStatus(Player player, JobsServices bound, JobId currentJob) {
