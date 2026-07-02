@@ -23,6 +23,7 @@ Job プラグインの設計判断記録（Architecture Decision Record）。
 - [ADR-0016 recently_placed_break を placer 非依存の位置追跡にする](./0016-recently-placed-break.md)
 - [ADR-0017 投入者追跡を Furnace 系と BrewingStand で共通化する](./0017-operator-tracking-common.md)
 - [ADR-0018 リポジトリ層をインタフェースで切る](./0018-repository-interface.md)
+- [ADR-0019 報酬額を小数値として扱う](./0019-decimal-reward.md)
 
 ## ステータスの読み方
 

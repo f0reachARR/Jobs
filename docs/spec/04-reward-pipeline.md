@@ -14,7 +14,7 @@ Track A と Track B はマッチ確定後に合流し、以降は共通の流れ
    ↓
 （3）自動化対策：spawner_origin / unplanted_crop / recently_placed_break / auto_fed_processing / villager_repeat_trade / breed_non_player_breeder 該当時は 0 確定
    ↓
-（4）基礎報酬：reward 固定値または乱数範囲 × amount
+（4）基礎報酬：reward 固定値または乱数範囲 × amount（値は double）
    ↓
 （5）rare ロール：rare.chance ヒット時、reward を rare.reward に上書きし announce
    ↓
@@ -24,11 +24,13 @@ Track A と Track B はマッチ確定後に合流し、以降は共通の流れ
    ↓
 （8）Splitter chain：イベント側が登録したものを順序付きで
    ↓
-（9）Economy へ送金
+（9）丸め：base_reward / final_reward / net_paid を config の decimals と rounding_mode で丸める
    ↓
-（10）行動ログを非同期書き込み
+（10）Economy へ送金
    ↓
-（11）advancement 経路のみ：revokeCriteria()
+（11）行動ログを非同期書き込み
+   ↓
+（12）advancement 経路のみ：revokeCriteria()
 ```
 
 ## 各段階の責務
@@ -68,6 +70,7 @@ Track A と Track B はマッチ確定後に合流し、以降は共通の流れ
 ### 4. 基礎報酬
 
 `reward` フィールドから固定値または範囲乱数で値を取り出す。
+値は `double` として保持し、この段階では丸めない（[ADR-0019](./adr/0019-decimal-reward.md)）。
 amount 解釈は次の通り。
 
 - `item_smelted`：`FurnaceExtractEvent#getItemAmount` を掛ける。
@@ -118,19 +121,28 @@ amount 解釈は次の通り。
 Splitter が削った分はプレイヤーに渡らないが、行動ログには `final_reward` として「Modifier 適用後、Splitter 適用前」の値を記録する。
 Splitter の削減量を行動ログに反映するかどうかは、運用情報として別系統で記録する。
 
-### 9. Economy へ送金
+### 9. 丸め
 
-`final_reward` から Splitter の削減量を引いた残額を、Economy プラグインの `transfer` で送金する。
+`config.yml` の `reward.decimals` と `reward.rounding_mode` に従い、`base_reward` / `final_reward` / `net_paid` を同じ桁数・同じ方式で丸める（[ADR-0019](./adr/0019-decimal-reward.md)）。
+`decimals: 0` のとき整数へ丸まる。
+以降の段階（Economy 送金、行動ログ、`JobActionPaidEvent`）は丸め後の値だけを扱う。
+
+丸めは `java.math.BigDecimal#setScale(decimals, roundingMode)` を経由して行う。
+Modifier や Splitter が個別に丸めることは禁止し、丸めはこの段階に一本化する。
+
+### 10. Economy へ送金
+
+`final_reward` から Splitter の削減量を引いた残額（`net_paid`）を、Economy プラグインの `transfer` で送金する。
 送金先はプレイヤー口座、Reason は `JobReward`、Tag に派生キーとジョブ ID を載せる。
 残額が 0 のときは送金しない。
 
-### 10. 行動ログを書く
+### 11. 行動ログを書く
 
 `action_log` テーブルに 1 行 INSERT する。
 書き込みは非同期キュー経由で行い、`BlockBreakEvent` の同期完了をブロックしない。
 スキーマは [05-persistence.md](./05-persistence.md) を参照。
 
-### 11. revokeCriteria
+### 12. revokeCriteria
 
 advancement 経路の場合のみ、最後に `AdvancementProgress.revokeCriteria()` を呼ぶ。
 これにより同じ advancement が次のイベントでも発火可能になる。
@@ -145,15 +157,16 @@ advancement 経路の場合のみ、最後に `AdvancementProgress.revokeCriteri
 - 基礎報酬・rare ロール：YAML 不正時は起動時に弾くため、ここでは起きない想定。
 - 内蔵 Modifier：内部例外時はその Modifier を skip し、ログに記録。
 - 拡張 Modifier・Splitter：個別の Modifier/Splitter が例外を投げた場合、その 1 件のみ skip。chain 全体は継続。
+- 丸め：`rounding_mode: UNNECESSARY` を指定していて実際には端数がある場合、`ArithmeticException` が上がる。当該行動の報酬を 0 として続行し、WARNING をログに残す。
 - Economy 送金：送金失敗は致命扱い。リトライ後、`action_log` に `final_reward` を負号で書き込み（または別フラグで）、運営に通知。
 - 行動ログ：書き込み失敗時はリトライ。リトライ失敗は致命扱い。
 
 ## スレッドモデル
 
 Bukkit イベントは main thread で発火する。
-パイプラインの段階 1 から 8 までは main thread で同期実行する。
-段階 9 の送金は Economy プラグインの契約に従う（同期前提）。
-段階 10 のログ書き込みのみ async に流す。
+パイプラインの段階 1 から 9 までは main thread で同期実行する。
+段階 10 の送金は Economy プラグインの契約に従う（同期前提）。
+段階 11 のログ書き込みのみ async に流す。
 
 `PlayerAdvancementDoneEvent` 経由のときも同様、main thread で実行する。
 `revokeCriteria` も main thread で行う必要がある。
@@ -168,3 +181,4 @@ Bukkit イベントは main thread で発火する。
 - [ADR-0015 追跡ストレージを KVS 抽象化する](./adr/0015-kvs-abstraction.md)
 - [ADR-0016 recently_placed_break は placer 非依存](./adr/0016-recently-placed-break.md)
 - [ADR-0017 投入者追跡を共通化する](./adr/0017-operator-tracking-common.md)
+- [ADR-0019 報酬額を小数値として扱う](./adr/0019-decimal-reward.md)

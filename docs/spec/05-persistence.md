@@ -22,15 +22,15 @@ public interface PlayerJobRepository {
 public interface ActionLogRepository {
   void insertBatch(List<ActionLogRow> rows);
   long countActions(UUID player, ActionFilter filter, TimeRange range);
-  long sumReward(UUID player, ActionFilter filter, TimeRange range);
+  double sumReward(UUID player, ActionFilter filter, TimeRange range);
   Set<String> distinctKeys(UUID player, ActionFilter filter, TimeRange range);
   int continuousStreakSec(UUID player, ActionFilter filter, TimeRange range);
-  int maxUnitPrice(UUID player, ActionFilter filter, TimeRange range);
+  double maxUnitPrice(UUID player, ActionFilter filter, TimeRange range);
   int deleteOlderThan(Instant cutoff);
 }
 
 public interface DailyRewardTotalRepository {
-  long getTotal(UUID player, LocalDate date);
+  double getTotal(UUID player, LocalDate date);
   void addBatch(List<DailyRewardDelta> deltas);
 }
 ```
@@ -94,8 +94,8 @@ CREATE TABLE action_log (
   player_uuid     BINARY(16) NOT NULL,
   job_id          VARCHAR(32) NOT NULL,
   action_key      VARCHAR(128) NOT NULL,
-  base_reward     INT NOT NULL,
-  final_reward    INT NOT NULL,
+  base_reward     DECIMAL(20, 6) NOT NULL,
+  final_reward    DECIMAL(20, 6) NOT NULL,
   rare_hit        BOOLEAN NOT NULL DEFAULT FALSE,
   amount          INT NOT NULL DEFAULT 1,
   occurred_at     DATETIME(3) NOT NULL,
@@ -111,9 +111,9 @@ CREATE TABLE action_log (
 
 **action_key**：派生キー（[03-action-detection.md](./03-action-detection.md) を参照）。
 
-**base_reward**：基礎報酬（rare 適用後、Modifier 適用前）。
+**base_reward**：基礎報酬（rare 適用後、Modifier 適用前）。パイプラインの丸め段階を通した値が入る（[04-reward-pipeline.md](./04-reward-pipeline.md) の段階 9、[ADR-0019](./adr/0019-decimal-reward.md)）。
 
-**final_reward**：Modifier 適用後、Splitter 適用前の最終報酬。
+**final_reward**：Modifier 適用後、Splitter 適用前の最終報酬。こちらも丸め後の値。
 
 **rare_hit**：rare ボーナスがヒットしたかのフラグ。
 
@@ -138,12 +138,13 @@ CREATE TABLE action_log (
 CREATE TABLE daily_reward_total (
   player_uuid     BINARY(16) NOT NULL,
   reward_date     DATE NOT NULL,
-  total_reward    BIGINT NOT NULL DEFAULT 0,
+  total_reward    DECIMAL(20, 6) NOT NULL DEFAULT 0,
   PRIMARY KEY (player_uuid, reward_date)
 ) ENGINE=InnoDB;
 ```
 
 `action_log` 書き込みと同じバッチで `INSERT ... ON DUPLICATE KEY UPDATE total_reward = total_reward + VALUES(total_reward)` を発行する。
+`SUM` の誤差累積を避けるため `DOUBLE` ではなく `DECIMAL(20, 6)` を採用する（[ADR-0019](./adr/0019-decimal-reward.md)）。
 
 ### hourly_aggregate（後付け）
 
@@ -156,8 +157,8 @@ CREATE TABLE hourly_aggregate (
   bucket_hour     DATETIME NOT NULL,
   action_count    INT NOT NULL,
   distinct_keys   INT NOT NULL,
-  total_reward    BIGINT NOT NULL,
-  max_unit_price  INT NOT NULL,
+  total_reward    DECIMAL(20, 6) NOT NULL,
+  max_unit_price  DECIMAL(20, 6) NOT NULL,
   continuous_sec  INT NOT NULL,
   PRIMARY KEY (player_uuid, job_id, bucket_hour),
   INDEX idx_bucket (bucket_hour, job_id)
@@ -169,7 +170,7 @@ CREATE TABLE hourly_aggregate (
 
 ### 書き込みのスレッドモデル
 
-`action_log` と `daily_reward_total` への書き込みは、報酬パイプラインの段階 10 から非同期キューに積む。
+`action_log` と `daily_reward_total` への書き込みは、報酬パイプラインの段階 11 から非同期キューに積む。
 専用のワーカスレッド 1 本がキューを drain し、バッチで INSERT する。
 バッチ送信が完了するまで、キュー内のエントリはオンメモリにある。
 プラグイン停止時には flush を待つ。
@@ -195,7 +196,7 @@ Phase 2 の余地として位置付ける。
 
 追加する際は、リポジトリインタフェースは同じものを実装し、次の点で MySQL 実装と分岐する。
 
-- **DDL**：`BINARY(16)` は `BLOB` へ、`DATETIME(3)` は `TEXT`（ISO8601）か `INTEGER`（epoch millis）へ、`ENGINE=InnoDB` は不要。
+- **DDL**：`BINARY(16)` は `BLOB` へ、`DATETIME(3)` は `TEXT`（ISO8601）か `INTEGER`（epoch millis）へ、`ENGINE=InnoDB` は不要。`DECIMAL(20, 6)` は SQLite に厳密対応が無いため、`NUMERIC` に置き換える（内部的には REAL または INTEGER 親和性で保存され、丸めは呼び出し側の丸めステージが済ませている前提）。
 - **UPSERT**：`INSERT ... ON DUPLICATE KEY UPDATE` は `INSERT ... ON CONFLICT ... DO UPDATE SET` に置き換える。
 - **接続プール**：HikariCP は使わず、単一 write 接続 + WAL モードで運用する（SQLite の並列書き込み制約に合わせる）。
 - **パーティション**：SQLite は RANGE PARTITION を持たない。保持期間バッチによる DELETE のみで運用する。
@@ -265,3 +266,4 @@ kvs:
 - [ADR-0016 recently_placed_break は placer 非依存](./adr/0016-recently-placed-break.md)
 - [ADR-0017 投入者追跡を共通化する](./adr/0017-operator-tracking-common.md)
 - [ADR-0018 リポジトリ層をインタフェースで切る](./adr/0018-repository-interface.md)
+- [ADR-0019 報酬額を小数値として扱う](./adr/0019-decimal-reward.md)

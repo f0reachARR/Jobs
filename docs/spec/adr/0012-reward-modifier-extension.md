@@ -37,6 +37,7 @@
 - **JobRewardSplitter**：報酬の一部を別口座に分配する拡張点。`final_reward` を変えず、分配後にプレイヤーへ送る額（`net_paid`）を確定する。
 
 行動ログは `base_reward`、`final_reward`、`net_paid` の三つを記録できる構造にする（[05-persistence.md](../05-persistence.md) では `base_reward` と `final_reward` の二つを記録し、`net_paid` は別系統のログに残す）。
+いずれも小数を許容する `double` 値であり、丸めは Modifier / Splitter の後段に置いた丸めステージに一本化する（[ADR-0019](./0019-decimal-reward.md)）。
 
 両拡張点は `LifecycleEvents.JOB_PLUGIN_READY` で登録する。
 登録 API は ID 付きで何度でも呼べる。

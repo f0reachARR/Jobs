@@ -13,16 +13,17 @@ Job プラグインが扱うスレッドは 4 種類。
 
 ## パイプラインの実行スレッド
 
-`pipeline.RewardPipeline` の段階 1〜9 は main thread で同期実行する。
+`pipeline.RewardPipeline` の段階 1〜10 は main thread で同期実行する。
 
 - 段階 1（Matcher）：main thread。listener の中で走る。
 - 段階 2（専業判定）：main thread。
 - 段階 3（自動化対策）：main thread。`Entity#getEntitySpawnReason`, `PDC` 読み書き、KVS の `get` はいずれも main thread から。
 - 段階 4〜7：main thread。
 - 段階 8（Splitter）：main thread。ただし Splitter 実装内で Vault の同期送金を叩くため、実質的に Vault の契約に従う。
-- 段階 9（Economy 送金）：main thread。Vault は同期前提。
-- 段階 10（行動ログ書き込み）：main thread から `ActionLogWriteQueue#enqueue` を呼ぶ。実 INSERT は `BatchFlushWorker` に載せる。`JobActionPaidEvent` の発火は async event としてこの直後に行う。
-- 段階 11（`revokeCriteria`）：main thread。
+- 段階 9（丸め）：main thread。`BigDecimal#setScale` のみで I/O 無し。
+- 段階 10（Economy 送金）：main thread。Vault は同期前提。
+- 段階 11（行動ログ書き込み）：main thread から `ActionLogWriteQueue#enqueue` を呼ぶ。実 INSERT は `BatchFlushWorker` に載せる。`JobActionPaidEvent` の発火は async event としてこの直後に行う。
+- 段階 12（`revokeCriteria`）：main thread。
 
 Stage の interface は「main thread 前提」で書く。async に載せたい処理は Stage の中で `AsyncExecutor` に投げる、または Stage 自体を「async 化する Stage」として分けて書く（現時点では ActionLogStage のみ）。
 

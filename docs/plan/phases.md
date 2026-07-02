@@ -80,7 +80,7 @@ Bedrock クライアント（Geyser）でも同じ動線が通る（可能なら
 - `pipeline.stage.MatcherStage`, `SpecialtyStage`, `BaseRewardStage`, `RareRollStage`, `EconomyTransferStage`, `ActionLogStage`
 - `economy.VaultEconomyAdapter`
 - `persistence.async.ActionLogWriteQueue`, `BatchFlushWorker`
-- `api.event.JobActionPaidEvent`（Stage 10 の async event 発火）
+- `api.event.JobActionPaidEvent`（Stage 11 の async event 発火）
 
 **動作確認**：
 - combat ジョブを選んだ状態でゾンビ討伐 → 報酬が入る、`action_log` に 1 行入る。

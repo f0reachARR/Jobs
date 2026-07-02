@@ -76,13 +76,15 @@ Minecraft の `Material` 名（`minecraft:<id>` 形式）。
 取りうる値は [03-action-detection.md](./03-action-detection.md) に列挙する。
 
 **reward**：報酬額。
-整数で固定値、または `{ min, max }` で一様乱数の範囲を指定する。
+数値の固定値、または `{ min, max }` で一様乱数の範囲を指定する。
+整数と小数の双方を受け付ける（`reward: 5`、`reward: 0.5`、`reward: { min: 1.5, max: 3.5 }`）。
+小数の丸めはグローバル設定の `reward.decimals` と `reward.rounding_mode` に従い、パイプライン末尾でまとめて行う（[ADR-0019](./adr/0019-decimal-reward.md)）。
 
 **rare**：低確率ボーナスのオプション。
 省略可。
 
 - `chance`：1 アクションあたりの発火確率（0.0〜1.0）。
-- `reward`：発火時の報酬。固定値または `{ min, max }`。
+- `reward`：発火時の報酬。固定値または `{ min, max }`。`reward` フィールドと同様に小数を許容する。
 - `announce`：発火時にサーバ全体に流すメッセージ。`{player}` がプレイヤー名に置換される。
 
 通常報酬と rare 報酬は同一エントリに同居できる。
@@ -214,6 +216,10 @@ specialty_mode:
     - default:
       cooldown: 5d
 
+reward:
+  decimals: 0            # 小数点以下の桁数 (0..6)
+  rounding_mode: HALF_UP # HALF_UP / HALF_EVEN / HALF_DOWN / UP / DOWN / CEILING / FLOOR / UNNECESSARY
+
 daily_cap:
   amount: 1000000
   reset_at: "00:00"
@@ -241,6 +247,11 @@ kvs:
 上から評価し、`within` 条件にマッチした最初のポリシーが適用される。
 `default` は条件なしのフォールバック。
 
+**reward**：報酬額の丸め設定（[ADR-0019](./adr/0019-decimal-reward.md)）。
+`decimals` は小数点以下の桁数で、`0` のとき整数のみに丸める。上限は `6`。
+`rounding_mode` は Java の `java.math.RoundingMode` の名称をそのまま指定する。
+丸めはパイプライン末尾で `base_reward` / `final_reward` / `net_paid` にまとめて適用される（[04-reward-pipeline.md](./04-reward-pipeline.md)）。
+
 **daily_cap**：1 日あたりの報酬上限。
 `scope: total` は全ジョブ合算、`per_job` は職業別。
 
@@ -260,3 +271,4 @@ kvs:
 - [ADR-0015 追跡ストレージを KVS 抽象化する](./adr/0015-kvs-abstraction.md)
 - [ADR-0016 recently_placed_break は placer 非依存](./adr/0016-recently-placed-break.md)
 - [ADR-0017 投入者追跡を共通化する](./adr/0017-operator-tracking-common.md)
+- [ADR-0019 報酬額を小数値として扱う](./adr/0019-decimal-reward.md)
