@@ -14,8 +14,10 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -41,6 +43,13 @@ public final class MySqlActionLogRepository implements ActionLogRepository {
             WHERE player_uuid = ? AND job_id = ?
             ORDER BY occurred_at DESC
             LIMIT ?
+            """;
+
+    private static final String SQL_SUM_BY_JOB = """
+            SELECT job_id, COALESCE(SUM(final_reward), 0)
+            FROM action_log
+            WHERE player_uuid = ? AND occurred_at >= ? AND occurred_at < ?
+            GROUP BY job_id
             """;
 
     private final DataSource dataSource;
@@ -180,6 +189,25 @@ public final class MySqlActionLogRepository implements ActionLogRepository {
             return ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("deleteOlderThan failed", e);
+        }
+    }
+
+    @Override
+    public Map<String, Double> sumRewardByJob(UUID player, TimeRange range) {
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(SQL_SUM_BY_JOB)) {
+            ps.setBytes(1, UuidBytes.toBytes(player));
+            ps.setTimestamp(2, Timestamp.from(range.from()));
+            ps.setTimestamp(3, Timestamp.from(range.to()));
+            try (ResultSet rs = ps.executeQuery()) {
+                Map<String, Double> out = new HashMap<>();
+                while (rs.next()) {
+                    out.put(rs.getString(1), rs.getDouble(2));
+                }
+                return out;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("sumRewardByJob failed", e);
         }
     }
 

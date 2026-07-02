@@ -6,6 +6,7 @@ import me.f0reach.jobs.persistence.dto.ActionLogRow;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -33,4 +34,7 @@ public interface ActionLogRepository {
 
     /** Phase 6 の VarietyRingBuffer 初期化で使う。直近 limit 件の action_key を新しい順に返す。 */
     List<String> recentKeys(UUID player, String jobId, int limit);
+
+    /** Phase 6 の DailyTotalCache 初期化で使う。range 内の final_reward を job_id ごとに合算して返す。 */
+    Map<String, Double> sumRewardByJob(UUID player, TimeRange range);
 }

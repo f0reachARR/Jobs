@@ -26,7 +26,11 @@ import me.f0reach.jobs.i18n.MissingKeyReporter;
 import me.f0reach.jobs.kvs.JobsKVStore;
 import me.f0reach.jobs.kvs.memory.InMemoryKVStore;
 import me.f0reach.jobs.listener.PlayerJoinListener;
+import me.f0reach.jobs.listener.SpecialtyChangedListener;
 import me.f0reach.jobs.matcher.RewardMatcher;
+import me.f0reach.jobs.modifier.dailycap.DailyCapEvaluator;
+import me.f0reach.jobs.modifier.dailycap.DailyTotalCache;
+import me.f0reach.jobs.modifier.variety.VarietyPenaltyEvaluator;
 import me.f0reach.jobs.persistence.ActionLogRepository;
 import me.f0reach.jobs.persistence.DailyRewardTotalRepository;
 import me.f0reach.jobs.persistence.PlayerJobRepository;
@@ -41,6 +45,7 @@ import me.f0reach.jobs.pipeline.RewardPipeline;
 import me.f0reach.jobs.pipeline.Stage;
 import me.f0reach.jobs.pipeline.stage.ActionLogStage;
 import me.f0reach.jobs.pipeline.stage.BaseRewardStage;
+import me.f0reach.jobs.pipeline.stage.BuiltinModifierStage;
 import me.f0reach.jobs.pipeline.stage.EconomyTransferStage;
 import me.f0reach.jobs.pipeline.stage.MatcherStage;
 import me.f0reach.jobs.pipeline.stage.RareRollStage;
@@ -109,6 +114,10 @@ public final class JobsServices {
     private RewardPipeline rewardPipeline;
     private EventDispatcher eventDispatcher;
 
+    private VarietyPenaltyEvaluator varietyPenaltyEvaluator;
+    private DailyTotalCache dailyTotalCache;
+    private DailyCapEvaluator dailyCapEvaluator;
+
     public JobsServices(JobsPlugin plugin) {
         this.plugin = plugin;
         this.asyncExecutor = new AsyncExecutor(plugin);
@@ -130,8 +139,23 @@ public final class JobsServices {
         wireEconomy();
         wireSpecialty();
         wireDialogs();
+        wireBuiltinModifiers();
         wirePipeline();
         registerListeners();
+    }
+
+    private void wireBuiltinModifiers() {
+        this.varietyPenaltyEvaluator = new VarietyPenaltyEvaluator(plugin, actionLogRepository, asyncExecutor);
+        this.dailyTotalCache = new DailyTotalCache(
+                plugin,
+                dailyRewardTotalRepository,
+                actionLogRepository,
+                asyncExecutor,
+                java.time.Clock.systemUTC(),
+                ZoneId.systemDefault(),
+                config.dailyCap().scope()
+        );
+        this.dailyCapEvaluator = new DailyCapEvaluator(dailyTotalCache, config.dailyCap());
     }
 
     private void wirePersistence() {
@@ -185,8 +209,8 @@ public final class JobsServices {
                 // AntiAutomationStage は Phase 7
                 new BaseRewardStage(rng),
                 new RareRollStage(rng),
-                // BuiltinModifierStage は Phase 6, ExtensionModifierStage / SplitterStage は
-                // Phase 8
+                new BuiltinModifierStage(varietyPenaltyEvaluator, dailyCapEvaluator),
+                // ExtensionModifierStage / SplitterStage は Phase 8
                 new RewardRoundingStage(plugin, config.reward()),
                 new EconomyTransferStage(plugin, economy),
                 new ActionLogStage(plugin, actionLogQueue, batchFlushWorker, asyncExecutor)
@@ -203,7 +227,13 @@ public final class JobsServices {
                 new PlayerJoinListener(
                         specialtyService,
                         specialtySelectDialog,
+                        varietyPenaltyEvaluator,
+                        dailyTotalCache,
+                        jobRegistry,
                         config.specialtyMode().showSelectDialogOnJoin()),
+                plugin);
+        pm.registerEvents(
+                new SpecialtyChangedListener(varietyPenaltyEvaluator, jobRegistry),
                 plugin);
 
         for (Listener listener : List.of(
@@ -386,5 +416,17 @@ public final class JobsServices {
 
     public EventDispatcher eventDispatcher() {
         return eventDispatcher;
+    }
+
+    public VarietyPenaltyEvaluator varietyPenaltyEvaluator() {
+        return varietyPenaltyEvaluator;
+    }
+
+    public DailyTotalCache dailyTotalCache() {
+        return dailyTotalCache;
+    }
+
+    public DailyCapEvaluator dailyCapEvaluator() {
+        return dailyCapEvaluator;
     }
 }

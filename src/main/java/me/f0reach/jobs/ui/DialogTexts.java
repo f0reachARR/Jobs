@@ -24,6 +24,13 @@ public final class DialogTexts {
     public static final String COMMAND_STATUS_NO_SPECIALTY = "command.status.no_specialty";
     public static final String COMMAND_STATUS_CURRENT = "command.status.current";
 
+    // /jobs status (Phase 6 - variety penalty / daily cap)
+    public static final String COMMAND_STATUS_DAILY_TOTAL = "command.status.daily_total";
+    public static final String COMMAND_STATUS_DAILY_CAP_HIT = "command.status.daily_cap_hit";
+    public static final String COMMAND_STATUS_VARIETY_ACTIVE = "command.status.variety.active";
+    public static final String COMMAND_STATUS_VARIETY_DISCLOSED = "command.status.variety.disclosed";
+    public static final String COMMAND_STATUS_VARIETY_NONE = "command.status.variety.none";
+
     // Dialog: select
     public static final String DIALOG_SELECT_TITLE = "dialog.select.title";
     public static final String DIALOG_SELECT_BODY = "dialog.select.body";

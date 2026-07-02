@@ -5,13 +5,18 @@ import com.mojang.brigadier.tree.LiteralCommandNode;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import me.f0reach.jobs.JobsServices;
+import me.f0reach.jobs.config.PluginConfig;
+import me.f0reach.jobs.domain.job.JobDefinition;
 import me.f0reach.jobs.domain.job.JobId;
+import me.f0reach.jobs.domain.job.VarietyPenaltyConfig;
+import me.f0reach.jobs.modifier.variety.VarietyPenaltyEvaluator;
 import me.f0reach.jobs.ui.DialogTexts;
 import me.f0reach.jobs.util.MiniMessages;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.entity.Player;
 
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -91,7 +96,85 @@ public final class JobsCommands {
                 player, DialogTexts.COMMAND_STATUS_CURRENT,
                 Placeholder.parsed("current_job", current.value())
         ));
+
+        sendDailyStatus(player, bound);
+        sendVarietyStatus(player, bound, current);
         return Command.SINGLE_SUCCESS;
+    }
+
+    private void sendDailyStatus(Player player, JobsServices bound) {
+        PluginConfig.DailyCapConfig cfg = bound.config().dailyCap();
+        if (cfg.amount() <= 0) return;
+        double total = switch (cfg.scope()) {
+            case TOTAL -> bound.dailyTotalCache().todayTotal(player.getUniqueId());
+            case PER_JOB -> bound.dailyTotalCache().todayForJob(
+                    player.getUniqueId(),
+                    bound.specialtyService().currentJob(player.getUniqueId())
+                            .map(JobId::value).orElse(""));
+        };
+        player.sendMessage(bound.i18n().format(
+                player, DialogTexts.COMMAND_STATUS_DAILY_TOTAL,
+                Placeholder.parsed("total", formatAmount(total)),
+                Placeholder.parsed("cap", formatAmount(cfg.amount()))
+        ));
+        if (total >= cfg.amount()) {
+            player.sendMessage(bound.i18n().format(player, DialogTexts.COMMAND_STATUS_DAILY_CAP_HIT));
+        }
+    }
+
+    private void sendVarietyStatus(Player player, JobsServices bound, JobId currentJob) {
+        JobDefinition def = bound.jobRegistry().get(currentJob).orElse(null);
+        if (def == null) return;
+        VarietyPenaltyConfig config = def.varietyPenalty();
+        if (config == null || !config.enabled()) {
+            player.sendMessage(bound.i18n().format(player, DialogTexts.COMMAND_STATUS_VARIETY_NONE));
+            return;
+        }
+
+        VarietyPenaltyEvaluator.Snapshot snap = bound.varietyPenaltyEvaluator()
+                .snapshot(player.getUniqueId(), currentJob);
+        double ratio = snap == null ? 0.0 : snap.topRatio();
+        int size = snap == null ? 0 : snap.size();
+        int capacity = snap == null ? config.window() : snap.capacity();
+
+        boolean penalized = ratio > 0.0 && lookupMultiplier(config, ratio) < 1.0;
+        if (penalized) {
+            if (!config.hideNumbers()) {
+                player.sendMessage(bound.i18n().format(
+                        player, DialogTexts.COMMAND_STATUS_VARIETY_ACTIVE,
+                        Placeholder.parsed("size", Integer.toString(size)),
+                        Placeholder.parsed("capacity", Integer.toString(capacity)),
+                        Placeholder.parsed("ratio", String.format(Locale.ROOT, "%.0f", ratio * 100.0))
+                ));
+            }
+            if (config.disclosedMessage() != null && !config.disclosedMessage().isBlank()) {
+                player.sendMessage(bound.i18n().format(
+                        player, DialogTexts.COMMAND_STATUS_VARIETY_DISCLOSED,
+                        Placeholder.parsed("disclosed", config.disclosedMessage())
+                ));
+            }
+        } else {
+            player.sendMessage(bound.i18n().format(player, DialogTexts.COMMAND_STATUS_VARIETY_NONE));
+        }
+    }
+
+    private static double lookupMultiplier(VarietyPenaltyConfig config, double ratio) {
+        double mult = 1.0;
+        double bestUpTo = Double.POSITIVE_INFINITY;
+        for (VarietyPenaltyConfig.CurvePoint point : config.curve()) {
+            if (ratio <= point.upTo() && point.upTo() < bestUpTo) {
+                mult = point.multiplier();
+                bestUpTo = point.upTo();
+            }
+        }
+        return mult;
+    }
+
+    private static String formatAmount(double amount) {
+        if (amount == Math.floor(amount) && !Double.isInfinite(amount)) {
+            return Long.toString((long) amount);
+        }
+        return String.format(Locale.ROOT, "%.2f", amount);
     }
 
     private JobsServices requireBound(com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx) {

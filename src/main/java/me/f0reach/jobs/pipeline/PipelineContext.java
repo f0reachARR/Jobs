@@ -81,5 +81,10 @@ public final class PipelineContext {
         if (reason != null) zeroReasons.add(reason);
     }
 
+    /** 監査用に理由列だけ append する（0 lock は掛けない）。cap の部分削減などで使う。 */
+    public void addZeroReason(String reason) {
+        if (reason != null) zeroReasons.add(reason);
+    }
+
     public List<String> zeroReasons() { return List.copyOf(zeroReasons); }
 }
