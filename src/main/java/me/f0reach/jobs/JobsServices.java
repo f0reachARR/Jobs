@@ -1,5 +1,17 @@
 package me.f0reach.jobs;
 
+import me.f0reach.jobs.antiautomation.AntiAutomationCheck;
+import me.f0reach.jobs.antiautomation.AntiAutomationCoordinator;
+import me.f0reach.jobs.antiautomation.AutoFedProcessingCheck;
+import me.f0reach.jobs.antiautomation.BreedNonPlayerBreederCheck;
+import me.f0reach.jobs.antiautomation.OperatorTracker;
+import me.f0reach.jobs.antiautomation.PlacementRecorder;
+import me.f0reach.jobs.antiautomation.PlantedFlagWriter;
+import me.f0reach.jobs.antiautomation.RecentlyPlacedBreakCheck;
+import me.f0reach.jobs.antiautomation.SpawnerOriginCheck;
+import me.f0reach.jobs.antiautomation.TradeRecorder;
+import me.f0reach.jobs.antiautomation.UnplantedCropCheck;
+import me.f0reach.jobs.antiautomation.VillagerRepeatTradeCheck;
 import me.f0reach.jobs.config.ConfigLoader;
 import me.f0reach.jobs.config.PluginConfig;
 import me.f0reach.jobs.detection.EventDispatcher;
@@ -44,6 +56,7 @@ import me.f0reach.jobs.persistence.mysql.SchemaInitializer;
 import me.f0reach.jobs.pipeline.RewardPipeline;
 import me.f0reach.jobs.pipeline.Stage;
 import me.f0reach.jobs.pipeline.stage.ActionLogStage;
+import me.f0reach.jobs.pipeline.stage.AntiAutomationStage;
 import me.f0reach.jobs.pipeline.stage.BaseRewardStage;
 import me.f0reach.jobs.pipeline.stage.BuiltinModifierStage;
 import me.f0reach.jobs.pipeline.stage.EconomyTransferStage;
@@ -118,6 +131,12 @@ public final class JobsServices {
     private DailyTotalCache dailyTotalCache;
     private DailyCapEvaluator dailyCapEvaluator;
 
+    private AntiAutomationCoordinator antiAutomationCoordinator;
+    private PlantedFlagWriter plantedFlagWriter;
+    private PlacementRecorder placementRecorder;
+    private TradeRecorder tradeRecorder;
+    private OperatorTracker operatorTracker;
+
     public JobsServices(JobsPlugin plugin) {
         this.plugin = plugin;
         this.asyncExecutor = new AsyncExecutor(plugin);
@@ -140,8 +159,33 @@ public final class JobsServices {
         wireSpecialty();
         wireDialogs();
         wireBuiltinModifiers();
+        wireAntiAutomation();
         wirePipeline();
         registerListeners();
+    }
+
+    private void wireAntiAutomation() {
+        UnplantedCropCheck unplanted = new UnplantedCropCheck(plugin);
+        this.plantedFlagWriter = new PlantedFlagWriter(unplanted.key());
+        this.placementRecorder = new PlacementRecorder(kvStore);
+        this.tradeRecorder = new TradeRecorder(kvStore);
+        // operator_ttl_sec は job ごとに違い得るが、Phase 7 では簡便にジョブ全域で最大値を採用する。
+        int operatorTtlSec = jobRegistry.all().stream()
+                .map(j -> j.antiAutomation() == null ? null : j.antiAutomation().autoFedProcessing())
+                .filter(java.util.Objects::nonNull)
+                .mapToInt(cfg -> cfg.operatorTtlSec())
+                .max().orElse(60);
+        this.operatorTracker = new OperatorTracker(kvStore, operatorTtlSec);
+
+        List<AntiAutomationCheck> checks = List.of(
+                new SpawnerOriginCheck(),
+                unplanted,
+                new RecentlyPlacedBreakCheck(kvStore),
+                new AutoFedProcessingCheck(kvStore),
+                new VillagerRepeatTradeCheck(kvStore),
+                new BreedNonPlayerBreederCheck()
+        );
+        this.antiAutomationCoordinator = new AntiAutomationCoordinator(plugin, checks);
     }
 
     private void wireBuiltinModifiers() {
@@ -206,7 +250,7 @@ public final class JobsServices {
         List<Stage> stages = List.of(
                 new MatcherStage(),
                 new SpecialtyStage(specialtyService),
-                // AntiAutomationStage は Phase 7
+                new AntiAutomationStage(antiAutomationCoordinator),
                 new BaseRewardStage(rng),
                 new RareRollStage(rng),
                 new BuiltinModifierStage(varietyPenaltyEvaluator, dailyCapEvaluator),
@@ -239,7 +283,8 @@ public final class JobsServices {
         for (Listener listener : List.of(
                 new EntityKilledListener(eventDispatcher),
                 new BlockBreakListener(eventDispatcher),
-                new BlockPlaceListener(eventDispatcher),
+                new BlockPlaceListener(eventDispatcher, plantedFlagWriter, placementRecorder,
+                        specialtyService, jobRegistry),
                 new FishListener(eventDispatcher),
                 new FurnaceExtractListener(eventDispatcher),
                 new CraftListener(eventDispatcher),
@@ -249,9 +294,10 @@ public final class JobsServices {
                 new TameListener(eventDispatcher),
                 new ShearListener(eventDispatcher),
                 new ConsumeListener(eventDispatcher),
-                new VillagerTradeListener(eventDispatcher),
+                new VillagerTradeListener(eventDispatcher, tradeRecorder, specialtyService, jobRegistry),
                 new BrewListener(eventDispatcher),
-                new TntPrimerTracker(plugin, eventDispatcher))) {
+                new TntPrimerTracker(plugin, eventDispatcher),
+                operatorTracker)) {
             pm.registerEvents(listener, plugin);
         }
     }

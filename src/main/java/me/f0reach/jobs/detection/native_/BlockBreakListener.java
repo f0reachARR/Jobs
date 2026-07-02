@@ -1,5 +1,6 @@
 package me.f0reach.jobs.detection.native_;
 
+import me.f0reach.jobs.detection.DetectionSubject;
 import me.f0reach.jobs.detection.EventDispatcher;
 import me.f0reach.jobs.detection.SourceFlags;
 import me.f0reach.jobs.domain.job.ActionType;
@@ -37,6 +38,9 @@ public final class BlockBreakListener implements Listener {
                 .viaTnt(false)
                 .amount(1)
                 .build();
-        dispatcher.dispatch(event.getPlayer(), ActionType.BLOCK_BROKEN, ctx, SourceFlags.none());
+        DetectionSubject subject = DetectionSubject.builder()
+                .block(event.getBlock())
+                .build();
+        dispatcher.dispatch(event.getPlayer(), ActionType.BLOCK_BROKEN, ctx, SourceFlags.none(), subject);
     }
 }

@@ -1,6 +1,7 @@
 package me.f0reach.jobs.pipeline;
 
 import me.f0reach.jobs.detection.DetectedAction;
+import me.f0reach.jobs.detection.DetectionSubject;
 import me.f0reach.jobs.detection.SourceFlags;
 import me.f0reach.jobs.domain.job.ActionKey;
 import me.f0reach.jobs.domain.job.JobDefinition;
@@ -26,6 +27,7 @@ public final class PipelineContext {
     private final ActionKey derivedKey;
     private final int amount;
     private final Instant occurredAt;
+    private final DetectionSubject subject;
 
     private SourceFlags sourceFlags;
 
@@ -47,6 +49,7 @@ public final class PipelineContext {
         this.derivedKey = action.derivedKey();
         this.amount = action.amount();
         this.sourceFlags = action.sourceFlags() == null ? SourceFlags.none() : action.sourceFlags();
+        this.subject = action.subject() == null ? DetectionSubject.empty() : action.subject();
         this.occurredAt = occurredAt;
     }
 
@@ -60,6 +63,8 @@ public final class PipelineContext {
 
     public SourceFlags sourceFlags() { return sourceFlags; }
     public void setSourceFlags(SourceFlags flags) { this.sourceFlags = flags; }
+
+    public DetectionSubject subject() { return subject; }
 
     public double baseReward() { return baseReward; }
     public void setBaseReward(double v) { this.baseReward = v; }

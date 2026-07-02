@@ -8,6 +8,7 @@ import me.f0reach.jobs.matcher.RewardMatcher;
 import me.f0reach.jobs.pipeline.RewardPipeline;
 import me.f0reach.jobs.registry.JobRegistry;
 import me.f0reach.jobs.specialty.SpecialtyService;
+import me.f0reach.jobs.detection.DetectionSubject;
 import org.bukkit.entity.Player;
 
 import java.util.Optional;
@@ -43,6 +44,20 @@ public final class EventDispatcher {
     }
 
     public void dispatch(Player player, ActionType actionType, MatchContext ctx, SourceFlags flags) {
+        dispatch(player, actionType, ctx, flags, DetectionSubject.empty());
+    }
+
+    public void dispatch(Player player, ActionType actionType, MatchContext ctx) {
+        dispatch(player, actionType, ctx, SourceFlags.none(), DetectionSubject.empty());
+    }
+
+    public void dispatch(
+            Player player,
+            ActionType actionType,
+            MatchContext ctx,
+            SourceFlags flags,
+            DetectionSubject subject
+    ) {
         var currentJobIdOpt = specialtyService.currentJob(player.getUniqueId());
         if (currentJobIdOpt.isEmpty()) return;
         JobDefinition job = jobRegistry.get(currentJobIdOpt.get()).orElse(null);
@@ -57,12 +72,9 @@ public final class EventDispatcher {
                 matched.get(),
                 matched.get().derivedKey(),
                 ctx.amount(),
-                flags == null ? SourceFlags.none() : flags
+                flags == null ? SourceFlags.none() : flags,
+                subject == null ? DetectionSubject.empty() : subject
         );
         pipeline.run(action);
-    }
-
-    public void dispatch(Player player, ActionType actionType, MatchContext ctx) {
-        dispatch(player, actionType, ctx, SourceFlags.none());
     }
 }

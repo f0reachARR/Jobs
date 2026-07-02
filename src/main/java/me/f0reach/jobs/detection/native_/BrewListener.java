@@ -1,5 +1,7 @@
 package me.f0reach.jobs.detection.native_;
 
+import me.f0reach.jobs.antiautomation.ContainerKind;
+import me.f0reach.jobs.detection.DetectionSubject;
 import me.f0reach.jobs.detection.EventDispatcher;
 import me.f0reach.jobs.detection.SourceFlags;
 import me.f0reach.jobs.domain.job.ActionType;
@@ -47,7 +49,11 @@ public final class BrewListener implements Listener {
                 .item(itemKey)
                 .amount(outputCount)
                 .build();
-        dispatcher.dispatch(operator, ActionType.ITEM_BREWED, ctx, SourceFlags.none());
+        DetectionSubject subject = DetectionSubject.builder()
+                .containerBlock(event.getBlock())
+                .containerKind(ContainerKind.BREWING_STAND)
+                .build();
+        dispatcher.dispatch(operator, ActionType.ITEM_BREWED, ctx, SourceFlags.none(), subject);
     }
 
     private Player nearestPlayer(BrewEvent event) {

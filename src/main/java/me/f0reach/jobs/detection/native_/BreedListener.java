@@ -1,5 +1,6 @@
 package me.f0reach.jobs.detection.native_;
 
+import me.f0reach.jobs.detection.DetectionSubject;
 import me.f0reach.jobs.detection.EventDispatcher;
 import me.f0reach.jobs.detection.SourceFlags;
 import me.f0reach.jobs.domain.job.ActionType;
@@ -31,6 +32,9 @@ public final class BreedListener implements Listener {
                 .entity(event.getEntity().getType().getKey())
                 .amount(1)
                 .build();
-        dispatcher.dispatch(player, ActionType.ENTITY_BRED, ctx, SourceFlags.none());
+        DetectionSubject subject = DetectionSubject.builder()
+                .breederIsPlayer(true)
+                .build();
+        dispatcher.dispatch(player, ActionType.ENTITY_BRED, ctx, SourceFlags.none(), subject);
     }
 }

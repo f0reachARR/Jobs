@@ -18,7 +18,8 @@ public record DetectedAction(
         RewardEntry matchedEntry,
         ActionKey derivedKey,
         int amount,
-        SourceFlags sourceFlags
+        SourceFlags sourceFlags,
+        DetectionSubject subject
 ) {
     public DetectedAction {
         Objects.requireNonNull(player, "player");
@@ -27,5 +28,18 @@ public record DetectedAction(
         Objects.requireNonNull(derivedKey, "derivedKey");
         if (amount < 0) throw new IllegalArgumentException("amount must be >= 0");
         if (sourceFlags == null) sourceFlags = SourceFlags.none();
+        if (subject == null) subject = DetectionSubject.empty();
+    }
+
+    /** subject 省略の便利コンストラクタ (Phase 5 までのテスト互換用)。 */
+    public DetectedAction(
+            Player player,
+            JobId matchedJobId,
+            RewardEntry matchedEntry,
+            ActionKey derivedKey,
+            int amount,
+            SourceFlags sourceFlags
+    ) {
+        this(player, matchedJobId, matchedEntry, derivedKey, amount, sourceFlags, DetectionSubject.empty());
     }
 }

@@ -1,5 +1,6 @@
 package me.f0reach.jobs.detection.native_;
 
+import me.f0reach.jobs.detection.DetectionSubject;
 import me.f0reach.jobs.detection.EventDispatcher;
 import me.f0reach.jobs.detection.SourceFlags;
 import me.f0reach.jobs.domain.job.ActionType;
@@ -30,6 +31,9 @@ public final class EntityKilledListener implements Listener {
                 .entity(event.getEntityType().getKey())
                 .amount(1)
                 .build();
-        dispatcher.dispatch(killer, ActionType.ENTITY_KILLED, ctx, SourceFlags.none());
+        DetectionSubject subject = DetectionSubject.builder()
+                .killedEntity(event.getEntity())
+                .build();
+        dispatcher.dispatch(killer, ActionType.ENTITY_KILLED, ctx, SourceFlags.none(), subject);
     }
 }
