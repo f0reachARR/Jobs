@@ -1,0 +1,98 @@
+plugins {
+    id 'java'
+    id("xyz.jpenilla.run-paper") version "2.3.1"
+    id("com.gradleup.shadow") version "9.0.0-beta13"
+}
+
+group = 'me.f0reach.jobs'
+version = '1.0.0'
+
+repositories {
+    mavenCentral()
+    maven {
+        name = "papermc-repo"
+        url = "https://repo.papermc.io/repository/maven-public/"
+    }
+    maven {
+        name = "jitpack"
+        url = "https://jitpack.io"
+    }
+    maven {
+        name = "placeholderapi"
+        url = "https://repo.extendedclip.com/content/repositories/placeholderapi/"
+    }
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = "modrinth"
+                url = "https://api.modrinth.com/maven"
+            }
+        }
+        filter { includeGroup("maven.modrinth") }
+    }
+}
+
+dependencies {
+    compileOnly("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
+    compileOnly("com.github.MilkBowl:VaultAPI:1.7.1")
+    compileOnly("me.clip:placeholderapi:2.11.6")
+    // BedrockDialog (Modrinth Maven). Version slug pinned to the latest available 1.21.8+ compatible build.
+    compileOnly("maven.modrinth:bedrockdialog:1.0.4")
+    implementation("com.zaxxer:HikariCP:5.1.0")
+    runtimeOnly("org.xerial:sqlite-jdbc:3.49.1.0")
+    runtimeOnly("com.mysql:mysql-connector-j:9.1.0")
+    testImplementation("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.12.1")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.12.1")
+    testImplementation("org.xerial:sqlite-jdbc:3.49.1.0")
+    testImplementation("com.mysql:mysql-connector-j:9.1.0")
+    testImplementation("com.zaxxer:HikariCP:5.1.0")
+    testImplementation("org.mockbukkit.mockbukkit:mockbukkit-v1.21:4.89.0")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.1")
+}
+
+tasks {
+    runServer {
+        minecraftVersion("1.21.11")
+    }
+
+    test {
+        useJUnitPlatform()
+    }
+
+    shadowJar {
+        archiveClassifier.set("")
+        relocate("com.zaxxer.hikari", "me.f0reach.jobs.lib.hikari")
+    }
+
+    build {
+        dependsOn(shadowJar)
+    }
+}
+
+def targetJavaVersion = 21
+java {
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    sourceCompatibility = javaVersion
+    targetCompatibility = javaVersion
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+
+    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
+        options.release.set(targetJavaVersion)
+    }
+}
+
+processResources {
+    def props = [version: version]
+    inputs.properties props
+    filteringCharset 'UTF-8'
+    filesMatching('paper-plugin.yml') {
+        expand props
+    }
+}

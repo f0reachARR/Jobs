@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Build & Test (SQLite + MySQL)
+    runs-on: ubuntu-latest
+
+    services:
+      # GitHub Actions starts MySQL as a side-car container. We expose 3306
+      # on the host so the Gradle process can reach it on 127.0.0.1.
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: rootpw
+          MYSQL_DATABASE: vshop_test
+          MYSQL_USER: vshop
+          MYSQL_PASSWORD: vshop
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -prootpw"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Wait for MySQL
+        run: |
+          for i in $(seq 1 60); do
+            if mysqladmin ping -h 127.0.0.1 -uroot -prootpw --silent; then
+              echo "MySQL is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "MySQL never came up" >&2
+          exit 1
+
+      - name: Grant CREATE on test schemas
+        # Each test JVM allocates its own throwaway `vshop_test_<uuid>` schema,
+        # so the test user needs CREATE/DROP on anything matching that prefix.
+        run: |
+          mysql -h 127.0.0.1 -uroot -prootpw -e "
+            GRANT ALL PRIVILEGES ON \`vshop_test_%\`.* TO 'vshop'@'%';
+            GRANT CREATE, DROP ON *.* TO 'vshop'@'%';
+            FLUSH PRIVILEGES;"
+
+      - name: Build & test
+        env:
+          VSHOP_TEST_MYSQL_URL: jdbc:mysql://127.0.0.1:3306
+          VSHOP_TEST_MYSQL_USER: vshop
+          VSHOP_TEST_MYSQL_PASSWORD: vshop
+        run: ./gradlew build --no-daemon --stacktrace
+
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            build/reports/tests/test
+            build/test-results/test

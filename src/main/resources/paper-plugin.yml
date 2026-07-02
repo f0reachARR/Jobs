@@ -1,0 +1,19 @@
+name: Jobs
+version: "${version}"
+main: me.f0reach.jobs.JobsPlugin
+api-version: "1.21"
+authors: [f0reachARR]
+description: Jobs for 1.21.8+ Minecraft
+
+dependencies:
+    server:
+        Vault:
+            load: BEFORE
+            required: true
+        BedrockDialog:
+            load: BEFORE
+            required: true
+        PlaceholderAPI:
+            load: BEFORE
+            required: false
+
