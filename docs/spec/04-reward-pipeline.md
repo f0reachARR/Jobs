@@ -67,6 +67,11 @@ Track A と Track B はマッチ確定後に合流し、以降は共通の流れ
 
 いずれかで 0 確定した場合、それ以降の判定は評価不要（次段階以降も 0 のまま進む）。
 
+0 判定を起こした reason に対して `anti_automation.notify.action_bar.<reason>` が true なら、
+プレイヤーへ ActionBar で `notify.anti_automation.<reason>` の lang メッセージを送る。
+ActionBar 送信は main thread から `Player#sendActionBar` を直接叩く。
+通知の有効化は config.yml のグローバルフラグのみ（per-job override は無い）。
+
 ### 4. 基礎報酬
 
 `reward` フィールドから固定値または範囲乱数で値を取り出す。

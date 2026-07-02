@@ -204,6 +204,17 @@ rare がヒットしたとき、通常報酬は支払わず rare 報酬で置き
 
 `zero` 以外の処理は将来追加する余地として予約しておく。
 
+### 明示的な off (per-job で default を打ち消す)
+
+config.yml の `anti_automation` はグローバルデフォルトとして扱われ、per-job YAML の同名キーは
+それを上書きする（下の「グローバル設定」参照）。デフォルトが有効化されている check を **特定の
+ジョブだけ** 無効化したいときは、以下のいずれかの書き方で明示的に off にする。
+
+- スカラー enum 型（`spawner_origin_kills` / `unplanted_crop_harvest` / `breed_non_player_breeder`）: `off` を値にする。
+- section 型（`recently_placed_break` / `auto_fed_processing` / `villager_repeat_trade`）: スカラーで `off` を書くか、section 内で `enabled: false` を指定する。
+
+キー自体を per-job YAML から省略した場合は、config.yml の default が引き継がれる。
+
 ## グローバル設定（config.yml）
 
 ```yaml
@@ -234,6 +245,22 @@ persistence:
 
 kvs:
   type: memory
+
+anti_automation:
+  # 各 check のグローバルデフォルト。per-job YAML の同名キーで override 可能。
+  spawner_origin_kills: zero
+  recently_placed_break:
+    window_sec: 3600
+  # ...
+
+  # 0 判定発火時に、プレイヤーへ ActionBar で理由を通知する。
+  # reason は AntiAutomationCheck の REASON 定数 (spawner_origin_kill / recently_placed_break など)。
+  # per-job override は無い (グローバル固定)。
+  notify:
+    action_bar:
+      spawner_origin_kill: true
+      recently_placed_break: true
+      # ...
 ```
 
 **reward_non_specialty**：専業外アクションの扱い。
@@ -260,6 +287,12 @@ kvs:
 **kvs**：自動化対策の追跡ストレージ設定。
 `memory` のとき in-memory 実装（Caffeine ベース）を使う。
 `redis` は Phase 2 の予約（[ADR-0015](./adr/0015-kvs-abstraction.md)）。
+
+**anti_automation**：自動化対策のグローバルデフォルトと ActionBar 通知設定。
+セクション本体は「anti_automation」節と同じスキーマを取り、per-job YAML の同名キーに
+default 値を供給する。per-job YAML でキーが省略されたら default が適用される。
+`notify.action_bar` は各 reason に対する ActionBar 通知の有効化フラグで、per-job override
+は無い（グローバル固定）。設定 reload は起動時のみ反映される。
 
 ## 関連 ADR
 
