@@ -28,6 +28,7 @@ public final class ConfigLoader {
             throw new ConfigException("specialty_mode section is missing in config.yml");
         }
         double reward = section.getDouble("reward_non_specialty", 0.0);
+        boolean showSelectDialogOnJoin = section.getBoolean("show_select_dialog_on_join", true);
         List<PluginConfig.ChangePolicy> policies = new ArrayList<>();
         List<?> raw = section.getList("change_policy");
         if (raw != null) {
@@ -38,7 +39,7 @@ public final class ConfigLoader {
                 policies.add(parseChangePolicy(map));
             }
         }
-        return new PluginConfig.SpecialtyModeConfig(reward, List.copyOf(policies));
+        return new PluginConfig.SpecialtyModeConfig(reward, showSelectDialogOnJoin, List.copyOf(policies));
     }
 
     private PluginConfig.ChangePolicy parseChangePolicy(java.util.Map<?, ?> map) {

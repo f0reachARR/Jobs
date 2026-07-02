@@ -4,6 +4,9 @@
 specialty_mode:
   # 専業外アクションの倍率。0.0 のとき報酬支払いも行動ログ書き込みも行わない。
   reward_non_specialty: 0.0
+  # 未選択プレイヤーのログイン直後に選択ダイアログを自動表示するか。
+  # false のときはプレイヤーが自発的に /jobs select を実行するまで表示しない。
+  show_select_dialog_on_join: true
   # 専業変更のクールダウン。上から評価し within にマッチした最初のポリシーが適用される。
   change_policy:
     - within:

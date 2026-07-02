@@ -200,7 +200,12 @@ public final class JobsServices {
     private void registerListeners() {
         PluginManager pm = plugin.getServer().getPluginManager();
 
-        pm.registerEvents(new PlayerJoinListener(specialtyService, specialtySelectDialog), plugin);
+        pm.registerEvents(
+                new PlayerJoinListener(
+                        specialtyService,
+                        specialtySelectDialog,
+                        config.specialtyMode().showSelectDialogOnJoin()),
+                plugin);
 
         for (Listener listener : List.of(
                 new EntityKilledListener(eventDispatcher),

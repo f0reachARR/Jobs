@@ -1,6 +1,8 @@
 # Jobs plugin English locale.
 
 command:
+  loading: "<gray>Plugin is loading.</gray>"
+  player_only: "<red>This command can only be run by a player.</red>"
   status:
     not_implemented: "<yellow>/jobs status is not implemented yet.</yellow>"
     no_specialty: "<yellow>No specialty selected yet. Run /jobs select.</yellow>"

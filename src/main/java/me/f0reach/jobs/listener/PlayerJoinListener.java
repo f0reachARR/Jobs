@@ -17,17 +17,23 @@ public final class PlayerJoinListener implements Listener {
 
     private final SpecialtyService specialtyService;
     private final SpecialtySelectDialog selectDialog;
+    private final boolean showSelectDialogOnJoin;
 
-    public PlayerJoinListener(SpecialtyService specialtyService, SpecialtySelectDialog selectDialog) {
+    public PlayerJoinListener(
+            SpecialtyService specialtyService,
+            SpecialtySelectDialog selectDialog,
+            boolean showSelectDialogOnJoin
+    ) {
         this.specialtyService = specialtyService;
         this.selectDialog = selectDialog;
+        this.showSelectDialogOnJoin = showSelectDialogOnJoin;
     }
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         var player = event.getPlayer();
         specialtyService.loadPlayer(player.getUniqueId());
-        if (specialtyService.isFirstTime(player.getUniqueId())) {
+        if (showSelectDialogOnJoin && specialtyService.isFirstTime(player.getUniqueId())) {
             // 少し遅延させないと Dialog がまだ届かない場合がある。
             selectDialog.open(player);
         }

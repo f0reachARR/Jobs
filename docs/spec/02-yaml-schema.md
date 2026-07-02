@@ -207,6 +207,7 @@ rare がヒットしたとき、通常報酬は支払わず rare 報酬で置き
 ```yaml
 specialty_mode:
   reward_non_specialty: 0.0       # 専業外は 0 固定
+  show_select_dialog_on_join: true # 未選択プレイヤーのログイン時に選択ダイアログを自動表示するか
   change_policy:
     - within: { event_hours: [0, 24] }
       cooldown: 1h
@@ -231,6 +232,10 @@ kvs:
 
 **reward_non_specialty**：専業外アクションの扱い。
 0.0 のとき、報酬支払いも行動ログ書き込みも行わない（[ADR-0002](./adr/0002-non-specialty-actions-discarded.md)）。
+
+**show_select_dialog_on_join**：未選択プレイヤーがログインした直後に選択ダイアログを自動で開くかどうか。
+`false` のときはプレイヤーが自発的に `/jobs select` を実行するまで表示しない。
+専業未選択でも他プラグインの UI 動線に譲りたい運用（ロビーサーバや、既存の職業案内 UI がある環境）で使う。
 
 **change_policy**：専業変更のクールダウン。
 上から評価し、`within` 条件にマッチした最初のポリシーが適用される。

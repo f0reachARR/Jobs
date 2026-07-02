@@ -8,6 +8,10 @@ public final class DialogTexts {
 
     private DialogTexts() {}
 
+    // /jobs 共通
+    public static final String COMMAND_LOADING = "command.loading";
+    public static final String COMMAND_PLAYER_ONLY = "command.player_only";
+
     // /jobs select
     public static final String COMMAND_SELECT_ALREADY = "command.select.already_selected";
     public static final String COMMAND_SELECT_OPENED = "command.select.opened";

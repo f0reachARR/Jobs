@@ -3,6 +3,8 @@
 # （Bedrock Edition では装飾が落ちる）
 
 command:
+  loading: "<gray>プラグインを読み込み中です…</gray>"
+  player_only: "<red>このコマンドはプレイヤーからのみ実行できます。</red>"
   status:
     not_implemented: "<yellow>/jobs status は未実装です。</yellow>"
     no_specialty: "<yellow>まだ専業が選択されていません。/jobs select を実行してください。</yellow>"

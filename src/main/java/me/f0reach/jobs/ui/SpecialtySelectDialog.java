@@ -65,9 +65,10 @@ public final class SpecialtySelectDialog {
                         i18n.format(player, DialogTexts.NOTIFY_UNKNOWN_JOB,
                                 Placeholder.parsed("job", u.requested().value()))
                 );
-                case SpecialtyChangeResult.NoChange n -> {
-                    // 既に選択済み。無視。
-                }
+                case SpecialtyChangeResult.NoChange n -> player.sendMessage(
+                        // ダイアログ表示中に別経路で選択された場合の防御。
+                        i18n.format(player, DialogTexts.COMMAND_SELECT_ALREADY)
+                );
                 case SpecialtyChangeResult.CooldownRemaining c -> {
                     // select 経路では発生しないが switch の網羅性のため。
                 }
