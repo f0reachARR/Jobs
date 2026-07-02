@@ -205,6 +205,7 @@ public final class JobsServices {
         int operatorTtlSec = jobRegistry.all().stream()
                 .map(j -> j.antiAutomation() == null ? null : j.antiAutomation().autoFedProcessing())
                 .filter(java.util.Objects::nonNull)
+                .filter(cfg -> cfg.enabled())
                 .mapToInt(cfg -> cfg.operatorTtlSec())
                 .max().orElse(60);
         this.operatorTracker = new OperatorTracker(kvStore, operatorTtlSec);

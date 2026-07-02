@@ -74,7 +74,7 @@ public final class BlockPlaceListener implements Listener {
             plantedFlagWriter.markPlanted(event.getBlockPlaced());
         }
         AntiAutomationConfig.RecentlyPlacedBreak rpb = cfg.recentlyPlacedBreak();
-        if (rpb != null) {
+        if (rpb != null && rpb.enabled()) {
             placementRecorder.recordPlacement(event.getBlockPlaced(), rpb.windowSec());
         }
     }

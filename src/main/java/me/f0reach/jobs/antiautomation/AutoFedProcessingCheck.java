@@ -31,7 +31,7 @@ public final class AutoFedProcessingCheck implements AntiAutomationCheck {
     public boolean appliesTo(PipelineContext ctx, ActionType actionType) {
         if (actionType != ActionType.ITEM_SMELTED && actionType != ActionType.ITEM_BREWED) return false;
         AntiAutomationConfig cfg = ctx.jobDefinition().antiAutomation();
-        return cfg != null && cfg.autoFedProcessing() != null;
+        return cfg != null && cfg.autoFedProcessing() != null && cfg.autoFedProcessing().enabled();
     }
 
     @Override

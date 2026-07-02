@@ -79,7 +79,7 @@ public final class VillagerTradeListener implements Listener {
                 .flatMap(jobRegistry::get).orElse(null);
         if (job == null || job.antiAutomation() == null) return;
         AntiAutomationConfig.VillagerRepeatTrade vrt = job.antiAutomation().villagerRepeatTrade();
-        if (vrt == null) return;
+        if (vrt == null || !vrt.enabled()) return;
         tradeRecorder.recordTrade(villagerUuid, recipeIndex, vrt.cooldownSec());
     }
 }

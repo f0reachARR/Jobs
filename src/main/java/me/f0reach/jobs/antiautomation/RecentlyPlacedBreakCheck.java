@@ -29,7 +29,7 @@ public final class RecentlyPlacedBreakCheck implements AntiAutomationCheck {
     public boolean appliesTo(PipelineContext ctx, ActionType actionType) {
         if (actionType != ActionType.BLOCK_BROKEN) return false;
         AntiAutomationConfig cfg = ctx.jobDefinition().antiAutomation();
-        return cfg != null && cfg.recentlyPlacedBreak() != null;
+        return cfg != null && cfg.recentlyPlacedBreak() != null && cfg.recentlyPlacedBreak().enabled();
     }
 
     @Override

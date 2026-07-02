@@ -26,7 +26,7 @@ public final class VillagerRepeatTradeCheck implements AntiAutomationCheck {
     public boolean appliesTo(PipelineContext ctx, ActionType actionType) {
         if (actionType != ActionType.VILLAGER_TRADED) return false;
         AntiAutomationConfig cfg = ctx.jobDefinition().antiAutomation();
-        return cfg != null && cfg.villagerRepeatTrade() != null;
+        return cfg != null && cfg.villagerRepeatTrade() != null && cfg.villagerRepeatTrade().enabled();
     }
 
     @Override
