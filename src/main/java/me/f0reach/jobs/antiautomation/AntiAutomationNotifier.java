@@ -13,7 +13,7 @@ import java.util.Map;
  * <p>lang key は {@code notify.anti_automation.<reason>} を引く。
  * MiniMessage は装飾が Bedrock で落ちても文言だけで意味が通る形で書く。
  */
-public final class AntiAutomationNotifier {
+public class AntiAutomationNotifier {
 
     private static final String LANG_KEY_PREFIX = "notify.anti_automation.";
 
