@@ -6,9 +6,8 @@ command:
   loading: "<gray>プラグインを読み込み中です…</gray>"
   player_only: "<red>このコマンドはプレイヤーからのみ実行できます。</red>"
   status:
-    not_implemented: "<yellow>/jobs status は未実装です。</yellow>"
     no_specialty: "<yellow>まだ専業が選択されていません。/jobs select を実行してください。</yellow>"
-    loading: "<gray>プラグインを読み込み中です…</gray>"
+    current: "<gray>現在の専業:</gray> <white><current_job></white>"
   select:
     already_selected: "<yellow>すでに専業を選択しています。変更は /jobs change から行ってください。</yellow>"
     opened: "<gray>専業選択ダイアログを開きました。</gray>"
@@ -29,10 +28,6 @@ dialog:
     cooldown:
       title: "専業変更は不可"
       body: "現在の専業: <current_job>。次回変更可能: <next_available>（あと <remaining>）。"
-  status:
-    title: "ステータス"
-    body: "現在の専業: <current_job>"
-    dismiss: "閉じる"
 
 notify:
   selected: "<green>専業を <job> に決定しました。</green>"

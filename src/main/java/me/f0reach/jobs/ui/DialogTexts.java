@@ -22,6 +22,7 @@ public final class DialogTexts {
 
     // /jobs status (Phase 4 minimum)
     public static final String COMMAND_STATUS_NO_SPECIALTY = "command.status.no_specialty";
+    public static final String COMMAND_STATUS_CURRENT = "command.status.current";
 
     // Dialog: select
     public static final String DIALOG_SELECT_TITLE = "dialog.select.title";
@@ -35,11 +36,6 @@ public final class DialogTexts {
     public static final String DIALOG_CHANGE_COOLDOWN_TITLE = "dialog.change.cooldown.title";
     public static final String DIALOG_CHANGE_COOLDOWN_BODY = "dialog.change.cooldown.body";
     public static final String DIALOG_CHANGE_DISMISS = "dialog.change.dismiss";
-
-    // Dialog: status
-    public static final String DIALOG_STATUS_TITLE = "dialog.status.title";
-    public static final String DIALOG_STATUS_BODY = "dialog.status.body";
-    public static final String DIALOG_STATUS_DISMISS = "dialog.status.dismiss";
 
     // Notifications after selection
     public static final String NOTIFY_SELECTED = "notify.selected";

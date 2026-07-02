@@ -5,9 +5,11 @@ import com.mojang.brigadier.tree.LiteralCommandNode;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import me.f0reach.jobs.JobsServices;
+import me.f0reach.jobs.domain.job.JobId;
 import me.f0reach.jobs.ui.DialogTexts;
 import me.f0reach.jobs.util.MiniMessages;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.entity.Player;
 
 import java.util.concurrent.atomic.AtomicReference;
@@ -80,11 +82,15 @@ public final class JobsCommands {
         Player player = requirePlayer(ctx, bound);
         if (player == null) return Command.SINGLE_SUCCESS;
 
-        if (bound.specialtyService().currentJob(player.getUniqueId()).isEmpty()) {
+        JobId current = bound.specialtyService().currentJob(player.getUniqueId()).orElse(null);
+        if (current == null) {
             player.sendMessage(bound.i18n().format(player, DialogTexts.COMMAND_STATUS_NO_SPECIALTY));
             return Command.SINGLE_SUCCESS;
         }
-        bound.statusDialog().open(player);
+        player.sendMessage(bound.i18n().format(
+                player, DialogTexts.COMMAND_STATUS_CURRENT,
+                Placeholder.parsed("current_job", current.value())
+        ));
         return Command.SINGLE_SUCCESS;
     }
 

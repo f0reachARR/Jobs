@@ -4,9 +4,8 @@ command:
   loading: "<gray>Plugin is loading.</gray>"
   player_only: "<red>This command can only be run by a player.</red>"
   status:
-    not_implemented: "<yellow>/jobs status is not implemented yet.</yellow>"
     no_specialty: "<yellow>No specialty selected yet. Run /jobs select.</yellow>"
-    loading: "<gray>Plugin is loading.</gray>"
+    current: "<gray>Current specialty:</gray> <white><current_job></white>"
   select:
     already_selected: "<yellow>You have already selected a specialty. Use /jobs change.</yellow>"
     opened: "<gray>Opened specialty selection dialog.</gray>"
@@ -27,10 +26,6 @@ dialog:
     cooldown:
       title: "Cannot change now"
       body: "Current: <current_job>. Next available: <next_available> (<remaining> left)."
-  status:
-    title: "Status"
-    body: "Current specialty: <current_job>"
-    dismiss: "Close"
 
 notify:
   selected: "<green>Specialty set to <job>.</green>"

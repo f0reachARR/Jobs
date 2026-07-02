@@ -54,7 +54,6 @@ import me.f0reach.jobs.specialty.SpecialtyService;
 import me.f0reach.jobs.ui.DialogService;
 import me.f0reach.jobs.ui.SpecialtyChangeDialog;
 import me.f0reach.jobs.ui.SpecialtySelectDialog;
-import me.f0reach.jobs.ui.StatusDialog;
 import me.f0reach.jobs.util.AsyncExecutor;
 import me.f0reach.jobs.yaml.JobYamlLoader;
 import me.f0reach.jobs.yaml.YamlErrors;
@@ -101,7 +100,6 @@ public final class JobsServices {
     private DialogService dialogService;
     private SpecialtySelectDialog specialtySelectDialog;
     private SpecialtyChangeDialog specialtyChangeDialog;
-    private StatusDialog statusDialog;
 
     private VaultEconomyAdapter economy;
     private ActionLogWriteQueue actionLogQueue;
@@ -166,7 +164,6 @@ public final class JobsServices {
         this.dialogService = new DialogService(asyncExecutor);
         this.specialtySelectDialog = new SpecialtySelectDialog(i18n, jobRegistry, specialtyService, dialogService);
         this.specialtyChangeDialog = new SpecialtyChangeDialog(i18n, jobRegistry, specialtyService, dialogService);
-        this.statusDialog = new StatusDialog(i18n, specialtyService, dialogService);
     }
 
     private void wirePipeline() {
@@ -363,10 +360,6 @@ public final class JobsServices {
 
     public SpecialtyChangeDialog specialtyChangeDialog() {
         return specialtyChangeDialog;
-    }
-
-    public StatusDialog statusDialog() {
-        return statusDialog;
     }
 
     public VaultEconomyAdapter economy() {
