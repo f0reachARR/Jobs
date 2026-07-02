@@ -24,8 +24,8 @@ import org.mockbukkit.mockbukkit.ServerMock;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.SplittableRandom;
 import java.util.random.RandomGenerator;
-import java.util.random.RandomGeneratorFactory;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -42,7 +42,7 @@ class BaseRewardStageTest {
     void tearDown() { MockBukkit.unmock(); }
 
     private RandomGenerator rng() {
-        return RandomGeneratorFactory.of("Xoshiro256PlusPlus").create(42L);
+        return new SplittableRandom(42L);
     }
 
     private PipelineContext ctx(RewardEntry entry, int amount) {

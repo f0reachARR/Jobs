@@ -2,8 +2,8 @@ package me.f0reach.jobs.domain.job;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.SplittableRandom;
 import java.util.random.RandomGenerator;
-import java.util.random.RandomGeneratorFactory;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -12,8 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class RewardAmountTest {
 
     private RandomGenerator rng() {
-        // 決定的なテストのため fixed seed の Xoshiro を使う。
-        return RandomGeneratorFactory.of("Xoshiro256PlusPlus").create(42L);
+        return new SplittableRandom(42L);
     }
 
     @Test

@@ -66,9 +66,9 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.SplittableRandom;
 import java.util.logging.Level;
 import java.util.random.RandomGenerator;
-import java.util.random.RandomGeneratorFactory;
 
 /**
  * 起動時に組み立てた全 service の参照を持つ facade。
@@ -176,11 +176,10 @@ public final class JobsServices {
                 actionLogQueue,
                 actionLogRepository,
                 dailyRewardTotalRepository,
-                ZoneId.systemDefault()
-        );
+                ZoneId.systemDefault());
         batchFlushWorker.start();
 
-        RandomGenerator rng = RandomGeneratorFactory.of("Xoshiro256PlusPlus").create();
+        RandomGenerator rng = new SplittableRandom();
         this.rewardMatcher = new RewardMatcher(tagResolver);
         List<Stage> stages = List.of(
                 new MatcherStage(),
@@ -188,10 +187,11 @@ public final class JobsServices {
                 // AntiAutomationStage は Phase 7
                 new BaseRewardStage(rng),
                 new RareRollStage(rng),
-                // BuiltinModifierStage は Phase 6, ExtensionModifierStage / SplitterStage は Phase 8
+                // BuiltinModifierStage は Phase 6, ExtensionModifierStage / SplitterStage は
+                // Phase 8
                 new EconomyTransferStage(plugin, economy),
                 new ActionLogStage(plugin, actionLogQueue, batchFlushWorker, asyncExecutor)
-                // AdvancementRevokeStage は Phase 9
+        // AdvancementRevokeStage は Phase 9
         );
         this.rewardPipeline = new RewardPipeline(plugin, jobRegistry, stages);
         this.eventDispatcher = new EventDispatcher(specialtyService, jobRegistry, rewardMatcher, rewardPipeline);
@@ -217,8 +217,7 @@ public final class JobsServices {
                 new ConsumeListener(eventDispatcher),
                 new VillagerTradeListener(eventDispatcher),
                 new BrewListener(eventDispatcher),
-                new TntPrimerTracker(plugin, eventDispatcher)
-        )) {
+                new TntPrimerTracker(plugin, eventDispatcher))) {
             pm.registerEvents(listener, plugin);
         }
     }
@@ -229,13 +228,12 @@ public final class JobsServices {
             "jobs/mining.yml",
             "jobs/farming.yml",
             "jobs/crafter.yml",
-            "jobs/explorer.yml"
-    );
+            "jobs/explorer.yml");
 
     public void loadJobs() {
         File jobsDir = new File(plugin.getDataFolder(), "jobs");
         if (!jobsDir.exists()) {
-            //noinspection ResultOfMethodCallIgnored
+            // noinspection ResultOfMethodCallIgnored
             jobsDir.mkdirs();
         }
         ensureDefaultJobsInstalled(jobsDir);
@@ -244,15 +242,13 @@ public final class JobsServices {
         JobYamlLoader.LoadResult result = loader.loadDirectory(jobsDir);
         for (YamlErrors.Entry error : result.errors().entries()) {
             plugin.getLogger().warning(
-                    "[" + error.file() + "] " + error.path() + ": " + error.message()
-            );
+                    "[" + error.file() + "] " + error.path() + ": " + error.message());
         }
         jobRegistry.loadAll(result.jobs());
 
         int totalRewards = result.jobs().stream().mapToInt(j -> j.rewards().size()).sum();
         plugin.getLogger().info(
-                result.jobs().size() + " jobs, " + totalRewards + " rewards loaded"
-        );
+                result.jobs().size() + " jobs, " + totalRewards + " rewards loaded");
     }
 
     /**
@@ -261,7 +257,8 @@ public final class JobsServices {
      */
     private void ensureDefaultJobsInstalled(File jobsDir) {
         File[] existing = jobsDir.listFiles((d, name) -> name.toLowerCase().endsWith(".yml"));
-        if (existing != null && existing.length > 0) return;
+        if (existing != null && existing.length > 0)
+            return;
 
         for (String resource : DEFAULT_JOB_RESOURCES) {
             try {
@@ -273,8 +270,7 @@ public final class JobsServices {
         }
         plugin.getLogger().info(
                 "Installed " + DEFAULT_JOB_RESOURCES.size() + " default job files to plugins/"
-                        + plugin.getName() + "/jobs/"
-        );
+                        + plugin.getName() + "/jobs/");
     }
 
     public void runShadowDetection() {
@@ -282,8 +278,7 @@ public final class JobsServices {
         for (JobDefinition job : jobRegistry.all()) {
             for (ShadowDetector.ShadowWarning warning : shadowDetector.detect(job)) {
                 plugin.getLogger().log(Level.WARNING,
-                        "Shadow in job '" + warning.jobId() + "': " + warning.reason()
-                );
+                        "Shadow in job '" + warning.jobId() + "': " + warning.reason());
             }
         }
     }
@@ -301,27 +296,95 @@ public final class JobsServices {
         }
     }
 
-    public JobsPlugin plugin() { return plugin; }
-    public AsyncExecutor asyncExecutor() { return asyncExecutor; }
-    public PluginConfig config() { return config; }
-    public LocaleRegistry localeRegistry() { return localeRegistry; }
-    public I18n i18n() { return i18n; }
-    public JobRegistry jobRegistry() { return jobRegistry; }
-    public TagResolver tagResolver() { return tagResolver; }
-    public ActionKeyDeriver actionKeyDeriver() { return actionKeyDeriver; }
-    public JobsKVStore kvStore() { return kvStore; }
-    public PlayerJobRepository playerJobRepository() { return playerJobRepository; }
-    public ActionLogRepository actionLogRepository() { return actionLogRepository; }
-    public DailyRewardTotalRepository dailyRewardTotalRepository() { return dailyRewardTotalRepository; }
-    public SpecialtyService specialtyService() { return specialtyService; }
-    public DialogService dialogService() { return dialogService; }
-    public SpecialtySelectDialog specialtySelectDialog() { return specialtySelectDialog; }
-    public SpecialtyChangeDialog specialtyChangeDialog() { return specialtyChangeDialog; }
-    public StatusDialog statusDialog() { return statusDialog; }
-    public VaultEconomyAdapter economy() { return economy; }
-    public ActionLogWriteQueue actionLogQueue() { return actionLogQueue; }
-    public BatchFlushWorker batchFlushWorker() { return batchFlushWorker; }
-    public RewardMatcher rewardMatcher() { return rewardMatcher; }
-    public RewardPipeline rewardPipeline() { return rewardPipeline; }
-    public EventDispatcher eventDispatcher() { return eventDispatcher; }
+    public JobsPlugin plugin() {
+        return plugin;
+    }
+
+    public AsyncExecutor asyncExecutor() {
+        return asyncExecutor;
+    }
+
+    public PluginConfig config() {
+        return config;
+    }
+
+    public LocaleRegistry localeRegistry() {
+        return localeRegistry;
+    }
+
+    public I18n i18n() {
+        return i18n;
+    }
+
+    public JobRegistry jobRegistry() {
+        return jobRegistry;
+    }
+
+    public TagResolver tagResolver() {
+        return tagResolver;
+    }
+
+    public ActionKeyDeriver actionKeyDeriver() {
+        return actionKeyDeriver;
+    }
+
+    public JobsKVStore kvStore() {
+        return kvStore;
+    }
+
+    public PlayerJobRepository playerJobRepository() {
+        return playerJobRepository;
+    }
+
+    public ActionLogRepository actionLogRepository() {
+        return actionLogRepository;
+    }
+
+    public DailyRewardTotalRepository dailyRewardTotalRepository() {
+        return dailyRewardTotalRepository;
+    }
+
+    public SpecialtyService specialtyService() {
+        return specialtyService;
+    }
+
+    public DialogService dialogService() {
+        return dialogService;
+    }
+
+    public SpecialtySelectDialog specialtySelectDialog() {
+        return specialtySelectDialog;
+    }
+
+    public SpecialtyChangeDialog specialtyChangeDialog() {
+        return specialtyChangeDialog;
+    }
+
+    public StatusDialog statusDialog() {
+        return statusDialog;
+    }
+
+    public VaultEconomyAdapter economy() {
+        return economy;
+    }
+
+    public ActionLogWriteQueue actionLogQueue() {
+        return actionLogQueue;
+    }
+
+    public BatchFlushWorker batchFlushWorker() {
+        return batchFlushWorker;
+    }
+
+    public RewardMatcher rewardMatcher() {
+        return rewardMatcher;
+    }
+
+    public RewardPipeline rewardPipeline() {
+        return rewardPipeline;
+    }
+
+    public EventDispatcher eventDispatcher() {
+        return eventDispatcher;
+    }
 }
