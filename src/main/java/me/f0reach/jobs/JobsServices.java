@@ -1,5 +1,8 @@
 package me.f0reach.jobs;
 
+import me.f0reach.jobs.api.JobsApi;
+import me.f0reach.jobs.api.JobsApiImpl;
+import me.f0reach.jobs.api.lifecycle.JobsPluginReadyEvent;
 import me.f0reach.jobs.antiautomation.AntiAutomationCheck;
 import me.f0reach.jobs.antiautomation.AntiAutomationCoordinator;
 import me.f0reach.jobs.antiautomation.AutoFedProcessingCheck;
@@ -40,9 +43,11 @@ import me.f0reach.jobs.kvs.memory.InMemoryKVStore;
 import me.f0reach.jobs.listener.PlayerJoinListener;
 import me.f0reach.jobs.listener.SpecialtyChangedListener;
 import me.f0reach.jobs.matcher.RewardMatcher;
+import me.f0reach.jobs.modifier.ExtensionModifierChain;
 import me.f0reach.jobs.modifier.dailycap.DailyCapEvaluator;
 import me.f0reach.jobs.modifier.dailycap.DailyTotalCache;
 import me.f0reach.jobs.modifier.variety.VarietyPenaltyEvaluator;
+import me.f0reach.jobs.persistence.ActionLogQueryServiceImpl;
 import me.f0reach.jobs.persistence.ActionLogRepository;
 import me.f0reach.jobs.persistence.DailyRewardTotalRepository;
 import me.f0reach.jobs.persistence.PlayerJobRepository;
@@ -60,10 +65,13 @@ import me.f0reach.jobs.pipeline.stage.AntiAutomationStage;
 import me.f0reach.jobs.pipeline.stage.BaseRewardStage;
 import me.f0reach.jobs.pipeline.stage.BuiltinModifierStage;
 import me.f0reach.jobs.pipeline.stage.EconomyTransferStage;
+import me.f0reach.jobs.pipeline.stage.ExtensionModifierStage;
 import me.f0reach.jobs.pipeline.stage.MatcherStage;
 import me.f0reach.jobs.pipeline.stage.RareRollStage;
 import me.f0reach.jobs.pipeline.stage.RewardRoundingStage;
 import me.f0reach.jobs.pipeline.stage.SpecialtyStage;
+import me.f0reach.jobs.pipeline.stage.SplitterStage;
+import me.f0reach.jobs.splitter.SplitterChain;
 import me.f0reach.jobs.registry.ActionKeyDeriver;
 import me.f0reach.jobs.registry.JobRegistry;
 import me.f0reach.jobs.registry.ShadowDetector;
@@ -137,6 +145,11 @@ public final class JobsServices {
     private TradeRecorder tradeRecorder;
     private OperatorTracker operatorTracker;
 
+    private ExtensionModifierChain extensionModifierChain;
+    private SplitterChain splitterChain;
+    private ActionLogQueryServiceImpl queryService;
+    private JobsApi jobsApi;
+
     public JobsServices(JobsPlugin plugin) {
         this.plugin = plugin;
         this.asyncExecutor = new AsyncExecutor(plugin);
@@ -160,8 +173,24 @@ public final class JobsServices {
         wireDialogs();
         wireBuiltinModifiers();
         wireAntiAutomation();
+        wireExtensions();
         wirePipeline();
         registerListeners();
+    }
+
+    private void wireExtensions() {
+        this.extensionModifierChain = new ExtensionModifierChain(plugin);
+        this.splitterChain = new SplitterChain(plugin);
+        this.queryService = new ActionLogQueryServiceImpl(actionLogRepository, asyncExecutor);
+        this.jobsApi = new JobsApiImpl(extensionModifierChain, splitterChain, queryService);
+    }
+
+    /**
+     * onEnable の最後に呼ぶ。外部プラグインが Modifier / Splitter を register する契機を通知する。
+     * 呼び出しは main thread から (Bukkit event の同期発火)。
+     */
+    public void fireReadyEvent() {
+        plugin.getServer().getPluginManager().callEvent(new JobsPluginReadyEvent(jobsApi));
     }
 
     private void wireAntiAutomation() {
@@ -254,7 +283,8 @@ public final class JobsServices {
                 new BaseRewardStage(rng),
                 new RareRollStage(rng),
                 new BuiltinModifierStage(varietyPenaltyEvaluator, dailyCapEvaluator),
-                // ExtensionModifierStage / SplitterStage は Phase 8
+                new ExtensionModifierStage(extensionModifierChain),
+                new SplitterStage(splitterChain),
                 new RewardRoundingStage(plugin, config.reward()),
                 new EconomyTransferStage(plugin, economy),
                 new ActionLogStage(plugin, actionLogQueue, batchFlushWorker, asyncExecutor)
@@ -474,5 +504,17 @@ public final class JobsServices {
 
     public DailyCapEvaluator dailyCapEvaluator() {
         return dailyCapEvaluator;
+    }
+
+    public ExtensionModifierChain extensionModifierChain() {
+        return extensionModifierChain;
+    }
+
+    public SplitterChain splitterChain() {
+        return splitterChain;
+    }
+
+    public JobsApi jobsApi() {
+        return jobsApi;
     }
 }

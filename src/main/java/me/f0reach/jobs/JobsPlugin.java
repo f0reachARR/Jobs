@@ -35,6 +35,14 @@ public final class JobsPlugin extends JavaPlugin {
                 services.runShadowDetection();
             }
         });
+
+        // 拡張プラグインの Modifier / Splitter 登録を受け付ける契機。
+        // 全プラグインの enable 順序に依存しないよう、1 tick 遅らせて発火する。
+        Bukkit.getScheduler().runTask(this, () -> {
+            if (services != null) {
+                services.fireReadyEvent();
+            }
+        });
     }
 
     @Override
