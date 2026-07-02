@@ -26,7 +26,7 @@ rewards:
     rare:
       chance: 0.0005
       reward: 100000
-      announce: "{player} が黄金スケルトンを討伐した！"
+      announce: "<player> が黄金スケルトンを討伐した！"
 
 variety_penalty:
   enabled: true
@@ -85,7 +85,7 @@ Minecraft の `Material` 名（`minecraft:<id>` 形式）。
 
 - `chance`：1 アクションあたりの発火確率（0.0〜1.0）。
 - `reward`：発火時の報酬。固定値または `{ min, max }`。`reward` フィールドと同様に小数を許容する。
-- `announce`：発火時にサーバ全体に流すメッセージ。`{player}` がプレイヤー名に置換される。
+- `announce`：発火時にサーバ全体に流すメッセージ。`<player>` がプレイヤー名に置換される。
 
 通常報酬と rare 報酬は同一エントリに同居できる。
 rare がヒットしたとき、通常報酬は支払わず rare 報酬で置き換える。

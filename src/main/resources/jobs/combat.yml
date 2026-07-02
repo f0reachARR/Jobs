@@ -19,7 +19,7 @@ rewards:
     rare:
       chance: 0.001
       reward: 100000
-      announce: "<gold>{player} が黄金スケルトンを討伐した！</gold>"
+      announce: "<gold><player> が黄金スケルトンを討伐した！</gold>"
 
   # OR リスト。派生キー: kill:[minecraft:blaze|minecraft:ghast|minecraft:wither_skeleton]
   - on: entity_killed

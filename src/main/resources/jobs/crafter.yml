@@ -27,7 +27,7 @@ rewards:
     rare:
       chance: 0.02
       reward: 1000
-      announce: "<yellow>{player} が高純度ネザライトを精錬した！</yellow>"
+      announce: "<yellow><player> が高純度ネザライトを精錬した！</yellow>"
 
   # エンチャント (sharpness lv3 以上のみ報酬)
   - on: item_enchanted
