@@ -223,12 +223,23 @@ public final class JobsServices {
         }
     }
 
+    /** サンプルとして同梱している職業定義。plugins/Jobs/jobs/ が空のときのみ展開する。 */
+    private static final List<String> DEFAULT_JOB_RESOURCES = List.of(
+            "jobs/combat.yml",
+            "jobs/mining.yml",
+            "jobs/farming.yml",
+            "jobs/crafter.yml",
+            "jobs/explorer.yml"
+    );
+
     public void loadJobs() {
         File jobsDir = new File(plugin.getDataFolder(), "jobs");
         if (!jobsDir.exists()) {
             //noinspection ResultOfMethodCallIgnored
             jobsDir.mkdirs();
         }
+        ensureDefaultJobsInstalled(jobsDir);
+
         JobYamlLoader loader = new JobYamlLoader(actionKeyDeriver);
         JobYamlLoader.LoadResult result = loader.loadDirectory(jobsDir);
         for (YamlErrors.Entry error : result.errors().entries()) {
@@ -241,6 +252,28 @@ public final class JobsServices {
         int totalRewards = result.jobs().stream().mapToInt(j -> j.rewards().size()).sum();
         plugin.getLogger().info(
                 result.jobs().size() + " jobs, " + totalRewards + " rewards loaded"
+        );
+    }
+
+    /**
+     * plugins/Jobs/jobs/ に *.yml が 1 つも無ければ、jar 内のサンプルを saveResource で展開する。
+     * 既存の YAML があれば触らない。ユーザが空にすれば再展開される。
+     */
+    private void ensureDefaultJobsInstalled(File jobsDir) {
+        File[] existing = jobsDir.listFiles((d, name) -> name.toLowerCase().endsWith(".yml"));
+        if (existing != null && existing.length > 0) return;
+
+        for (String resource : DEFAULT_JOB_RESOURCES) {
+            try {
+                plugin.saveResource(resource, false);
+            } catch (IllegalArgumentException e) {
+                // jar 内にリソースが無い場合のみ発生。同梱漏れとして WARNING。
+                plugin.getLogger().warning("Bundled resource missing: " + resource);
+            }
+        }
+        plugin.getLogger().info(
+                "Installed " + DEFAULT_JOB_RESOURCES.size() + " default job files to plugins/"
+                        + plugin.getName() + "/jobs/"
         );
     }
 

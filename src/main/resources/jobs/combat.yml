@@ -1,0 +1,53 @@
+# 討伐職。entity_killed の single / list / tag / rare を試すサンプル。
+# 変更したくない場合はこのファイルを消して plugins/Jobs/jobs/ を空にし、
+# サーバ再起動で最新版が再配置される。
+
+id: combat
+display_name: "討伐"
+icon: minecraft:iron_sword
+
+rewards:
+  # 単一 entity。派生キー: kill:minecraft:zombie
+  - on: entity_killed
+    entity: minecraft:zombie
+    reward: 5
+
+  # 難敵は高額固定 + rare。派生キー: kill:minecraft:skeleton
+  - on: entity_killed
+    entity: minecraft:skeleton
+    reward: 5
+    rare:
+      chance: 0.001
+      reward: 100000
+      announce: "<gold>{player} が黄金スケルトンを討伐した！</gold>"
+
+  # OR リスト。派生キー: kill:[minecraft:blaze|minecraft:ghast|minecraft:wither_skeleton]
+  - on: entity_killed
+    entity: [minecraft:wither_skeleton, minecraft:blaze, minecraft:ghast]
+    reward: 30
+
+  # 一様乱数の範囲。派生キー: kill:minecraft:creeper
+  - on: entity_killed
+    entity: minecraft:creeper
+    reward: { min: 10, max: 20 }
+
+  # タグでまとめて拾う。派生キー: kill:#minecraft:undead
+  # 上位で個別指定した zombie / skeleton は既に確定するのでこの位置なら覆わない (shadow なし)。
+  - on: entity_killed
+    entity: "#minecraft:undead"
+    reward: 3
+
+variety_penalty:
+  enabled: true
+  window: 30
+  curve:
+    - { up_to: 0.40, multiplier: 1.00 }
+    - { up_to: 0.60, multiplier: 0.90 }
+    - { up_to: 0.80, multiplier: 0.75 }
+    - { up_to: 1.00, multiplier: 0.50 }
+    - { up_to: 1.01, multiplier: 0.30 }
+  disclosed_message: "同じ相手ばかり狩ると効率が落ちる"
+  hide_numbers: true
+
+anti_automation:
+  spawner_origin_kills: zero

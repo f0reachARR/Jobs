@@ -1,0 +1,72 @@
+# 生産職。item_crafted (shift-click 対応)、item_smelted (amount × reward)、
+# item_enchanted (enchantment + level_min)、item_repaired (source) を試すサンプル。
+
+id: crafter
+display_name: "生産"
+icon: minecraft:crafting_table
+
+rewards:
+  # クラフト (シフトクリック時は取り出し個数分 amount 倍される)
+  - on: item_crafted
+    item: minecraft:iron_pickaxe
+    reward: 5
+  - on: item_crafted
+    item: [minecraft:bread, minecraft:cookie, minecraft:cake]
+    reward: 1
+
+  # 精錬 (取り出した個数 × reward)
+  - on: item_smelted
+    item: minecraft:iron_ingot
+    reward: 3
+  - on: item_smelted
+    item: minecraft:gold_ingot
+    reward: 5
+  - on: item_smelted
+    item: minecraft:netherite_scrap
+    reward: 50
+    rare:
+      chance: 0.02
+      reward: 1000
+      announce: "<yellow>{player} が高純度ネザライトを精錬した！</yellow>"
+
+  # エンチャント (sharpness lv3 以上のみ報酬)
+  - on: item_enchanted
+    item: "#minecraft:swords"
+    enchantment: minecraft:sharpness
+    level_min: 3
+    reward: 50
+
+  # エンチャント (レベル指定なし = どのレベルでもマッチ)
+  - on: item_enchanted
+    item: minecraft:elytra
+    enchantment: minecraft:unbreaking
+    reward: 100
+
+  # 修復 (Anvil のみ / Mending のみを別バケットで記録)
+  - on: item_repaired
+    item: "#minecraft:pickaxes"
+    source: anvil
+    reward: 10
+  - on: item_repaired
+    item: "#minecraft:pickaxes"
+    source: mending
+    reward: 5
+
+  # 醸造 (出力 slot 数 × reward。3 slot 全部埋まれば 3 倍)
+  - on: item_brewed
+    item: minecraft:potion
+    reward: 8
+
+variety_penalty:
+  enabled: true
+  window: 20
+  curve:
+    - { up_to: 0.50, multiplier: 1.00 }
+    - { up_to: 0.75, multiplier: 0.80 }
+    - { up_to: 1.01, multiplier: 0.50 }
+  disclosed_message: "同じ物ばかり作ると学びが浅い"
+  hide_numbers: false
+
+anti_automation:
+  auto_fed_processing:
+    operator_ttl_sec: 60

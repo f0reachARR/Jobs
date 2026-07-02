@@ -1,0 +1,51 @@
+# 農業職。crop_mature、entity_bred、entity_sheared、entity_tamed を試すサンプル。
+
+id: farming
+display_name: "農業"
+icon: minecraft:wheat
+
+rewards:
+  # 完熟作物のみ収穫報酬。派生キー: break:minecraft:wheat
+  - on: block_broken
+    block: minecraft:wheat
+    crop_mature: true
+    reward: 3
+  - on: block_broken
+    block: minecraft:carrots
+    crop_mature: true
+    reward: 3
+  - on: block_broken
+    block: minecraft:potatoes
+    crop_mature: true
+    reward: 3
+  - on: block_broken
+    block: minecraft:beetroots
+    crop_mature: true
+    reward: 3
+
+  # かぼちゃ / スイカは crop_mature 不要 (Ageable ではない)
+  - on: block_broken
+    block: [minecraft:pumpkin, minecraft:melon]
+    reward: 2
+
+  # 交配 (Villager 交配は Phase 7 の breed_non_player_breeder で 0 になる想定)
+  - on: entity_bred
+    entity: [minecraft:cow, minecraft:sheep, minecraft:pig, minecraft:chicken]
+    reward: 5
+
+  # 毛刈り
+  - on: entity_sheared
+    entity: minecraft:sheep
+    reward: 1
+
+  # 手懐け
+  - on: entity_tamed
+    entity: minecraft:wolf
+    reward: 20
+  - on: entity_tamed
+    entity: minecraft:cat
+    reward: 20
+
+anti_automation:
+  unplanted_crop_harvest: zero
+  breed_non_player_breeder: zero

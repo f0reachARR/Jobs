@@ -1,0 +1,50 @@
+# 採掘職。block_broken の single / list / tag / via_tnt / range を試すサンプル。
+
+id: mining
+display_name: "採掘"
+icon: minecraft:diamond_pickaxe
+
+rewards:
+  # 深層ダイヤ / エメラルド。派生キー: break:minecraft:deepslate_diamond_ore
+  - on: block_broken
+    block: minecraft:deepslate_diamond_ore
+    reward: 50
+  - on: block_broken
+    block: minecraft:diamond_ore
+    reward: 30
+  - on: block_broken
+    block: minecraft:emerald_ore
+    reward: 20
+
+  # ネザライトはレンジ乱数 + rare
+  - on: block_broken
+    block: minecraft:ancient_debris
+    reward: { min: 80, max: 200 }
+    rare:
+      chance: 0.05
+      reward: 500
+      announce: "<gold>{player} がネザライト鉱脈を掘り当てた！</gold>"
+
+  # OR リストで鉄系鉱石をまとめて。派生キー: break:[minecraft:copper_ore|minecraft:deepslate_iron_ore|minecraft:iron_ore]
+  - on: block_broken
+    block:
+      - minecraft:iron_ore
+      - minecraft:deepslate_iron_ore
+      - minecraft:copper_ore
+    reward: 5
+
+  # 石炭系はタグ (data pack で拡張された tag も透過的に拾える)。派生キー: break:#minecraft:coal_ores
+  - on: block_broken
+    block: "#minecraft:coal_ores"
+    reward: 2
+
+  # via_tnt=true 専用エントリ。TNT で壊した石だけ報酬が入る。派生キー: break_tnt:minecraft:stone
+  - on: block_broken
+    block: minecraft:stone
+    via_tnt: true
+    reward: 1
+
+anti_automation:
+  # 既に置いた block を壊す "地形整地系" は 0 にする
+  recently_placed_break:
+    window_sec: 3600
