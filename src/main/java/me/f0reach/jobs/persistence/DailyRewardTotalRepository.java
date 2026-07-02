@@ -12,7 +12,7 @@ import java.util.UUID;
  */
 public interface DailyRewardTotalRepository {
 
-    long getTotal(UUID player, LocalDate date);
+    double getTotal(UUID player, LocalDate date);
 
     void addBatch(List<DailyRewardDelta> deltas);
 }

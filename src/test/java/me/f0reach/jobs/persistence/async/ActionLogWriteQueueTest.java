@@ -17,7 +17,7 @@ class ActionLogWriteQueueTest {
     private ActionLogRow row() {
         return new ActionLogRow(
                 UUID.randomUUID(), "combat", "kill:minecraft:zombie",
-                5, 5, false, 1, Instant.now()
+                5.0, 5.0, false, 1, Instant.now()
         );
     }
 

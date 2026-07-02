@@ -26,11 +26,11 @@ public final class EconomyTransferStage implements Stage {
     public Result execute(PipelineContext ctx) {
         // Phase 5 では Splitter が未実装のため netPaid=finalReward で埋める。
         // Phase 8 で SplitterStage が事前に netPaid を書き換える。
-        if (ctx.netPaid() == 0 && !ctx.zeroLocked()) {
+        if (ctx.netPaid() == 0.0 && !ctx.zeroLocked()) {
             ctx.setNetPaid(ctx.finalReward());
         }
-        int amount = ctx.netPaid();
-        if (amount <= 0) return Result.CONTINUE;
+        double amount = ctx.netPaid();
+        if (amount <= 0.0) return Result.CONTINUE;
         try {
             boolean ok = economy.deposit(ctx.player(), amount);
             if (!ok) {

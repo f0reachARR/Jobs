@@ -24,7 +24,7 @@ public final class BaseRewardStage implements Stage {
     public Result execute(PipelineContext ctx) {
         if (ctx.zeroLocked()) return Result.CONTINUE;
         RewardAmount amount = ctx.matchedEntry().rewardAmount();
-        int base = amount.roll(random) * Math.max(1, ctx.amount());
+        double base = amount.roll(random) * Math.max(1, ctx.amount());
         ctx.setBaseReward(base);
         ctx.setFinalReward(base);
         return Result.CONTINUE;

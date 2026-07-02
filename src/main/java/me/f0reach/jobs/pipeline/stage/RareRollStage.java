@@ -32,7 +32,7 @@ public final class RareRollStage implements Stage {
 
         if (random.nextDouble() >= rare.chance()) return Result.CONTINUE;
 
-        int rareReward = rare.rewardAmount().roll(random);
+        double rareReward = rare.rewardAmount().roll(random);
         ctx.setBaseReward(rareReward);
         ctx.setFinalReward(rareReward);
         ctx.setRareHit(true);

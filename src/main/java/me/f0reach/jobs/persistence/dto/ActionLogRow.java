@@ -14,8 +14,8 @@ public record ActionLogRow(
         UUID playerUuid,
         String jobId,
         String actionKey,
-        int baseReward,
-        int finalReward,
+        double baseReward,
+        double finalReward,
         boolean rareHit,
         int amount,
         Instant occurredAt

@@ -123,14 +123,14 @@ class MySqlPersistenceIntegrationTest {
     void actionLogBatchInsertAndAggregates() {
         UUID player = UUID.randomUUID();
         Instant base = Instant.now().minusSeconds(10);
-        ActionLogRow r1 = new ActionLogRow(player, "combat", "kill:minecraft:zombie", 5, 5, false, 1, base);
-        ActionLogRow r2 = new ActionLogRow(player, "combat", "kill:minecraft:zombie", 5, 4, false, 1, base.plusSeconds(1));
-        ActionLogRow r3 = new ActionLogRow(player, "combat", "kill:minecraft:blaze", 20, 20, false, 1, base.plusSeconds(2));
+        ActionLogRow r1 = new ActionLogRow(player, "combat", "kill:minecraft:zombie", 5.0, 5.0, false, 1, base);
+        ActionLogRow r2 = new ActionLogRow(player, "combat", "kill:minecraft:zombie", 5.0, 4.0, false, 1, base.plusSeconds(1));
+        ActionLogRow r3 = new ActionLogRow(player, "combat", "kill:minecraft:blaze", 20.0, 20.0, false, 1, base.plusSeconds(2));
         actionLogRepository.insertBatch(List.of(r1, r2, r3));
 
         TimeRange range = new TimeRange(base.minusSeconds(1), base.plusSeconds(60));
         assertEquals(3, actionLogRepository.countActions(player, ActionFilter.none(), range));
-        assertEquals(5 + 4 + 20, actionLogRepository.sumReward(player, ActionFilter.none(), range));
+        assertEquals(5.0 + 4.0 + 20.0, actionLogRepository.sumReward(player, ActionFilter.none(), range));
         var keys = actionLogRepository.distinctKeys(player, ActionFilter.none(), range);
         assertEquals(2, keys.size());
         assertTrue(keys.contains("kill:minecraft:zombie"));
@@ -155,16 +155,16 @@ class MySqlPersistenceIntegrationTest {
         UUID player = UUID.randomUUID();
         LocalDate today = LocalDate.now();
 
-        assertEquals(0L, dailyRewardTotalRepository.getTotal(player, today));
+        assertEquals(0.0, dailyRewardTotalRepository.getTotal(player, today));
 
         dailyRewardTotalRepository.addBatch(List.of(
-                new DailyRewardDelta(player, today, 100),
-                new DailyRewardDelta(player, today, 50)
+                new DailyRewardDelta(player, today, 100.0),
+                new DailyRewardDelta(player, today, 50.0)
         ));
-        assertEquals(150L, dailyRewardTotalRepository.getTotal(player, today));
+        assertEquals(150.0, dailyRewardTotalRepository.getTotal(player, today));
 
         // 別プレイヤーは影響を受けない
         UUID other = UUID.randomUUID();
-        assertEquals(0L, dailyRewardTotalRepository.getTotal(other, today));
+        assertEquals(0.0, dailyRewardTotalRepository.getTotal(other, today));
     }
 }

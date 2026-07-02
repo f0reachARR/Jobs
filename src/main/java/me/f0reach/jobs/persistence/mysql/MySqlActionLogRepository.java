@@ -58,8 +58,8 @@ public final class MySqlActionLogRepository implements ActionLogRepository {
                 ps.setBytes(1, UuidBytes.toBytes(row.playerUuid()));
                 ps.setString(2, row.jobId());
                 ps.setString(3, row.actionKey());
-                ps.setInt(4, row.baseReward());
-                ps.setInt(5, row.finalReward());
+                ps.setBigDecimal(4, java.math.BigDecimal.valueOf(row.baseReward()));
+                ps.setBigDecimal(5, java.math.BigDecimal.valueOf(row.finalReward()));
                 ps.setBoolean(6, row.rareHit());
                 ps.setInt(7, row.amount());
                 ps.setTimestamp(8, Timestamp.from(row.occurredAt()));
@@ -88,7 +88,7 @@ public final class MySqlActionLogRepository implements ActionLogRepository {
     }
 
     @Override
-    public long sumReward(UUID player, ActionFilter filter, TimeRange range) {
+    public double sumReward(UUID player, ActionFilter filter, TimeRange range) {
         FilterBuilder fb = filterClauses(player, filter, range);
         String sql = "SELECT COALESCE(SUM(final_reward), 0) FROM action_log WHERE " + fb.clause;
         try (Connection conn = dataSource.getConnection();
@@ -96,7 +96,7 @@ public final class MySqlActionLogRepository implements ActionLogRepository {
             fb.bind(ps);
             try (ResultSet rs = ps.executeQuery()) {
                 rs.next();
-                return rs.getLong(1);
+                return rs.getDouble(1);
             }
         } catch (SQLException e) {
             throw new RuntimeException("sumReward failed", e);
@@ -157,7 +157,7 @@ public final class MySqlActionLogRepository implements ActionLogRepository {
     }
 
     @Override
-    public int maxUnitPrice(UUID player, ActionFilter filter, TimeRange range) {
+    public double maxUnitPrice(UUID player, ActionFilter filter, TimeRange range) {
         FilterBuilder fb = filterClauses(player, filter, range);
         String sql = "SELECT COALESCE(MAX(final_reward / GREATEST(amount, 1)), 0) FROM action_log WHERE " + fb.clause;
         try (Connection conn = dataSource.getConnection();
@@ -165,7 +165,7 @@ public final class MySqlActionLogRepository implements ActionLogRepository {
             fb.bind(ps);
             try (ResultSet rs = ps.executeQuery()) {
                 rs.next();
-                return rs.getInt(1);
+                return rs.getDouble(1);
             }
         } catch (SQLException e) {
             throw new RuntimeException("maxUnitPrice failed", e);

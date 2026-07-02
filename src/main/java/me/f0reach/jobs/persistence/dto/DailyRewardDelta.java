@@ -10,5 +10,5 @@ import java.util.UUID;
 public record DailyRewardDelta(
         UUID playerUuid,
         LocalDate rewardDate,
-        long deltaReward
+        double deltaReward
 ) {}

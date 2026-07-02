@@ -29,9 +29,9 @@ public final class PipelineContext {
 
     private SourceFlags sourceFlags;
 
-    private int baseReward;
-    private int finalReward;
-    private int netPaid;
+    private double baseReward;
+    private double finalReward;
+    private double netPaid;
     private boolean rareHit;
 
     /** true になった以降の Stage は「0 を維持」する。段階 3（自動化対策）で立てる。 */
@@ -61,14 +61,14 @@ public final class PipelineContext {
     public SourceFlags sourceFlags() { return sourceFlags; }
     public void setSourceFlags(SourceFlags flags) { this.sourceFlags = flags; }
 
-    public int baseReward() { return baseReward; }
-    public void setBaseReward(int v) { this.baseReward = v; }
+    public double baseReward() { return baseReward; }
+    public void setBaseReward(double v) { this.baseReward = v; }
 
-    public int finalReward() { return finalReward; }
-    public void setFinalReward(int v) { this.finalReward = v; }
+    public double finalReward() { return finalReward; }
+    public void setFinalReward(double v) { this.finalReward = v; }
 
-    public int netPaid() { return netPaid; }
-    public void setNetPaid(int v) { this.netPaid = v; }
+    public double netPaid() { return netPaid; }
+    public void setNetPaid(double v) { this.netPaid = v; }
 
     public boolean rareHit() { return rareHit; }
     public void setRareHit(boolean v) { this.rareHit = v; }
@@ -76,8 +76,8 @@ public final class PipelineContext {
     public boolean zeroLocked() { return zeroLocked; }
     public void lockZero(String reason) {
         this.zeroLocked = true;
-        this.finalReward = 0;
-        this.netPaid = 0;
+        this.finalReward = 0.0;
+        this.netPaid = 0.0;
         if (reason != null) zeroReasons.add(reason);
     }
 

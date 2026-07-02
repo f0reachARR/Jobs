@@ -1,5 +1,6 @@
 package me.f0reach.jobs.config;
 
+import java.math.RoundingMode;
 import java.time.Duration;
 import java.util.List;
 
@@ -9,6 +10,7 @@ import java.util.List;
  */
 public record PluginConfig(
         SpecialtyModeConfig specialtyMode,
+        RewardConfig reward,
         DailyCapConfig dailyCap,
         PersistenceConfig persistence,
         KvsConfig kvs
@@ -19,6 +21,26 @@ public record PluginConfig(
             boolean showSelectDialogOnJoin,
             List<ChangePolicy> changePolicy
     ) {}
+
+    /**
+     * 報酬額の丸め設定。ADR-0019 と spec/04-reward-pipeline.md の丸め段階を参照。
+     *
+     * @param decimals     小数点以下の桁数。0..6 を許容。
+     * @param roundingMode {@link java.math.RoundingMode} の名称そのまま。
+     */
+    public record RewardConfig(
+            int decimals,
+            RoundingMode roundingMode
+    ) {
+        public RewardConfig {
+            if (decimals < 0 || decimals > 6) {
+                throw new IllegalArgumentException("reward.decimals must be in [0, 6]");
+            }
+            if (roundingMode == null) {
+                throw new IllegalArgumentException("reward.rounding_mode is required");
+            }
+        }
+    }
 
     /**
      * change_policy の 1 エントリ。

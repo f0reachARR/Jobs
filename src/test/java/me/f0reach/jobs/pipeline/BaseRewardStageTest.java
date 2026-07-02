@@ -61,7 +61,7 @@ class BaseRewardStageTest {
         return new PipelineContext(action, job, Instant.now());
     }
 
-    private RewardEntry fixedEntry(int reward) {
+    private RewardEntry fixedEntry(double reward) {
         MatchCriteria c = new MatchCriteria.EntityKilled(new KeyMatcher.Single(NamespacedKey.minecraft("zombie")));
         return new RewardEntry(ActionType.ENTITY_KILLED, c, new RewardAmount.Fixed(reward), null,
                 new ActionKey("kill:minecraft:zombie"));
@@ -69,59 +69,68 @@ class BaseRewardStageTest {
 
     @Test
     void baseRewardMultipliesByAmount() {
-        var entry = fixedEntry(3);
+        var entry = fixedEntry(3.0);
         PipelineContext c = ctx(entry, 5);
         new BaseRewardStage(rng()).execute(c);
-        assertEquals(15, c.baseReward());
-        assertEquals(15, c.finalReward());
+        assertEquals(15.0, c.baseReward());
+        assertEquals(15.0, c.finalReward());
     }
 
     @Test
     void baseRewardAmountAtLeastOne() {
-        var entry = fixedEntry(3);
+        var entry = fixedEntry(3.0);
         PipelineContext c = ctx(entry, 0);
         new BaseRewardStage(rng()).execute(c);
-        assertEquals(3, c.baseReward());
+        assertEquals(3.0, c.baseReward());
+    }
+
+    @Test
+    void baseRewardKeepsFractional() {
+        var entry = fixedEntry(0.5);
+        PipelineContext c = ctx(entry, 3);
+        new BaseRewardStage(rng()).execute(c);
+        assertEquals(1.5, c.baseReward());
+        assertEquals(1.5, c.finalReward());
     }
 
     @Test
     void zeroLockedSkipsBaseReward() {
-        var entry = fixedEntry(3);
+        var entry = fixedEntry(3.0);
         PipelineContext c = ctx(entry, 5);
         c.lockZero("test");
         new BaseRewardStage(rng()).execute(c);
-        assertEquals(0, c.baseReward());
-        assertEquals(0, c.finalReward());
+        assertEquals(0.0, c.baseReward());
+        assertEquals(0.0, c.finalReward());
     }
 
     @Test
     void rareRollHitReplacesBaseReward() {
         var criteria = new MatchCriteria.EntityKilled(new KeyMatcher.Single(NamespacedKey.minecraft("skeleton")));
         var rare = new me.f0reach.jobs.domain.job.RareBonus(
-                1.0, new RewardAmount.Fixed(100000), "test"
+                1.0, new RewardAmount.Fixed(100000.0), "test"
         );
         var entry = new RewardEntry(ActionType.ENTITY_KILLED, criteria,
-                new RewardAmount.Fixed(5), rare, new ActionKey("kill:minecraft:skeleton"));
+                new RewardAmount.Fixed(5.0), rare, new ActionKey("kill:minecraft:skeleton"));
         PipelineContext c = ctx(entry, 1);
         new BaseRewardStage(rng()).execute(c);
-        assertEquals(5, c.finalReward());
+        assertEquals(5.0, c.finalReward());
         new RareRollStage(rng()).execute(c);
         assertTrue(c.rareHit());
-        assertEquals(100000, c.finalReward());
+        assertEquals(100000.0, c.finalReward());
     }
 
     @Test
     void rareRollMissKeepsBaseReward() {
         var criteria = new MatchCriteria.EntityKilled(new KeyMatcher.Single(NamespacedKey.minecraft("skeleton")));
         var rare = new me.f0reach.jobs.domain.job.RareBonus(
-                0.0, new RewardAmount.Fixed(100000), null
+                0.0, new RewardAmount.Fixed(100000.0), null
         );
         var entry = new RewardEntry(ActionType.ENTITY_KILLED, criteria,
-                new RewardAmount.Fixed(5), rare, new ActionKey("kill:minecraft:skeleton"));
+                new RewardAmount.Fixed(5.0), rare, new ActionKey("kill:minecraft:skeleton"));
         PipelineContext c = ctx(entry, 1);
         new BaseRewardStage(rng()).execute(c);
         new RareRollStage(rng()).execute(c);
         assertFalse(c.rareHit());
-        assertEquals(5, c.finalReward());
+        assertEquals(5.0, c.finalReward());
     }
 }

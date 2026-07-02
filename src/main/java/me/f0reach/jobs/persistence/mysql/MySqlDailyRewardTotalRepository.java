@@ -39,14 +39,14 @@ public final class MySqlDailyRewardTotalRepository implements DailyRewardTotalRe
     }
 
     @Override
-    public long getTotal(UUID player, LocalDate date) {
+    public double getTotal(UUID player, LocalDate date) {
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(SQL_GET)) {
             ps.setBytes(1, UuidBytes.toBytes(player));
             ps.setDate(2, Date.valueOf(date));
             try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) return 0L;
-                return rs.getLong(1);
+                if (!rs.next()) return 0.0;
+                return rs.getDouble(1);
             }
         } catch (SQLException e) {
             throw new RuntimeException("getTotal failed for " + player + " on " + date, e);
@@ -61,7 +61,7 @@ public final class MySqlDailyRewardTotalRepository implements DailyRewardTotalRe
             for (DailyRewardDelta delta : deltas) {
                 ps.setBytes(1, UuidBytes.toBytes(delta.playerUuid()));
                 ps.setDate(2, Date.valueOf(delta.rewardDate()));
-                ps.setLong(3, delta.deltaReward());
+                ps.setBigDecimal(3, java.math.BigDecimal.valueOf(delta.deltaReward()));
                 ps.addBatch();
             }
             ps.executeBatch();

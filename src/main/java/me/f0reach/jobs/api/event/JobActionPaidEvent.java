@@ -20,9 +20,9 @@ public final class JobActionPaidEvent extends Event {
     private final Player player;
     private final String jobId;
     private final String actionKey;
-    private final int baseReward;
-    private final int finalReward;
-    private final int netPaid;
+    private final double baseReward;
+    private final double finalReward;
+    private final double netPaid;
     private final boolean rareHit;
     private final int amount;
     private final Instant occurredAt;
@@ -31,9 +31,9 @@ public final class JobActionPaidEvent extends Event {
             Player player,
             String jobId,
             String actionKey,
-            int baseReward,
-            int finalReward,
-            int netPaid,
+            double baseReward,
+            double finalReward,
+            double netPaid,
             boolean rareHit,
             int amount,
             Instant occurredAt
@@ -53,9 +53,9 @@ public final class JobActionPaidEvent extends Event {
     public Player getPlayer() { return player; }
     public String getJobId() { return jobId; }
     public String getActionKey() { return actionKey; }
-    public int getBaseReward() { return baseReward; }
-    public int getFinalReward() { return finalReward; }
-    public int getNetPaid() { return netPaid; }
+    public double getBaseReward() { return baseReward; }
+    public double getFinalReward() { return finalReward; }
+    public double getNetPaid() { return netPaid; }
     public boolean isRareHit() { return rareHit; }
     public int getAmount() { return amount; }
     public Instant getOccurredAt() { return occurredAt; }

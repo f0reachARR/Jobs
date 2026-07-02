@@ -15,6 +15,13 @@ specialty_mode:
     - default:
       cooldown: 5d
 
+reward:
+  # 小数点以下の桁数 (0..6)。0 のとき整数のみに丸める。
+  decimals: 0
+  # 丸め方式。java.math.RoundingMode の名称をそのまま指定する。
+  # HALF_UP / HALF_EVEN / HALF_DOWN / UP / DOWN / CEILING / FLOOR / UNNECESSARY のいずれか。
+  rounding_mode: HALF_UP
+
 daily_cap:
   # 1 日あたりの報酬上限。scope は total (全ジョブ合算) または per_job。
   amount: 1000000

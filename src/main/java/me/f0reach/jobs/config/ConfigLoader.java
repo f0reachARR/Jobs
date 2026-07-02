@@ -3,6 +3,7 @@ package me.f0reach.jobs.config;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 
+import java.math.RoundingMode;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,10 +18,30 @@ public final class ConfigLoader {
     public PluginConfig load(FileConfiguration config) {
         return new PluginConfig(
                 loadSpecialtyMode(config.getConfigurationSection("specialty_mode")),
+                loadReward(config.getConfigurationSection("reward")),
                 loadDailyCap(config.getConfigurationSection("daily_cap")),
                 loadPersistence(config.getConfigurationSection("persistence")),
                 loadKvs(config.getConfigurationSection("kvs"))
         );
+    }
+
+    private PluginConfig.RewardConfig loadReward(ConfigurationSection section) {
+        if (section == null) {
+            return new PluginConfig.RewardConfig(0, RoundingMode.HALF_UP);
+        }
+        int decimals = section.getInt("decimals", 0);
+        String modeRaw = section.getString("rounding_mode", "HALF_UP").toUpperCase(Locale.ROOT);
+        RoundingMode mode;
+        try {
+            mode = RoundingMode.valueOf(modeRaw);
+        } catch (IllegalArgumentException e) {
+            throw new ConfigException("Unknown reward.rounding_mode: " + modeRaw, e);
+        }
+        try {
+            return new PluginConfig.RewardConfig(decimals, mode);
+        } catch (IllegalArgumentException e) {
+            throw new ConfigException(e.getMessage(), e);
+        }
     }
 
     private PluginConfig.SpecialtyModeConfig loadSpecialtyMode(ConfigurationSection section) {

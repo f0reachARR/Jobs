@@ -14,7 +14,7 @@ public final class RewardAmountParser {
             throw new YamlParseException("Missing reward at " + path);
         }
         if (raw instanceof Number n) {
-            return new RewardAmount.Fixed(n.intValue());
+            return new RewardAmount.Fixed(n.doubleValue());
         }
         if (raw instanceof Map<?, ?> map) {
             Object min = map.get("min");
@@ -22,7 +22,7 @@ public final class RewardAmountParser {
             if (!(min instanceof Number) || !(max instanceof Number)) {
                 throw new YamlParseException(path + ": reward map requires numeric min/max");
             }
-            return new RewardAmount.Range(((Number) min).intValue(), ((Number) max).intValue());
+            return new RewardAmount.Range(((Number) min).doubleValue(), ((Number) max).doubleValue());
         }
         throw new YamlParseException(path + ": reward must be a number or {min,max} map");
     }

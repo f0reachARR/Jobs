@@ -44,6 +44,7 @@ import me.f0reach.jobs.pipeline.stage.BaseRewardStage;
 import me.f0reach.jobs.pipeline.stage.EconomyTransferStage;
 import me.f0reach.jobs.pipeline.stage.MatcherStage;
 import me.f0reach.jobs.pipeline.stage.RareRollStage;
+import me.f0reach.jobs.pipeline.stage.RewardRoundingStage;
 import me.f0reach.jobs.pipeline.stage.SpecialtyStage;
 import me.f0reach.jobs.registry.ActionKeyDeriver;
 import me.f0reach.jobs.registry.JobRegistry;
@@ -186,6 +187,7 @@ public final class JobsServices {
                 new RareRollStage(rng),
                 // BuiltinModifierStage は Phase 6, ExtensionModifierStage / SplitterStage は
                 // Phase 8
+                new RewardRoundingStage(plugin, config.reward()),
                 new EconomyTransferStage(plugin, economy),
                 new ActionLogStage(plugin, actionLogQueue, batchFlushWorker, asyncExecutor)
         // AdvancementRevokeStage は Phase 9

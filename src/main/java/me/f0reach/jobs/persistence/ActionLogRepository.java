@@ -21,13 +21,13 @@ public interface ActionLogRepository {
 
     long countActions(UUID player, ActionFilter filter, TimeRange range);
 
-    long sumReward(UUID player, ActionFilter filter, TimeRange range);
+    double sumReward(UUID player, ActionFilter filter, TimeRange range);
 
     Set<String> distinctKeys(UUID player, ActionFilter filter, TimeRange range);
 
     int continuousStreakSec(UUID player, ActionFilter filter, TimeRange range);
 
-    int maxUnitPrice(UUID player, ActionFilter filter, TimeRange range);
+    double maxUnitPrice(UUID player, ActionFilter filter, TimeRange range);
 
     int deleteOlderThan(Instant cutoff);
 

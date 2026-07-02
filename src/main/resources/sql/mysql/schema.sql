@@ -15,8 +15,8 @@ CREATE TABLE IF NOT EXISTS action_log (
   player_uuid     BINARY(16) NOT NULL,
   job_id          VARCHAR(32) NOT NULL,
   action_key      VARCHAR(128) NOT NULL,
-  base_reward     INT NOT NULL,
-  final_reward    INT NOT NULL,
+  base_reward     DECIMAL(20, 6) NOT NULL,
+  final_reward    DECIMAL(20, 6) NOT NULL,
   rare_hit        BOOLEAN NOT NULL DEFAULT FALSE,
   amount          INT NOT NULL DEFAULT 1,
   occurred_at     DATETIME(3) NOT NULL,
@@ -28,6 +28,6 @@ CREATE TABLE IF NOT EXISTS action_log (
 CREATE TABLE IF NOT EXISTS daily_reward_total (
   player_uuid     BINARY(16) NOT NULL,
   reward_date     DATE NOT NULL,
-  total_reward    BIGINT NOT NULL DEFAULT 0,
+  total_reward    DECIMAL(20, 6) NOT NULL DEFAULT 0,
   PRIMARY KEY (player_uuid, reward_date)
 ) ENGINE=InnoDB;

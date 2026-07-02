@@ -124,14 +124,14 @@ public final class BatchFlushWorker implements Runnable {
     }
 
     private List<DailyRewardDelta> mergeDailyDeltas(List<ActionLogRow> batch) {
-        Map<DailyKey, Long> merged = new HashMap<>();
+        Map<DailyKey, Double> merged = new HashMap<>();
         for (ActionLogRow row : batch) {
-            if (row.finalReward() <= 0) continue;
+            if (row.finalReward() <= 0.0) continue;
             var date = row.occurredAt().atZone(zone).toLocalDate();
-            merged.merge(new DailyKey(row.playerUuid(), date), (long) row.finalReward(), Long::sum);
+            merged.merge(new DailyKey(row.playerUuid(), date), row.finalReward(), Double::sum);
         }
         List<DailyRewardDelta> out = new ArrayList<>(merged.size());
-        for (Map.Entry<DailyKey, Long> e : merged.entrySet()) {
+        for (Map.Entry<DailyKey, Double> e : merged.entrySet()) {
             out.add(new DailyRewardDelta(e.getKey().player(), e.getKey().date(), e.getValue()));
         }
         return out;
