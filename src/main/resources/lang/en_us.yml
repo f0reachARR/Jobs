@@ -1,0 +1,37 @@
+# Jobs plugin English locale.
+
+command:
+  status:
+    not_implemented: "<yellow>/jobs status is not implemented yet.</yellow>"
+    no_specialty: "<yellow>No specialty selected yet. Run /jobs select.</yellow>"
+    loading: "<gray>Plugin is loading.</gray>"
+  select:
+    already_selected: "<yellow>You have already selected a specialty. Use /jobs change.</yellow>"
+    opened: "<gray>Opened specialty selection dialog.</gray>"
+  change:
+    opened: "<gray>Opened specialty change dialog.</gray>"
+    no_selection: "<yellow>No specialty selected yet. Use /jobs select.</yellow>"
+
+dialog:
+  select:
+    title: "Select your specialty"
+    body: "Choose your specialty. Only specialty actions earn rewards."
+    button: "<display_name>"
+  change:
+    title: "Change specialty"
+    body: "Current: <current_job>. Choose your new specialty."
+    button: "<display_name>"
+    dismiss: "Close"
+    cooldown:
+      title: "Cannot change now"
+      body: "Current: <current_job>. Next available: <next_available> (<remaining> left)."
+  status:
+    title: "Status"
+    body: "Current specialty: <current_job>"
+    dismiss: "Close"
+
+notify:
+  selected: "<green>Specialty set to <job>.</green>"
+  changed: "<green>Specialty changed from <previous> to <next>.</green>"
+  unknown_job: "<red>Unknown job: <job>.</red>"
+  cooldown: "<yellow>Specialty change is on cooldown (<remaining> left).</yellow>"

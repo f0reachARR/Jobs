@@ -1,0 +1,39 @@
+# Job プラグイン 日本語ロケール
+# 値は MiniMessage 形式で記述する。装飾を外しても意味が通るように書くこと。
+# （Bedrock Edition では装飾が落ちる）
+
+command:
+  status:
+    not_implemented: "<yellow>/jobs status は未実装です。</yellow>"
+    no_specialty: "<yellow>まだ専業が選択されていません。/jobs select を実行してください。</yellow>"
+    loading: "<gray>プラグインを読み込み中です…</gray>"
+  select:
+    already_selected: "<yellow>すでに専業を選択しています。変更は /jobs change から行ってください。</yellow>"
+    opened: "<gray>専業選択ダイアログを開きました。</gray>"
+  change:
+    opened: "<gray>専業変更ダイアログを開きました。</gray>"
+    no_selection: "<yellow>まだ専業が未選択です。/jobs select から選んでください。</yellow>"
+
+dialog:
+  select:
+    title: "専業を選ぶ"
+    body: "あなたの専業を選択してください。専業のアクションだけが報酬対象になります。"
+    button: "<display_name>"
+  change:
+    title: "専業を変更する"
+    body: "現在の専業: <current_job>。変更先を選んでください。"
+    button: "<display_name>"
+    dismiss: "閉じる"
+    cooldown:
+      title: "専業変更は不可"
+      body: "現在の専業: <current_job>。次回変更可能: <next_available>（あと <remaining>）。"
+  status:
+    title: "ステータス"
+    body: "現在の専業: <current_job>"
+    dismiss: "閉じる"
+
+notify:
+  selected: "<green>専業を <job> に決定しました。</green>"
+  changed: "<green>専業を <previous> から <next> に変更しました。</green>"
+  unknown_job: "<red>ジョブ '<job>' は存在しません。</red>"
+  cooldown: "<yellow>専業変更のクールダウン中です（あと <remaining>）。</yellow>"

@@ -1,0 +1,33 @@
+# Job プラグイン グローバル設定
+# 詳細は docs/spec/02-yaml-schema.md 「グローバル設定 (config.yml)」を参照。
+
+specialty_mode:
+  # 専業外アクションの倍率。0.0 のとき報酬支払いも行動ログ書き込みも行わない。
+  reward_non_specialty: 0.0
+  # 専業変更のクールダウン。上から評価し within にマッチした最初のポリシーが適用される。
+  change_policy:
+    - within:
+        event_hours: [0, 24]
+      cooldown: 1h
+    - default:
+      cooldown: 5d
+
+daily_cap:
+  # 1 日あたりの報酬上限。scope は total (全ジョブ合算) または per_job。
+  amount: 1000000
+  reset_at: "00:00"
+  scope: total
+
+persistence:
+  type: mysql
+  host: localhost
+  port: 3306
+  database: jobs
+  user: jobs
+  password: ""
+  pool_size: 8
+  retention_days: 30
+
+kvs:
+  # memory または redis。redis は Phase 2 の予約。
+  type: memory
