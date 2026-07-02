@@ -2,21 +2,49 @@ package me.f0reach.jobs;
 
 import me.f0reach.jobs.config.ConfigLoader;
 import me.f0reach.jobs.config.PluginConfig;
+import me.f0reach.jobs.detection.EventDispatcher;
+import me.f0reach.jobs.detection.native_.BlockBreakListener;
+import me.f0reach.jobs.detection.native_.BlockPlaceListener;
+import me.f0reach.jobs.detection.native_.BreedListener;
+import me.f0reach.jobs.detection.native_.BrewListener;
+import me.f0reach.jobs.detection.native_.ConsumeListener;
+import me.f0reach.jobs.detection.native_.CraftListener;
+import me.f0reach.jobs.detection.native_.EnchantListener;
+import me.f0reach.jobs.detection.native_.EntityKilledListener;
+import me.f0reach.jobs.detection.native_.FishListener;
+import me.f0reach.jobs.detection.native_.FurnaceExtractListener;
+import me.f0reach.jobs.detection.native_.RepairListener;
+import me.f0reach.jobs.detection.native_.ShearListener;
+import me.f0reach.jobs.detection.native_.TameListener;
+import me.f0reach.jobs.detection.native_.VillagerTradeListener;
+import me.f0reach.jobs.detection.tnt.TntPrimerTracker;
 import me.f0reach.jobs.domain.job.JobDefinition;
+import me.f0reach.jobs.economy.VaultEconomyAdapter;
 import me.f0reach.jobs.i18n.I18n;
 import me.f0reach.jobs.i18n.LocaleRegistry;
 import me.f0reach.jobs.i18n.MissingKeyReporter;
 import me.f0reach.jobs.kvs.JobsKVStore;
 import me.f0reach.jobs.kvs.memory.InMemoryKVStore;
 import me.f0reach.jobs.listener.PlayerJoinListener;
+import me.f0reach.jobs.matcher.RewardMatcher;
 import me.f0reach.jobs.persistence.ActionLogRepository;
 import me.f0reach.jobs.persistence.DailyRewardTotalRepository;
 import me.f0reach.jobs.persistence.PlayerJobRepository;
+import me.f0reach.jobs.persistence.async.ActionLogWriteQueue;
+import me.f0reach.jobs.persistence.async.BatchFlushWorker;
 import me.f0reach.jobs.persistence.mysql.MySqlActionLogRepository;
 import me.f0reach.jobs.persistence.mysql.MySqlDailyRewardTotalRepository;
 import me.f0reach.jobs.persistence.mysql.MySqlDataSource;
 import me.f0reach.jobs.persistence.mysql.MySqlPlayerJobRepository;
 import me.f0reach.jobs.persistence.mysql.SchemaInitializer;
+import me.f0reach.jobs.pipeline.RewardPipeline;
+import me.f0reach.jobs.pipeline.Stage;
+import me.f0reach.jobs.pipeline.stage.ActionLogStage;
+import me.f0reach.jobs.pipeline.stage.BaseRewardStage;
+import me.f0reach.jobs.pipeline.stage.EconomyTransferStage;
+import me.f0reach.jobs.pipeline.stage.MatcherStage;
+import me.f0reach.jobs.pipeline.stage.RareRollStage;
+import me.f0reach.jobs.pipeline.stage.SpecialtyStage;
 import me.f0reach.jobs.registry.ActionKeyDeriver;
 import me.f0reach.jobs.registry.JobRegistry;
 import me.f0reach.jobs.registry.ShadowDetector;
@@ -30,19 +58,26 @@ import me.f0reach.jobs.ui.StatusDialog;
 import me.f0reach.jobs.util.AsyncExecutor;
 import me.f0reach.jobs.yaml.JobYamlLoader;
 import me.f0reach.jobs.yaml.YamlErrors;
+import org.bukkit.event.Listener;
+import org.bukkit.plugin.PluginManager;
 
 import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
+import java.time.ZoneId;
+import java.util.List;
 import java.util.logging.Level;
+import java.util.random.RandomGenerator;
+import java.util.random.RandomGeneratorFactory;
 
 /**
  * 起動時に組み立てた全 service の参照を持つ facade。
- * Phase を追うごとに保持するサービスが増える。
  */
 public final class JobsServices {
-    /** InMemoryKVStore の maxEntries デフォルト。config で上書きされない場合に使う。 */
+
     private static final long DEFAULT_KVS_MAX_ENTRIES = 500_000L;
+    private static final int ACTION_LOG_QUEUE_CAPACITY = 100_000;
+    private static final long BATCH_DRAIN_TIMEOUT_MS = 30_000;
 
     private final JobsPlugin plugin;
     private final AsyncExecutor asyncExecutor;
@@ -68,15 +103,18 @@ public final class JobsServices {
     private SpecialtyChangeDialog specialtyChangeDialog;
     private StatusDialog statusDialog;
 
+    private VaultEconomyAdapter economy;
+    private ActionLogWriteQueue actionLogQueue;
+    private BatchFlushWorker batchFlushWorker;
+    private RewardMatcher rewardMatcher;
+    private RewardPipeline rewardPipeline;
+    private EventDispatcher eventDispatcher;
+
     public JobsServices(JobsPlugin plugin) {
         this.plugin = plugin;
         this.asyncExecutor = new AsyncExecutor(plugin);
     }
 
-    /**
-     * 起動時に全 service を wire する。
-     * 順序は docs/plan/threading.md 「起動時 (onEnable)」に従う。
-     */
     public void wire() {
         plugin.saveDefaultConfig();
         plugin.reloadConfig();
@@ -90,8 +128,10 @@ public final class JobsServices {
         wirePersistence();
         wireKvs();
         loadJobs();
+        wireEconomy();
         wireSpecialty();
         wireDialogs();
+        wirePipeline();
         registerListeners();
     }
 
@@ -113,6 +153,10 @@ public final class JobsServices {
         this.kvStore = new InMemoryKVStore(maxEntries);
     }
 
+    private void wireEconomy() {
+        this.economy = VaultEconomyAdapter.setup();
+    }
+
     private void wireSpecialty() {
         CooldownPolicy policy = new CooldownPolicy(config.specialtyMode().changePolicy());
         this.specialtyService = new SpecialtyService(plugin, playerJobRepository, jobRegistry, policy);
@@ -125,11 +169,58 @@ public final class JobsServices {
         this.statusDialog = new StatusDialog(i18n, specialtyService, dialogService);
     }
 
-    private void registerListeners() {
-        plugin.getServer().getPluginManager().registerEvents(
-                new PlayerJoinListener(specialtyService, specialtySelectDialog),
-                plugin
+    private void wirePipeline() {
+        this.actionLogQueue = new ActionLogWriteQueue(ACTION_LOG_QUEUE_CAPACITY);
+        this.batchFlushWorker = new BatchFlushWorker(
+                plugin,
+                actionLogQueue,
+                actionLogRepository,
+                dailyRewardTotalRepository,
+                ZoneId.systemDefault()
         );
+        batchFlushWorker.start();
+
+        RandomGenerator rng = RandomGeneratorFactory.of("Xoshiro256PlusPlus").create();
+        this.rewardMatcher = new RewardMatcher(tagResolver);
+        List<Stage> stages = List.of(
+                new MatcherStage(),
+                new SpecialtyStage(specialtyService),
+                // AntiAutomationStage は Phase 7
+                new BaseRewardStage(rng),
+                new RareRollStage(rng),
+                // BuiltinModifierStage は Phase 6, ExtensionModifierStage / SplitterStage は Phase 8
+                new EconomyTransferStage(plugin, economy),
+                new ActionLogStage(plugin, actionLogQueue, batchFlushWorker, asyncExecutor)
+                // AdvancementRevokeStage は Phase 9
+        );
+        this.rewardPipeline = new RewardPipeline(plugin, jobRegistry, stages);
+        this.eventDispatcher = new EventDispatcher(specialtyService, jobRegistry, rewardMatcher, rewardPipeline);
+    }
+
+    private void registerListeners() {
+        PluginManager pm = plugin.getServer().getPluginManager();
+
+        pm.registerEvents(new PlayerJoinListener(specialtyService, specialtySelectDialog), plugin);
+
+        for (Listener listener : List.of(
+                new EntityKilledListener(eventDispatcher),
+                new BlockBreakListener(eventDispatcher),
+                new BlockPlaceListener(eventDispatcher),
+                new FishListener(eventDispatcher),
+                new FurnaceExtractListener(eventDispatcher),
+                new CraftListener(eventDispatcher),
+                new EnchantListener(eventDispatcher),
+                new RepairListener(eventDispatcher),
+                new BreedListener(eventDispatcher),
+                new TameListener(eventDispatcher),
+                new ShearListener(eventDispatcher),
+                new ConsumeListener(eventDispatcher),
+                new VillagerTradeListener(eventDispatcher),
+                new BrewListener(eventDispatcher),
+                new TntPrimerTracker(plugin, eventDispatcher)
+        )) {
+            pm.registerEvents(listener, plugin);
+        }
     }
 
     public void loadJobs() {
@@ -153,9 +244,6 @@ public final class JobsServices {
         );
     }
 
-    /**
-     * サーバー起動完了後に呼ぶ。タグ resolve と shadow 検出を行う。
-     */
     public void runShadowDetection() {
         tagResolver.invalidateAll();
         for (JobDefinition job : jobRegistry.all()) {
@@ -168,6 +256,11 @@ public final class JobsServices {
     }
 
     public void shutdown() {
+        // 停止順は threading.md 「停止時 (onDisable)」に従う。
+        if (batchFlushWorker != null) {
+            batchFlushWorker.drainAndStop(BATCH_DRAIN_TIMEOUT_MS);
+            batchFlushWorker = null;
+        }
         asyncExecutor.shutdown();
         if (dataSource != null) {
             dataSource.close();
@@ -192,4 +285,10 @@ public final class JobsServices {
     public SpecialtySelectDialog specialtySelectDialog() { return specialtySelectDialog; }
     public SpecialtyChangeDialog specialtyChangeDialog() { return specialtyChangeDialog; }
     public StatusDialog statusDialog() { return statusDialog; }
+    public VaultEconomyAdapter economy() { return economy; }
+    public ActionLogWriteQueue actionLogQueue() { return actionLogQueue; }
+    public BatchFlushWorker batchFlushWorker() { return batchFlushWorker; }
+    public RewardMatcher rewardMatcher() { return rewardMatcher; }
+    public RewardPipeline rewardPipeline() { return rewardPipeline; }
+    public EventDispatcher eventDispatcher() { return eventDispatcher; }
 }
