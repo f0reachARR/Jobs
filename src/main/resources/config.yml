@@ -41,3 +41,36 @@ persistence:
 kvs:
   # memory または redis。redis は Phase 2 の予約。
   type: memory
+
+anti_automation:
+  # 各 check の「グローバルデフォルト」。per-job YAML の anti_automation で
+  # 同じキーを明示すれば per-job 値が勝つ。省略なら下の default が全ジョブに効く。
+  #
+  # 有効化:   `zero` を書く / section を書く
+  # 無効化:   `off` を書く / section で `enabled: false`
+  # 未指定:  行を消す（そのキーだけデフォルトなしになり、per-job で opt-in された場合のみ動く）
+  #
+  # 従来 (Phase 7 まで) と同じ挙動にしたければ、このセクションを空にして per-job YAML のみで有効化する。
+
+  # spawner_origin_kills: zero
+  # unplanted_crop_harvest: zero
+  # recently_placed_break:
+  #   window_sec: 3600
+  # auto_fed_processing:
+  #   operator_ttl_sec: 60
+  # villager_repeat_trade:
+  #   cooldown_sec: 60
+  #   scope: recipe
+  # breed_non_player_breeder: zero
+
+  notify:
+    # 0 判定が発火したときに、プレイヤーへ ActionBar で理由を表示する。
+    # 各 reason ごとに個別に切れる (reason 名は AntiAutomationCheck の REASON 定数と対応)。
+    # per-job override は無い (グローバル固定)。
+    action_bar:
+      spawner_origin_kill: true
+      unplanted_crop_harvest: true
+      recently_placed_break: true
+      auto_fed_processing: true
+      villager_repeat_trade: true
+      breed_non_player_breeder: true

@@ -46,3 +46,10 @@ notify:
   changed: "<green>専業を <previous> から <next> に変更しました。</green>"
   unknown_job: "<red>ジョブ '<job>' は存在しません。</red>"
   cooldown: "<yellow>専業変更のクールダウン中です（あと <remaining>）。</yellow>"
+  anti_automation:
+    spawner_origin_kill: "<red>スポナー由来の敵の討伐は報酬対象外です。</red>"
+    unplanted_crop_harvest: "<red>自分で植えていない作物の収穫は報酬対象外です。</red>"
+    recently_placed_break: "<red>直近に設置した block の破壊は報酬対象外です。</red>"
+    auto_fed_processing: "<red>hopper / dispenser 経由の自動投入は報酬対象外です。</red>"
+    villager_repeat_trade: "<red>同じ villager × 同じ取引の連続は cooldown 中です。</red>"
+    breed_non_player_breeder: "<red>プレイヤー以外による交配は報酬対象外です。</red>"

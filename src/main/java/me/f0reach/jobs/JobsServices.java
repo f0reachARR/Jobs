@@ -5,6 +5,7 @@ import me.f0reach.jobs.api.JobsApiImpl;
 import me.f0reach.jobs.api.lifecycle.JobsPluginReadyEvent;
 import me.f0reach.jobs.antiautomation.AntiAutomationCheck;
 import me.f0reach.jobs.antiautomation.AntiAutomationCoordinator;
+import me.f0reach.jobs.antiautomation.AntiAutomationNotifier;
 import me.f0reach.jobs.antiautomation.AutoFedProcessingCheck;
 import me.f0reach.jobs.antiautomation.BreedNonPlayerBreederCheck;
 import me.f0reach.jobs.antiautomation.OperatorTracker;
@@ -143,6 +144,7 @@ public final class JobsServices {
     private DailyCapEvaluator dailyCapEvaluator;
 
     private AntiAutomationCoordinator antiAutomationCoordinator;
+    private AntiAutomationNotifier antiAutomationNotifier;
     private PlantedFlagWriter plantedFlagWriter;
     private PlacementRecorder placementRecorder;
     private TradeRecorder tradeRecorder;
@@ -219,6 +221,8 @@ public final class JobsServices {
                 new BreedNonPlayerBreederCheck()
         );
         this.antiAutomationCoordinator = new AntiAutomationCoordinator(plugin, checks);
+        this.antiAutomationNotifier = new AntiAutomationNotifier(
+                i18n, config.antiAutomation().notifyActionBar());
     }
 
     private void wireBuiltinModifiers() {
@@ -283,7 +287,7 @@ public final class JobsServices {
         List<Stage> stages = List.of(
                 new MatcherStage(),
                 new SpecialtyStage(specialtyService),
-                new AntiAutomationStage(antiAutomationCoordinator),
+                new AntiAutomationStage(antiAutomationCoordinator, antiAutomationNotifier),
                 new BaseRewardStage(rng),
                 new RareRollStage(rng),
                 new BuiltinModifierStage(varietyPenaltyEvaluator, dailyCapEvaluator),
@@ -379,7 +383,9 @@ public final class JobsServices {
         }
         ensureDefaultJobsInstalled(jobsDir);
 
-        JobYamlLoader loader = new JobYamlLoader(actionKeyDeriver);
+        JobYamlLoader loader = new JobYamlLoader(
+                actionKeyDeriver,
+                config.antiAutomation().defaults());
         JobYamlLoader.LoadResult result = loader.loadDirectory(jobsDir);
         for (YamlErrors.Entry error : result.errors().entries()) {
             plugin.getLogger().warning(

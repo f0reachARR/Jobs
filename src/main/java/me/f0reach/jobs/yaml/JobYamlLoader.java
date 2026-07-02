@@ -1,6 +1,7 @@
 package me.f0reach.jobs.yaml;
 
 import me.f0reach.jobs.domain.job.ActionType;
+import me.f0reach.jobs.domain.job.AntiAutomationConfig;
 import me.f0reach.jobs.domain.job.JobDefinition;
 import me.f0reach.jobs.domain.job.JobId;
 import me.f0reach.jobs.domain.job.MatchCriteria;
@@ -35,9 +36,17 @@ public final class JobYamlLoader {
     private final RareBonusParser rareBonusParser = new RareBonusParser(rewardAmountParser);
     private final VarietyPenaltyParser varietyParser = new VarietyPenaltyParser();
     private final AntiAutomationParser antiParser = new AntiAutomationParser();
+    private final AntiAutomationConfig antiAutomationDefaults;
 
     public JobYamlLoader(ActionKeyDeriver keyDeriver) {
+        this(keyDeriver, AntiAutomationConfig.empty());
+    }
+
+    public JobYamlLoader(ActionKeyDeriver keyDeriver, AntiAutomationConfig antiAutomationDefaults) {
         this.keyDeriver = keyDeriver;
+        this.antiAutomationDefaults = antiAutomationDefaults == null
+                ? AntiAutomationConfig.empty()
+                : antiAutomationDefaults;
     }
 
     public record LoadResult(List<JobDefinition> jobs, YamlErrors errors) {}
@@ -108,7 +117,8 @@ public final class JobYamlLoader {
         List<RewardEntry> rewards = loadRewards(yaml.getList("rewards"), file.getName(), errors);
 
         var variety = varietyParser.parse(yaml.getConfigurationSection("variety_penalty"), file.getName() + " variety_penalty");
-        var anti = antiParser.parse(yaml.getConfigurationSection("anti_automation"), file.getName() + " anti_automation");
+        var override = antiParser.parse(yaml.getConfigurationSection("anti_automation"), file.getName() + " anti_automation");
+        var anti = AntiAutomationConfig.merge(antiAutomationDefaults, override);
 
         return new JobDefinition(id, displayName, icon, rewards, variety, anti);
     }

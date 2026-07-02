@@ -3,6 +3,7 @@ package me.f0reach.jobs.config;
 import java.math.RoundingMode;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 
 /**
  * config.yml 全体のイミュータブル表現。
@@ -13,7 +14,8 @@ public record PluginConfig(
         RewardConfig reward,
         DailyCapConfig dailyCap,
         PersistenceConfig persistence,
-        KvsConfig kvs
+        KvsConfig kvs,
+        AntiAutomationConfig antiAutomation
 ) {
 
     public record SpecialtyModeConfig(
@@ -89,5 +91,32 @@ public record PluginConfig(
             Type type
     ) {
         public enum Type { MEMORY, REDIS }
+    }
+
+    /**
+     * 自動化対策のグローバル設定。
+     *
+     * <p>{@link #defaults} は各ジョブに対する default 値として、per-job YAML の
+     * {@code anti_automation} と {@link me.f0reach.jobs.domain.job.AntiAutomationConfig#merge merge}
+     * される。per-job YAML でキー未指定なら default が効く。
+     *
+     * <p>{@link #notifyActionBar} は check の reason 文字列（例：{@code spawner_origin_kill}）
+     * から「0 判定時に ActionBar 通知を出すか」への map。key に無いものは通知しない。
+     * per-job override は無い（notify はグローバル固定）。
+     */
+    public record AntiAutomationConfig(
+            me.f0reach.jobs.domain.job.AntiAutomationConfig defaults,
+            Map<String, Boolean> notifyActionBar
+    ) {
+        public AntiAutomationConfig {
+            if (defaults == null) defaults = me.f0reach.jobs.domain.job.AntiAutomationConfig.empty();
+            notifyActionBar = notifyActionBar == null ? Map.of() : Map.copyOf(notifyActionBar);
+        }
+
+        public static AntiAutomationConfig empty() {
+            return new AntiAutomationConfig(
+                    me.f0reach.jobs.domain.job.AntiAutomationConfig.empty(),
+                    Map.of());
+        }
     }
 }

@@ -74,7 +74,7 @@ class RecentlyPlacedBreakCheckTest {
         kv.put(KvsKeys.place(world.getUID(), 10, 64, 10), new byte[]{1}, Duration.ofSeconds(60));
 
         AntiAutomationConfig cfg = new AntiAutomationConfig(
-                null, null, new AntiAutomationConfig.RecentlyPlacedBreak(60), null, null, null
+                null, null, new AntiAutomationConfig.RecentlyPlacedBreak(60, true), null, null, null
         );
         String reason = new RecentlyPlacedBreakCheck(kv).evaluate(ctx(cfg, block));
         assertEquals(RecentlyPlacedBreakCheck.REASON, reason);
@@ -86,7 +86,7 @@ class RecentlyPlacedBreakCheckTest {
         Block block = world.getBlockAt(20, 64, 20);
         block.setType(Material.STONE);
         AntiAutomationConfig cfg = new AntiAutomationConfig(
-                null, null, new AntiAutomationConfig.RecentlyPlacedBreak(60), null, null, null
+                null, null, new AntiAutomationConfig.RecentlyPlacedBreak(60, true), null, null, null
         );
         assertNull(new RecentlyPlacedBreakCheck(kv).evaluate(ctx(cfg, block)));
     }
@@ -100,7 +100,7 @@ class RecentlyPlacedBreakCheckTest {
         kv.put(KvsKeys.place(world.getUID(), 30, 64, 30), new byte[]{1}, Duration.ofSeconds(60));
 
         AntiAutomationConfig cfg = new AntiAutomationConfig(
-                null, null, new AntiAutomationConfig.RecentlyPlacedBreak(60), null, null, null
+                null, null, new AntiAutomationConfig.RecentlyPlacedBreak(60, true), null, null, null
         );
         assertNull(new RecentlyPlacedBreakCheck(kv).evaluate(ctx(cfg, block)));
     }

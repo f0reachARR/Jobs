@@ -1,13 +1,17 @@
 package me.f0reach.jobs.config;
 
+import me.f0reach.jobs.yaml.AntiAutomationParser;
+import me.f0reach.jobs.yaml.YamlParseException;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import java.math.RoundingMode;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * plugin.getConfig() から {@link PluginConfig} を組み立てる。
@@ -21,7 +25,8 @@ public final class ConfigLoader {
                 loadReward(config.getConfigurationSection("reward")),
                 loadDailyCap(config.getConfigurationSection("daily_cap")),
                 loadPersistence(config.getConfigurationSection("persistence")),
-                loadKvs(config.getConfigurationSection("kvs"))
+                loadKvs(config.getConfigurationSection("kvs")),
+                loadAntiAutomation(config.getConfigurationSection("anti_automation"))
         );
     }
 
@@ -151,6 +156,33 @@ public final class ConfigLoader {
                 section.getInt("pool_size", 8),
                 section.getInt("retention_days", 30)
         );
+    }
+
+    private PluginConfig.AntiAutomationConfig loadAntiAutomation(ConfigurationSection section) {
+        if (section == null) {
+            return PluginConfig.AntiAutomationConfig.empty();
+        }
+        // per-job と同じ parser でデフォルト値を読む。notify は parser 側では見ない。
+        me.f0reach.jobs.domain.job.AntiAutomationConfig defaults;
+        try {
+            defaults = new AntiAutomationParser().parse(section, "anti_automation");
+        } catch (YamlParseException e) {
+            throw new ConfigException("Invalid anti_automation defaults: " + e.getMessage(), e);
+        }
+        Map<String, Boolean> notify = loadNotifyActionBar(
+                section.getConfigurationSection("notify"));
+        return new PluginConfig.AntiAutomationConfig(defaults, notify);
+    }
+
+    private Map<String, Boolean> loadNotifyActionBar(ConfigurationSection notifySection) {
+        if (notifySection == null) return Map.of();
+        ConfigurationSection actionBar = notifySection.getConfigurationSection("action_bar");
+        if (actionBar == null) return Map.of();
+        Map<String, Boolean> map = new LinkedHashMap<>();
+        for (String key : actionBar.getKeys(false)) {
+            map.put(key, actionBar.getBoolean(key, false));
+        }
+        return map;
     }
 
     private PluginConfig.KvsConfig loadKvs(ConfigurationSection section) {

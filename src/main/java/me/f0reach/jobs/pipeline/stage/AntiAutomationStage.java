@@ -1,6 +1,7 @@
 package me.f0reach.jobs.pipeline.stage;
 
 import me.f0reach.jobs.antiautomation.AntiAutomationCoordinator;
+import me.f0reach.jobs.antiautomation.AntiAutomationNotifier;
 import me.f0reach.jobs.pipeline.PipelineContext;
 import me.f0reach.jobs.pipeline.Stage;
 
@@ -10,13 +11,18 @@ import me.f0reach.jobs.pipeline.Stage;
  *
  * <p>0 lock されても以降の Stage は「0 のまま」進行する (ActionLog に 0 で残す)。
  * spec/04 「自動化対策：0 確定でもログには書く」の要件。
+ *
+ * <p>0 判定を発火したときに ActionBar でプレイヤーへ通知する (notifier)。
+ * pipeline は main thread 前提なので {@link org.bukkit.entity.Player#sendActionBar} を直接呼ぶ。
  */
 public final class AntiAutomationStage implements Stage {
 
     private final AntiAutomationCoordinator coordinator;
+    private final AntiAutomationNotifier notifier;
 
-    public AntiAutomationStage(AntiAutomationCoordinator coordinator) {
+    public AntiAutomationStage(AntiAutomationCoordinator coordinator, AntiAutomationNotifier notifier) {
         this.coordinator = coordinator;
+        this.notifier = notifier;
     }
 
     @Override
@@ -25,6 +31,7 @@ public final class AntiAutomationStage implements Stage {
         String reason = coordinator.firstZero(ctx, ctx.matchedEntry().actionType());
         if (reason != null) {
             ctx.lockZero(reason);
+            notifier.notify(ctx.player(), reason);
         }
         return Result.CONTINUE;
     }

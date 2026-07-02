@@ -44,3 +44,10 @@ notify:
   changed: "<green>Specialty changed from <previous> to <next>.</green>"
   unknown_job: "<red>Unknown job: <job>.</red>"
   cooldown: "<yellow>Specialty change is on cooldown (<remaining> left).</yellow>"
+  anti_automation:
+    spawner_origin_kill: "<red>Spawner-originated kills are not rewarded.</red>"
+    unplanted_crop_harvest: "<red>Harvesting crops you did not plant is not rewarded.</red>"
+    recently_placed_break: "<red>Breaking blocks you recently placed is not rewarded.</red>"
+    auto_fed_processing: "<red>Items produced via hopper/dispenser auto-feed are not rewarded.</red>"
+    villager_repeat_trade: "<red>Same villager x same trade is on cooldown.</red>"
+    breed_non_player_breeder: "<red>Breeding without a player breeder is not rewarded.</red>"
