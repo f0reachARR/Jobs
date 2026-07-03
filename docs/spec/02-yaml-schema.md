@@ -180,7 +180,7 @@ rare がヒットしたとき、通常報酬は支払わず rare 報酬で置き
 単調性ペナルティはジョブごとに設定する。
 
 - `enabled`：有効化フラグ。
-- `window`：直近何件のアクションを対象とするか。
+- `window`：直近何件のアクションを対象とするか。ring buffer が `window` 件に満たない間は penalty を発動しない（サンプル不足でのスパイク発火を避けるため。詳細は [04-reward-pipeline.md](./04-reward-pipeline.md) の variety_penalty を参照）。
 - `curve`：直近 `window` 件中の派生キー最多比率に応じた報酬倍率。`up_to` は上限値（その値以下）。曲線の最後のエントリは `up_to: 1.01` のように 1.00 を含むように書く。
 - `disclosed_message`：ペナルティが発動したときにプレイヤーへ見せるメッセージ。
 - `hide_numbers`：`true` のとき、`disclosed_message` 以外の数値情報を UI に出さない。

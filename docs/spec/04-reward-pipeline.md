@@ -101,6 +101,10 @@ amount 解釈は次の通り。
 直近 `window` 件は in-memory ring buffer で保持する。
 プレイヤーのログイン時に MySQL から最新 `window` 件を読み込んで初期化する。
 
+ring buffer が `window` 件に満たない間は penalty を発動しない（`multiplier = 1.0` として素通し、記録のみ進める）。
+サンプルが揃わないうちに ratio が 1.0 にスパイクして誤発動するのを避けるため。
+`/jobs status` の表示も同じゲートに従い、未充填のあいだは「なし」として扱う。
+
 `hide_numbers: true` のとき、`disclosed_message` 以外の数値情報を Dialog UI に出さない。
 
 #### daily_cap

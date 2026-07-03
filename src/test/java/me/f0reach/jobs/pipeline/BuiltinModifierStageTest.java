@@ -93,22 +93,53 @@ class BuiltinModifierStageTest {
         );
         BuiltinModifierStage stage = new BuiltinModifierStage(varietyEval, capEval);
 
-        // 最初のアクション: buffer 空 → ratio 0 → up_to 0.5 のエントリで multiplier 1.0
-        PipelineContext c1 = ctx(player, job, 10.0);
-        stage.execute(c1);
-        assertEquals(10.0, c1.finalReward(), 1e-9);
-
-        // 2〜5 回目: 同じキーで record を積む。5 回目でも「まだ record 前」に評価するので、
-        // ratio は積み上がって curve に触れる。
-        for (int i = 0; i < 4; i++) {
+        // 1〜5 回目: buffer が window(=5) 件に満たないため penalty は発動しない。
+        // 記録は進み、5 回目終了時点で buffer は満杯。
+        for (int i = 0; i < 5; i++) {
             PipelineContext c = ctx(player, job, 10.0);
             stage.execute(c);
+            assertEquals(10.0, c.finalReward(), 1e-9,
+                    "buffer 未充填の間は penalty 未発動 (i=" + i + ")");
         }
 
-        // 6 回目: 直前までに 5/5 が同じキー → ratio 1.0 → multiplier 0.2 → 2.0
+        // 6 回目: buffer が満杯 & 5/5 が同じキー → ratio 1.0 → multiplier 0.2 → 2.0
         PipelineContext c6 = ctx(player, job, 10.0);
         stage.execute(c6);
         assertEquals(2.0, c6.finalReward(), 1e-9);
+    }
+
+    @Test
+    void varietyDoesNotPenalizeUntilBufferFills() {
+        // 短めの window で「同じキーを 2 回叩いた瞬間」の挙動を明示。
+        VarietyPenaltyConfig variety = new VarietyPenaltyConfig(
+                true, 3, List.of(
+                        new VarietyPenaltyConfig.CurvePoint(0.5, 1.0),
+                        new VarietyPenaltyConfig.CurvePoint(1.01, 0.1)
+                ),
+                "monotonous", false
+        );
+        JobDefinition job = makeJob(variety);
+        Player player = server.addPlayer();
+
+        VarietyPenaltyEvaluator varietyEval = new VarietyPenaltyEvaluator(
+                plugin, new StubActionLogRepo(), new me.f0reach.jobs.util.AsyncExecutor(plugin)
+        );
+        DailyCapEvaluator capEval = new DailyCapEvaluator(
+                new NoopDailyTotal(),
+                new PluginConfig.DailyCapConfig(0, "00:00", PluginConfig.DailyCapConfig.Scope.TOTAL)
+        );
+        BuiltinModifierStage stage = new BuiltinModifierStage(varietyEval, capEval);
+
+        // window=3。 buffer 充填までの 3 回はすべて素通し。
+        for (int i = 0; i < 3; i++) {
+            PipelineContext c = ctx(player, job, 10.0);
+            stage.execute(c);
+            assertEquals(10.0, c.finalReward(), 1e-9);
+        }
+        // 4 回目で初めて curve が効く。3/3 同キー → ratio 1.0 → multiplier 0.1 → 1.0
+        PipelineContext c4 = ctx(player, job, 10.0);
+        stage.execute(c4);
+        assertEquals(1.0, c4.finalReward(), 1e-9);
     }
 
     @Test

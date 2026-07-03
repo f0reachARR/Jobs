@@ -232,7 +232,9 @@ public final class JobsCommands {
         int size = snap == null ? 0 : snap.size();
         int capacity = snap == null ? config.window() : snap.capacity();
 
-        boolean penalized = ratio > 0.0 && lookupMultiplier(config, ratio) < 1.0;
+        // 評価器と同じく、buffer が window 件揃うまでは penalty 未発動として扱う。
+        boolean bufferFull = snap != null && snap.size() >= snap.capacity();
+        boolean penalized = bufferFull && lookupMultiplier(config, ratio) < 1.0;
         if (penalized) {
             if (!config.hideNumbers()) {
                 player.sendMessage(bound.i18n().format(

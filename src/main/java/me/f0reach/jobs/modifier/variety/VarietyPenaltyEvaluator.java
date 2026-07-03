@@ -57,6 +57,13 @@ public final class VarietyPenaltyEvaluator {
         }
         Key key = new Key(playerUuid, job.id());
         VarietyRingBuffer buffer = ringBuffers.computeIfAbsent(key, k -> new VarietyRingBuffer(config.window()));
+        // buffer が window 件に満たない間は「直近 window 件」を満たさないため penalty を発動しない。
+        // 記録だけ進め、buffer が埋まった以降のアクションから curve を適用する
+        // （spec/02-yaml-schema.md variety_penalty、spec/04-reward-pipeline.md 内蔵 Modifier）。
+        if (buffer.size() < buffer.capacity()) {
+            buffer.record(actionKey);
+            return Result.noPenalty();
+        }
         // 今回のアクションを含めずに ratio を計算する（look-back 意味論）。
         double ratio = buffer.topRatio();
         double multiplier = curveFor(job.id(), config).lookup(ratio);
