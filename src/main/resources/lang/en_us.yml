@@ -63,6 +63,9 @@ command:
     reset_variety:
       ok: "<green>Cleared variety ring buffer for <name>.</green>"
       offline: "<yellow><name> is offline (variety is memory-only).</yellow>"
+    flush:
+      ok: "<green>Flushed action_log (<count> rows).</green>"
+      error: "<red>Flush failed: <error></red>"
 
 dialog:
   select:

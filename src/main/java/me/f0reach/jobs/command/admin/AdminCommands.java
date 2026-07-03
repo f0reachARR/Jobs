@@ -75,7 +75,8 @@ public final class AdminCommands {
                 .then(buildResetCooldown())
                 .then(buildPay())
                 .then(buildResetDailyCap())
-                .then(buildResetVariety());
+                .then(buildResetVariety())
+                .then(buildFlush());
     }
 
     private LiteralArgumentBuilder<CommandSourceStack> buildInspect() {
@@ -141,6 +142,12 @@ public final class AdminCommands {
                 .then(Commands.argument("player", StringArgumentType.word())
                         .suggests(this::suggestPlayerNames)
                         .executes(this::executeResetVariety));
+    }
+
+    private LiteralArgumentBuilder<CommandSourceStack> buildFlush() {
+        return Commands.literal("flush")
+                .requires(s -> s.getSender().hasPermission(Permissions.ADMIN_FLUSH))
+                .executes(this::executeFlush);
     }
 
     private LiteralArgumentBuilder<CommandSourceStack> buildStats() {
@@ -530,6 +537,25 @@ public final class AdminCommands {
         bound.varietyPenaltyEvaluator().unload(uuid);
         sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_RESET_VARIETY_OK,
                 Placeholder.parsed("name", displayName)));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private int executeFlush(CommandContext<CommandSourceStack> ctx) {
+        JobsServices bound = requireBound(ctx);
+        if (bound == null) return Command.SINGLE_SUCCESS;
+        CommandSender sender = ctx.getSource().getSender();
+        AsyncExecutor executor = bound.asyncExecutor();
+        // flushNow は JDBC I/O が絡むため async に投げて、結果を main thread で表示する。
+        executor.supplyAsync(() -> bound.batchFlushWorker().flushNow())
+                .whenComplete((count, err) -> executor.runOnMain(() -> {
+                    if (err != null) {
+                        sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_FLUSH_ERROR,
+                                Placeholder.parsed("error", String.valueOf(err.getMessage()))));
+                        return;
+                    }
+                    sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_FLUSH_OK,
+                            Placeholder.parsed("count", Integer.toString(count))));
+                }));
         return Command.SINGLE_SUCCESS;
     }
 

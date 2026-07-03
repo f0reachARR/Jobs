@@ -65,6 +65,9 @@ command:
     reset_variety:
       ok: "<green><name> の単調性 ring buffer をクリアしました。</green>"
       offline: "<yellow><name> はオフラインです (variety は memory-only)。</yellow>"
+    flush:
+      ok: "<green>action_log を flush しました (<count> 件)。</green>"
+      error: "<red>flush に失敗しました: <error></red>"
 
 dialog:
   select:

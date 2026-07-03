@@ -61,6 +61,19 @@ public final class BatchFlushWorker implements Runnable {
         return backpressure;
     }
 
+    /**
+     * {@code /jobs admin flush} 用。worker を止めずに現在キューに積まれている行を全て drain して INSERT する。
+     * 呼び出しはリクエスト元スレッドで同期に走る（AsyncExecutor 経由で呼ぶこと）。
+     *
+     * @return flush した行数（0 なら enqueue 済みが無かった）
+     */
+    public int flushNow() {
+        List<ActionLogRow> remaining = queue.drainAll();
+        if (remaining.isEmpty()) return 0;
+        flushBatch(remaining);
+        return remaining.size();
+    }
+
     /** shutdown 時に残キューを timeout まで drain する。 */
     public void drainAndStop(long timeoutMs) {
         running = false;

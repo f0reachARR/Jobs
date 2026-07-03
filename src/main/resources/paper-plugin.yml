@@ -45,6 +45,7 @@ permissions:
             jobs.admin.pay: true
             jobs.admin.reset-daily-cap: true
             jobs.admin.reset-variety: true
+            jobs.admin.flush: true
     jobs.admin.reload:
         description: /jobs reload の実行を許可
         default: op
@@ -71,6 +72,9 @@ permissions:
         default: op
     jobs.admin.reset-variety:
         description: /jobs admin reset-variety の実行を許可
+        default: op
+    jobs.admin.flush:
+        description: /jobs admin flush の実行を許可
         default: op
 
     jobs.bypass.specialty:

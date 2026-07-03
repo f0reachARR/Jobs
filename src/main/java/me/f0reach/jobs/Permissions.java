@@ -27,6 +27,7 @@ public final class Permissions {
     public static final String ADMIN_PAY = "jobs.admin.pay";
     public static final String ADMIN_RESET_DAILY_CAP = "jobs.admin.reset-daily-cap";
     public static final String ADMIN_RESET_VARIETY = "jobs.admin.reset-variety";
+    public static final String ADMIN_FLUSH = "jobs.admin.flush";
 
     // バイパス系 (default: false)
     public static final String BYPASS_SPECIALTY = "jobs.bypass.specialty";
