@@ -6,6 +6,7 @@ import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import me.f0reach.jobs.JobsServices;
 import me.f0reach.jobs.Permissions;
+import me.f0reach.jobs.command.admin.AdminCommands;
 import me.f0reach.jobs.config.PluginConfig;
 import me.f0reach.jobs.domain.job.JobDefinition;
 import me.f0reach.jobs.domain.job.JobId;
@@ -46,6 +47,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class JobsCommands {
 
     private final AtomicReference<JobsServices> services = new AtomicReference<>();
+    private final AdminCommands adminCommands = new AdminCommands(services);
 
     public LiteralCommandNode<CommandSourceStack> buildTree() {
         return Commands.literal("jobs")
@@ -64,6 +66,7 @@ public final class JobsCommands {
                 .then(Commands.literal("reload")
                         .requires(s -> s.getSender().hasPermission(Permissions.ADMIN_RELOAD))
                         .executes(this::executeReload))
+                .then(adminCommands.build())
                 .build();
     }
 

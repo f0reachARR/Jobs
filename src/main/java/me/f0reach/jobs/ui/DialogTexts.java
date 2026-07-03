@@ -33,6 +33,29 @@ public final class DialogTexts {
     public static final String COMMAND_RELOAD_OK = "command.reload.ok";
     public static final String COMMAND_RELOAD_FAILED = "command.reload.failed";
 
+    // /jobs admin (Phase 13)
+    public static final String COMMAND_ADMIN_UNKNOWN_PLAYER = "command.admin.unknown_player";
+    public static final String COMMAND_ADMIN_INSPECT_HEADER = "command.admin.inspect.header";
+    public static final String COMMAND_ADMIN_INSPECT_NO_SPECIALTY = "command.admin.inspect.no_specialty";
+    public static final String COMMAND_ADMIN_INSPECT_CURRENT = "command.admin.inspect.current";
+    public static final String COMMAND_ADMIN_INSPECT_COOLDOWN_BASE = "command.admin.inspect.cooldown_base";
+    public static final String COMMAND_ADMIN_INSPECT_NEXT_CHANGE = "command.admin.inspect.next_change";
+    public static final String COMMAND_ADMIN_INSPECT_DAILY_TOTAL = "command.admin.inspect.daily_total";
+    public static final String COMMAND_ADMIN_INSPECT_VARIETY_OFFLINE = "command.admin.inspect.variety_offline";
+    public static final String COMMAND_ADMIN_INSPECT_VARIETY_SNAPSHOT = "command.admin.inspect.variety_snapshot";
+    public static final String COMMAND_ADMIN_ACTIONS_HEADER = "command.admin.actions.header";
+    public static final String COMMAND_ADMIN_ACTIONS_EMPTY = "command.admin.actions.empty";
+    public static final String COMMAND_ADMIN_ACTIONS_ROW = "command.admin.actions.row";
+    public static final String COMMAND_ADMIN_ACTIONS_ERROR = "command.admin.actions.error";
+    public static final String COMMAND_ADMIN_STATS_HEADER = "command.admin.stats.header";
+    public static final String COMMAND_ADMIN_STATS_JOB_HEADER = "command.admin.stats.job_header";
+    public static final String COMMAND_ADMIN_STATS_JOB_ROW = "command.admin.stats.job_row";
+    public static final String COMMAND_ADMIN_STATS_DAILY_TOTAL = "command.admin.stats.daily_total";
+    public static final String COMMAND_ADMIN_STATS_ACTIONS_TODAY = "command.admin.stats.actions_today";
+    public static final String COMMAND_ADMIN_STATS_RARE_HITS = "command.admin.stats.rare_hits";
+    public static final String COMMAND_ADMIN_STATS_ERROR = "command.admin.stats.error";
+    public static final String COMMAND_ADMIN_STATS_UNKNOWN_JOB = "command.admin.stats.unknown_job";
+
     // Dialog: select
     public static final String DIALOG_SELECT_TITLE = "dialog.select.title";
     public static final String DIALOG_SELECT_BODY = "dialog.select.body";

@@ -70,6 +70,11 @@ class EventDispatcherTest {
             if (existing != null) rows.put(player, new PlayerJobRow(player, existing.jobId(), Instant.EPOCH));
         }
         @Override public void delete(UUID player) { rows.remove(player); }
+        @Override public Map<String, Long> countByJob() {
+            Map<String, Long> counts = new HashMap<>();
+            for (PlayerJobRow row : rows.values()) counts.merge(row.jobId(), 1L, Long::sum);
+            return counts;
+        }
     }
 
     private static final class InMemoryHistory implements PlayerJobHistoryRepository {

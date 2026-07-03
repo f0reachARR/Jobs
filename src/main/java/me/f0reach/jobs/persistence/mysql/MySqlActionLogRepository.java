@@ -52,6 +52,14 @@ public final class MySqlActionLogRepository implements ActionLogRepository {
             GROUP BY job_id
             """;
 
+    private static final String SQL_RECENT = """
+            SELECT job_id, action_key, base_reward, final_reward, rare_hit, amount, occurred_at
+            FROM action_log
+            WHERE player_uuid = ? AND occurred_at >= ? AND occurred_at < ?
+            ORDER BY occurred_at DESC
+            LIMIT ?
+            """;
+
     private final DataSource dataSource;
 
     public MySqlActionLogRepository(DataSource dataSource) {
@@ -208,6 +216,56 @@ public final class MySqlActionLogRepository implements ActionLogRepository {
             }
         } catch (SQLException e) {
             throw new RuntimeException("sumRewardByJob failed", e);
+        }
+    }
+
+    @Override
+    public List<ActionLogRow> recent(UUID player, TimeRange range, int limit) {
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(SQL_RECENT)) {
+            ps.setBytes(1, UuidBytes.toBytes(player));
+            ps.setTimestamp(2, Timestamp.from(range.from()));
+            ps.setTimestamp(3, Timestamp.from(range.to()));
+            ps.setInt(4, limit);
+            try (ResultSet rs = ps.executeQuery()) {
+                List<ActionLogRow> out = new ArrayList<>();
+                while (rs.next()) {
+                    String jobId = rs.getString(1);
+                    String actionKey = rs.getString(2);
+                    double baseReward = rs.getBigDecimal(3).doubleValue();
+                    double finalReward = rs.getBigDecimal(4).doubleValue();
+                    boolean rareHit = rs.getBoolean(5);
+                    int amount = rs.getInt(6);
+                    Instant occurredAt = rs.getTimestamp(7).toInstant();
+                    out.add(new ActionLogRow(
+                            player, jobId, actionKey, baseReward, finalReward, rareHit, amount, occurredAt
+                    ));
+                }
+                return out;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("recent failed for " + player, e);
+        }
+    }
+
+    @Override
+    public RareHitStats rareHitStats(TimeRange range, String jobId) {
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*), ");
+        sql.append("COALESCE(SUM(CASE WHEN rare_hit THEN 1 ELSE 0 END), 0), ");
+        sql.append("COALESCE(SUM(final_reward), 0) ");
+        sql.append("FROM action_log WHERE occurred_at >= ? AND occurred_at < ?");
+        if (jobId != null) sql.append(" AND job_id = ?");
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            ps.setTimestamp(1, Timestamp.from(range.from()));
+            ps.setTimestamp(2, Timestamp.from(range.to()));
+            if (jobId != null) ps.setString(3, jobId);
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                return new RareHitStats(rs.getLong(1), rs.getLong(2), rs.getDouble(3));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("rareHitStats failed", e);
         }
     }
 

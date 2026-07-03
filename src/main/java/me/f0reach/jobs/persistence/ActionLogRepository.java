@@ -37,4 +37,17 @@ public interface ActionLogRepository {
 
     /** Phase 6 の DailyTotalCache 初期化で使う。range 内の final_reward を job_id ごとに合算して返す。 */
     Map<String, Double> sumRewardByJob(UUID player, TimeRange range);
+
+    /**
+     * Phase 13-A の /jobs admin actions で使う。range 内の直近 limit 件を occurred_at 降順で返す。
+     */
+    List<ActionLogRow> recent(UUID player, TimeRange range, int limit);
+
+    /**
+     * Phase 13-A の /jobs admin stats で使う。range 内のアクション件数と rare_hit 件数、
+     * final_reward の合計をまとめて返す。{@code jobId} で絞り込める（null なら全 job）。
+     */
+    RareHitStats rareHitStats(TimeRange range, String jobId);
+
+    record RareHitStats(long actions, long rareHits, double totalReward) {}
 }

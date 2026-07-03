@@ -21,6 +21,31 @@ command:
     already_selected: "<yellow>You are already on that specialty.</yellow>"
   info:
     unknown_job: "<red>Unknown job: <job>.</red>"
+  admin:
+    unknown_player: "<red>Unknown player: <name>.</red>"
+    inspect:
+      header: "<gold>== Status of <name> ==</gold>"
+      no_specialty: "<yellow>No specialty selected.</yellow>"
+      current: "<gray>Current specialty:</gray> <white><job></white>"
+      cooldown_base: "<gray>Cooldown base:</gray> <white><base_at></white>"
+      next_change: "<gray>Next change available at:</gray> <white><next_at></white>"
+      daily_total: "<gray>Today's total:</gray> <white><total></white>"
+      variety_offline: "<gray>Variety ring buffer:</gray> <yellow>unavailable (player offline)</yellow>"
+      variety_snapshot: "<gray>Variety ring buffer:</gray> <white><size>/<capacity>, top <ratio>%</white>"
+    actions:
+      header: "<gold>== Last <limit> actions of <name> (last <since_hours>h) ==</gold>"
+      empty: "<gray>No action log entries found.</gray>"
+      row: "<gray><time></gray> <white><job></white>/<action_key> = <white><reward></white><rare>"
+      error: "<red>Failed to fetch action log: <error></red>"
+    stats:
+      header: "<gold>== Jobs stats ==</gold>"
+      job_header: "<gray>== Job <job> ==</gray>"
+      job_row: "<gray>- </gray><white><job></white><gray>:</gray> <white><count></white><gray> player(s)</gray>"
+      daily_total: "<gray>Total paid today:</gray> <white><total></white>"
+      actions_today: "<gray>Actions today:</gray> <white><count></white>"
+      rare_hits: "<gray>Rare hit rate:</gray> <white><percent>%</white> <gray>(<rare>/<total>)</gray>"
+      error: "<red>Failed to aggregate: <error></red>"
+      unknown_job: "<red>Unknown job: <job>.</red>"
 
 dialog:
   select:

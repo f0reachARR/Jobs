@@ -91,6 +91,15 @@ class SpecialtyServiceTest {
         public void delete(UUID player) {
             rows.remove(player);
         }
+
+        @Override
+        public Map<String, Long> countByJob() {
+            Map<String, Long> counts = new HashMap<>();
+            for (PlayerJobRow row : rows.values()) {
+                counts.merge(row.jobId(), 1L, Long::sum);
+            }
+            return counts;
+        }
     }
 
     /** append-only 履歴の in-memory 実装。 */

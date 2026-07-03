@@ -37,8 +37,20 @@ permissions:
         default: op
         children:
             jobs.admin.reload: true
+            jobs.admin.inspect: true
+            jobs.admin.stats: true
+            jobs.admin.actions: true
     jobs.admin.reload:
         description: /jobs reload の実行を許可
+        default: op
+    jobs.admin.inspect:
+        description: /jobs admin inspect の実行を許可
+        default: op
+    jobs.admin.stats:
+        description: /jobs admin stats の実行を許可
+        default: op
+    jobs.admin.actions:
+        description: /jobs admin actions の実行を許可
         default: op
 
     jobs.bypass.specialty:

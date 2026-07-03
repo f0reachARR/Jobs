@@ -19,6 +19,9 @@ public final class Permissions {
 
     // 管理系 (default: op)
     public static final String ADMIN_RELOAD = "jobs.admin.reload";
+    public static final String ADMIN_INSPECT = "jobs.admin.inspect";
+    public static final String ADMIN_STATS = "jobs.admin.stats";
+    public static final String ADMIN_ACTIONS = "jobs.admin.actions";
 
     // バイパス系 (default: false)
     public static final String BYPASS_SPECIALTY = "jobs.bypass.specialty";

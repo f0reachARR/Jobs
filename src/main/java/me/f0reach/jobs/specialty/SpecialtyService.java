@@ -214,8 +214,16 @@ public final class SpecialtyService {
     public Optional<Instant> nextAvailableAt(UUID player) {
         Instant base = cooldownBaseCache.get(player);
         if (base == null) return Optional.empty();
+        return Optional.of(nextAvailableFrom(base));
+    }
+
+    /**
+     * 任意の cooldown_base_at から次回変更可能時刻を計算する。
+     * DB から直接取ってきた base に対して policy を適用したい経路（/jobs admin inspect など）で使う。
+     */
+    public Instant nextAvailableFrom(Instant cooldownBaseAt) {
         Duration cooldown = cooldownPolicy.currentCooldown(Instant.now(clock));
-        return Optional.of(base.plus(cooldown));
+        return cooldownBaseAt.plus(cooldown);
     }
 
     /** 変更履歴を持たない（未選択）プレイヤーか。 */

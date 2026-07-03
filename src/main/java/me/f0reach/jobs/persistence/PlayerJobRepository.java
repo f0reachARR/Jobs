@@ -35,4 +35,10 @@ public interface PlayerJobRepository {
 
     /** 行を削除する。将来の /jobs admin unset 用。存在しない場合は no-op。 */
     void delete(UUID player);
+
+    /**
+     * 職業 id ごとの現在専業プレイヤー数を返す。/jobs admin stats で使う。
+     * 全プレイヤー分をスキャンするため呼び出し頻度は稀な想定。
+     */
+    java.util.Map<String, Long> countByJob();
 }

@@ -287,6 +287,8 @@ class BuiltinModifierStageTest {
         @Override public int deleteOlderThan(Instant cutoff) { return 0; }
         @Override public List<String> recentKeys(UUID player, String jobId, int limit) { return List.of(); }
         @Override public Map<String, Double> sumRewardByJob(UUID p, me.f0reach.jobs.api.query.TimeRange r) { return Map.of(); }
+        @Override public List<me.f0reach.jobs.persistence.dto.ActionLogRow> recent(UUID p, me.f0reach.jobs.api.query.TimeRange r, int limit) { return List.of(); }
+        @Override public me.f0reach.jobs.persistence.ActionLogRepository.RareHitStats rareHitStats(me.f0reach.jobs.api.query.TimeRange r, String jobId) { return new me.f0reach.jobs.persistence.ActionLogRepository.RareHitStats(0L, 0L, 0.0); }
     }
 
     private static final class NoopDailyTotal implements DailyTotalView {
