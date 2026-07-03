@@ -29,19 +29,19 @@ Paper 標準の Bukkit パーミッションを使い、`paper-plugin.yml` の `
 
 | ノード | 適用箇所 | 説明 |
 |---|---|---|
-| `jobs.admin` | 親ノード | 配下すべてを true にする。既存の運用互換のため残置。 |
-| `jobs.admin.reload` | `/jobs reload` サブコマンド | YAML / lang / tag cache / advancement datapack を再読込。 |
+| `jobs.admin` | 親ノード | 配下すべてを true にする。上位ランクへの一括付与用。 |
+| `jobs.admin.reload` | `/jobs reload` | YAML / lang / tag cache / advancement datapack を再読込。 |
+| `jobs.admin.set` | `/jobs admin set <player> <job>` | 他プレイヤーの専業を強制付与する。オフラインでも可（[05-persistence.md](./05-persistence.md) の `player_job` を直接更新し、オンラインなら caches も同期）。`player_job_history` に `actor='admin'` で 1 行 append される。cooldown_base_at は now に更新するため、直後 1 回の cooldown はここから起算される。 |
+| `jobs.admin.reset-cooldown` | `/jobs admin reset-cooldown <player>` | 変更クールダウンをクリアする。`player_job.cooldown_base_at` を `Instant.EPOCH` に上書きし、`SpecialtyService#nextAvailableAt` が過去を返す状態にする。履歴 (`player_job_history`) には行を残さない（専業は変わっていないため）。 |
+| `jobs.admin.inspect` | `/jobs admin inspect <player>` | 他プレイヤーの `/jobs status` 相当を閲覧する。オフラインでも DB から現状（current job / cooldown_base_at / 当日累計）を出す。variety の ring buffer は memory 常駐なので、オフライン時は「取得不可」を明示する。 |
+| `jobs.admin.pay` | `/jobs admin pay <player> <amount> [reason]` | 手動で報酬を支給する。パイプラインは通さず、`VaultEconomyAdapter#deposit` と `ActionLogWriteQueue#enqueue` を直接叩く。`action_key='admin:manual'`。`JobActionPaidEvent` は発火する（Quest / 株プラグイン側で手動支給を認識できるようにするため）。 |
+| `jobs.admin.reset-daily-cap` | `/jobs admin reset-daily-cap <player>` | 対象プレイヤーの当日日次キャップ累計をリセットする。`daily_reward_total` の当日 row を削除、オンラインなら `DailyTotalCache` の該当 entry を 0 リセット。scope=`per_job` の場合、次回ログインで `action_log` から再計算されて元に戻るため一時的な効果に留まる（[04-reward-pipeline.md](./04-reward-pipeline.md)）。 |
+| `jobs.admin.reset-variety` | `/jobs admin reset-variety <player>` | 対象プレイヤーの単調性 ring buffer をクリアする。`VarietyPenaltyEvaluator#unload(uuid)` を呼ぶだけの operation で memory-only。オフライン相手には「対象がオフラインです」を返す。 |
+| `jobs.admin.flush` | `/jobs admin flush` | `BatchFlushWorker` を即時 flush する。事前 restart や書き込み障害の切り分けに使う。 |
+| `jobs.admin.actions` | `/jobs admin actions <player> [--since=1h] [--limit=20]` | 対象プレイヤーの直近 `action_log` を chat に出力する。監査、「報酬が入っていない」問い合わせの一次切り分け。async で `ActionLogRepository` を叩く。 |
+| `jobs.admin.stats` | `/jobs admin stats [<job>]` | 職業別在籍数、当日総支払、rare 発火率などの集計を chat に出力する。async。 |
 
-以下は**将来拡張予定**として枠だけ確保する（現時点では実装しない）。実装時に `paper-plugin.yml` へ追加する。
-
-| ノード | 想定用途 |
-|---|---|
-| `jobs.admin.set` | `/jobs admin set <player> <job>` — 他プレイヤーの専業を強制付与。 |
-| `jobs.admin.reset-cooldown` | `/jobs admin reset-cooldown <player>` — 変更クールダウンをクリア。 |
-| `jobs.admin.inspect` | `/jobs admin inspect <player>` — 他プレイヤーの status を閲覧。 |
-| `jobs.admin.pay` | `/jobs admin pay <player> <amount> [reason]` — 手動で報酬を支給し行動ログに残す。 |
-
-管理系サブコマンドを追加する場合は、`jobs.admin` の `children:` にも `<新ノード>: true` を並べる。
+管理系サブコマンドを追加する場合は、`Permissions.java` に定数を足し、`jobs.admin` の `children:` にも並べる。追加した永続化 API（例：`PlayerJobRepository#resetCooldownBase`）は [05-persistence.md](./05-persistence.md) 側にも反映する。
 
 ### バイパス系（default: false）
 
@@ -84,8 +84,44 @@ permissions:
         default: op
         children:
             jobs.admin.reload: true
+            jobs.admin.set: true
+            jobs.admin.reset-cooldown: true
+            jobs.admin.inspect: true
+            jobs.admin.pay: true
+            jobs.admin.reset-daily-cap: true
+            jobs.admin.reset-variety: true
+            jobs.admin.flush: true
+            jobs.admin.actions: true
+            jobs.admin.stats: true
     jobs.admin.reload:
         description: /jobs reload の実行を許可
+        default: op
+    jobs.admin.set:
+        description: /jobs admin set の実行を許可
+        default: op
+    jobs.admin.reset-cooldown:
+        description: /jobs admin reset-cooldown の実行を許可
+        default: op
+    jobs.admin.inspect:
+        description: /jobs admin inspect の実行を許可
+        default: op
+    jobs.admin.pay:
+        description: /jobs admin pay の実行を許可
+        default: op
+    jobs.admin.reset-daily-cap:
+        description: /jobs admin reset-daily-cap の実行を許可
+        default: op
+    jobs.admin.reset-variety:
+        description: /jobs admin reset-variety の実行を許可
+        default: op
+    jobs.admin.flush:
+        description: /jobs admin flush の実行を許可
+        default: op
+    jobs.admin.actions:
+        description: /jobs admin actions の実行を許可
+        default: op
+    jobs.admin.stats:
+        description: /jobs admin stats の実行を許可
         default: op
 
     jobs.bypass.specialty:
