@@ -327,7 +327,7 @@ Caffeine は Paper に shaded で含まれるため、明示依存を build.grad
 **DialogService**：`BedrockDialog.get()` を wrap し、Bukkit main thread への dispatch と `player.locale()` の解決を提供する。
 すべての Dialog 表示はここを経由。
 
-**SpecialtyListDialog**：`MultiButtonDialog`。`Mode.SELECT` / `Mode.CHANGE` の 2 モードで再利用する統合ダイアログ。全ジョブを列挙し、`CHANGE` では現在の専業を除外する。ボタンは `JobDefinition.icon`, `displayName` を使う。
+**SpecialtyListDialog**：`MultiButtonDialog`。`Mode.SELECT` / `Mode.CHANGE` / `Mode.INFO` の 3 モードで再利用する統合ダイアログ。全ジョブを列挙し、`CHANGE` では現在の専業を除外する。`INFO` は `/jobs info` 経路で使い、押下は必ず `JobConditionsDialog(READ_ONLY)` を開く。ボタンは `JobDefinition.icon`, `displayName` を使う。
 `disclose_before_select: true` のとき、ボタン押下で `JobConditionsDialog` を開く。
 `false` のときはボタン押下時に Bukkit scheduler で main thread に戻し、`SpecialtyService#select` / `change` を呼ぶ（[ADR-0014](../spec/adr/0014-bedrock-dialog.md)）。
 

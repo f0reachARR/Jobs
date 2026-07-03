@@ -83,8 +83,10 @@ import me.f0reach.jobs.registry.TagResolver;
 import me.f0reach.jobs.specialty.CooldownPolicy;
 import me.f0reach.jobs.specialty.SpecialtyService;
 import me.f0reach.jobs.ui.DialogService;
-import me.f0reach.jobs.ui.SpecialtyChangeDialog;
-import me.f0reach.jobs.ui.SpecialtySelectDialog;
+import me.f0reach.jobs.ui.JobConditionsDialog;
+import me.f0reach.jobs.ui.JobConditionsFormatter;
+import me.f0reach.jobs.ui.SpecialtyCooldownDialog;
+import me.f0reach.jobs.ui.SpecialtyListDialog;
 import me.f0reach.jobs.util.AsyncExecutor;
 import me.f0reach.jobs.yaml.JobYamlLoader;
 import me.f0reach.jobs.yaml.YamlErrors;
@@ -129,8 +131,10 @@ public final class JobsServices {
 
     private SpecialtyService specialtyService;
     private DialogService dialogService;
-    private SpecialtySelectDialog specialtySelectDialog;
-    private SpecialtyChangeDialog specialtyChangeDialog;
+    private JobConditionsFormatter jobConditionsFormatter;
+    private JobConditionsDialog jobConditionsDialog;
+    private SpecialtyListDialog specialtyListDialog;
+    private SpecialtyCooldownDialog specialtyCooldownDialog;
 
     private VaultEconomyAdapter economy;
     private ActionLogWriteQueue actionLogQueue;
@@ -268,8 +272,14 @@ public final class JobsServices {
 
     private void wireDialogs() {
         this.dialogService = new DialogService(asyncExecutor);
-        this.specialtySelectDialog = new SpecialtySelectDialog(i18n, jobRegistry, specialtyService, dialogService);
-        this.specialtyChangeDialog = new SpecialtyChangeDialog(i18n, jobRegistry, specialtyService, dialogService);
+        this.jobConditionsFormatter = new JobConditionsFormatter(i18n);
+        this.jobConditionsDialog = new JobConditionsDialog(
+                i18n, jobRegistry, specialtyService, dialogService,
+                jobConditionsFormatter, config.specialtyMode());
+        this.specialtyListDialog = new SpecialtyListDialog(
+                i18n, jobRegistry, specialtyService, dialogService,
+                jobConditionsDialog, config.specialtyMode());
+        this.specialtyCooldownDialog = new SpecialtyCooldownDialog(i18n, specialtyService, dialogService);
     }
 
     private void wirePipeline() {
@@ -308,7 +318,7 @@ public final class JobsServices {
         pm.registerEvents(
                 new PlayerJoinListener(
                         specialtyService,
-                        specialtySelectDialog,
+                        specialtyListDialog,
                         varietyPenaltyEvaluator,
                         dailyTotalCache,
                         jobRegistry,
@@ -499,12 +509,20 @@ public final class JobsServices {
         return dialogService;
     }
 
-    public SpecialtySelectDialog specialtySelectDialog() {
-        return specialtySelectDialog;
+    public SpecialtyListDialog specialtyListDialog() {
+        return specialtyListDialog;
     }
 
-    public SpecialtyChangeDialog specialtyChangeDialog() {
-        return specialtyChangeDialog;
+    public SpecialtyCooldownDialog specialtyCooldownDialog() {
+        return specialtyCooldownDialog;
+    }
+
+    public JobConditionsDialog jobConditionsDialog() {
+        return jobConditionsDialog;
+    }
+
+    public JobConditionsFormatter jobConditionsFormatter() {
+        return jobConditionsFormatter;
     }
 
     public VaultEconomyAdapter economy() {

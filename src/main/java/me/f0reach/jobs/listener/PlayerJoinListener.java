@@ -6,7 +6,7 @@ import me.f0reach.jobs.modifier.dailycap.DailyTotalCache;
 import me.f0reach.jobs.modifier.variety.VarietyPenaltyEvaluator;
 import me.f0reach.jobs.registry.JobRegistry;
 import me.f0reach.jobs.specialty.SpecialtyService;
-import me.f0reach.jobs.ui.SpecialtySelectDialog;
+import me.f0reach.jobs.ui.SpecialtyListDialog;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -16,15 +16,15 @@ import java.util.UUID;
 
 /**
  * プレイヤーログイン時に SpecialtyService / 内蔵 Modifier のキャッシュを warm し、
- * 未選択なら SpecialtySelectDialog を開く。
+ * 未選択なら SpecialtyListDialog を SELECT モードで開く。
  *
- * spec/07-ui.md 「初回ログイン時の専業選択」および Phase 6 の
+ * spec/07-ui.md 「専業一覧ダイアログ」および Phase 6 の
  * VarietyPenaltyEvaluator / DailyTotalCache warmup を参照。
  */
 public final class PlayerJoinListener implements Listener {
 
     private final SpecialtyService specialtyService;
-    private final SpecialtySelectDialog selectDialog;
+    private final SpecialtyListDialog listDialog;
     private final VarietyPenaltyEvaluator varietyPenaltyEvaluator;
     private final DailyTotalCache dailyTotalCache;
     private final JobRegistry jobRegistry;
@@ -32,14 +32,14 @@ public final class PlayerJoinListener implements Listener {
 
     public PlayerJoinListener(
             SpecialtyService specialtyService,
-            SpecialtySelectDialog selectDialog,
+            SpecialtyListDialog listDialog,
             VarietyPenaltyEvaluator varietyPenaltyEvaluator,
             DailyTotalCache dailyTotalCache,
             JobRegistry jobRegistry,
             boolean showSelectDialogOnJoin
     ) {
         this.specialtyService = specialtyService;
-        this.selectDialog = selectDialog;
+        this.listDialog = listDialog;
         this.varietyPenaltyEvaluator = varietyPenaltyEvaluator;
         this.dailyTotalCache = dailyTotalCache;
         this.jobRegistry = jobRegistry;
@@ -56,7 +56,7 @@ public final class PlayerJoinListener implements Listener {
 
         if (showSelectDialogOnJoin && specialtyService.isFirstTime(uuid)) {
             // 少し遅延させないと Dialog がまだ届かない場合がある。
-            selectDialog.open(player);
+            listDialog.open(player, SpecialtyListDialog.Mode.SELECT);
         }
     }
 

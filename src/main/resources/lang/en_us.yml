@@ -19,11 +19,7 @@ command:
     ok: "<green>Jobs reloaded. <gray>(<jobs> jobs / <rewards> rewards)</gray></green>"
     failed: "<red>Reload failed: <error></red>"
   select:
-    already_selected: "<yellow>You have already selected a specialty. Use /jobs change.</yellow>"
-    opened: "<gray>Opened specialty selection dialog.</gray>"
-  change:
-    opened: "<gray>Opened specialty change dialog.</gray>"
-    no_selection: "<yellow>No specialty selected yet. Use /jobs select.</yellow>"
+    already_selected: "<yellow>You are already on that specialty.</yellow>"
   info:
     unknown_job: "<red>Unknown job: <job>.</red>"
 

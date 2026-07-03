@@ -11,6 +11,8 @@ import me.f0reach.jobs.domain.job.JobId;
 import me.f0reach.jobs.domain.job.VarietyPenaltyConfig;
 import me.f0reach.jobs.modifier.variety.VarietyPenaltyEvaluator;
 import me.f0reach.jobs.ui.DialogTexts;
+import me.f0reach.jobs.ui.JobConditionsDialog;
+import me.f0reach.jobs.ui.SpecialtyListDialog;
 import me.f0reach.jobs.util.MiniMessages;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
@@ -32,9 +34,11 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * 事前チェックの方針。
  * <ul>
- *   <li>/jobs select は選択済み UUID に対して {@link DialogTexts#COMMAND_SELECT_ALREADY} を返してダイアログを開かない。</li>
- *   <li>/jobs change は未選択 UUID に対して {@link DialogTexts#COMMAND_CHANGE_NO_SELECTION} を返してダイアログを開かない。
- *       cooldown 判定と現在職業のプレビューは {@code SpecialtyChangeDialog} 側の分岐に委ねる。</li>
+ *   <li>/jobs select は現在の専業状態で分岐する。未選択なら {@link SpecialtyListDialog} SELECT、
+ *       選択済み & cooldown 中なら {@code SpecialtyCooldownDialog}、選択済み & 変更可なら
+ *       {@link SpecialtyListDialog} CHANGE を開く。</li>
+ *   <li>/jobs info は選択・cooldown 状態に関係なく閲覧を許す。引数なしなら一覧、
+ *       引数ありなら該当ジョブの詳細を READ_ONLY で開く。</li>
  *   <li>/jobs status は未選択 UUID に対して {@link DialogTexts#COMMAND_STATUS_NO_SPECIALTY} を返してダイアログを開かない。</li>
  * </ul>
  */
@@ -45,7 +49,10 @@ public final class JobsCommands {
     public LiteralCommandNode<CommandSourceStack> buildTree() {
         return Commands.literal("jobs")
                 .then(Commands.literal("select").executes(this::executeSelect))
-                .then(Commands.literal("change").executes(this::executeChange))
+                .then(Commands.literal("info")
+                        .executes(this::executeInfo)
+                        .then(Commands.argument("job", com.mojang.brigadier.arguments.StringArgumentType.word())
+                                .executes(this::executeInfoWithJob)))
                 .then(Commands.literal("status").executes(this::executeStatus))
                 .then(Commands.literal("reload").executes(this::executeReload))
                 .build();
@@ -65,25 +72,53 @@ public final class JobsCommands {
         Player player = requirePlayer(ctx, bound);
         if (player == null) return Command.SINGLE_SUCCESS;
 
-        if (bound.specialtyService().currentJob(player.getUniqueId()).isPresent()) {
-            player.sendMessage(bound.i18n().format(player, DialogTexts.COMMAND_SELECT_ALREADY));
+        JobId current = bound.specialtyService().currentJob(player.getUniqueId()).orElse(null);
+        if (current == null) {
+            bound.specialtyListDialog().open(player, SpecialtyListDialog.Mode.SELECT);
             return Command.SINGLE_SUCCESS;
         }
-        bound.specialtySelectDialog().open(player);
+
+        Instant next = bound.specialtyService().nextAvailableAt(player.getUniqueId()).orElse(Instant.EPOCH);
+        if (next.isAfter(Instant.now())) {
+            bound.specialtyCooldownDialog().open(player, current, next);
+        } else {
+            bound.specialtyListDialog().open(player, SpecialtyListDialog.Mode.CHANGE);
+        }
         return Command.SINGLE_SUCCESS;
     }
 
-    private int executeChange(com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx) {
+    private int executeInfo(com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx) {
         JobsServices bound = requireBound(ctx);
         if (bound == null) return Command.SINGLE_SUCCESS;
         Player player = requirePlayer(ctx, bound);
         if (player == null) return Command.SINGLE_SUCCESS;
 
-        if (bound.specialtyService().currentJob(player.getUniqueId()).isEmpty()) {
-            player.sendMessage(bound.i18n().format(player, DialogTexts.COMMAND_CHANGE_NO_SELECTION));
+        bound.specialtyListDialog().open(player, SpecialtyListDialog.Mode.INFO);
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private int executeInfoWithJob(com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx) {
+        JobsServices bound = requireBound(ctx);
+        if (bound == null) return Command.SINGLE_SUCCESS;
+        Player player = requirePlayer(ctx, bound);
+        if (player == null) return Command.SINGLE_SUCCESS;
+
+        String raw = com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "job");
+        JobId target;
+        try {
+            target = new JobId(raw);
+        } catch (IllegalArgumentException e) {
+            player.sendMessage(bound.i18n().format(player, DialogTexts.COMMAND_INFO_UNKNOWN_JOB,
+                    Placeholder.parsed("job", raw)));
             return Command.SINGLE_SUCCESS;
         }
-        bound.specialtyChangeDialog().open(player);
+        if (bound.jobRegistry().get(target).isEmpty()) {
+            player.sendMessage(bound.i18n().format(player, DialogTexts.COMMAND_INFO_UNKNOWN_JOB,
+                    Placeholder.parsed("job", raw)));
+            return Command.SINGLE_SUCCESS;
+        }
+        // 引数指定で開いた場合は「一覧に戻る」は出さず、閉じるボタンだけ。
+        bound.jobConditionsDialog().open(player, target, JobConditionsDialog.Mode.READ_ONLY, null);
         return Command.SINGLE_SUCCESS;
     }
 

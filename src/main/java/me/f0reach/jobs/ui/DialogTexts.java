@@ -12,13 +12,8 @@ public final class DialogTexts {
     public static final String COMMAND_LOADING = "command.loading";
     public static final String COMMAND_PLAYER_ONLY = "command.player_only";
 
-    // /jobs select
+    // /jobs select (現在は同 job 再選択時の防御メッセージだけ使う)
     public static final String COMMAND_SELECT_ALREADY = "command.select.already_selected";
-    public static final String COMMAND_SELECT_OPENED = "command.select.opened";
-
-    // /jobs change
-    public static final String COMMAND_CHANGE_OPENED = "command.change.opened";
-    public static final String COMMAND_CHANGE_NO_SELECTION = "command.change.no_selection";
 
     // /jobs status (Phase 4 minimum)
     public static final String COMMAND_STATUS_NO_SPECIALTY = "command.status.no_specialty";
