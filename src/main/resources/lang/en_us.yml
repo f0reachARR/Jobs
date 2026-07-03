@@ -15,7 +15,6 @@ command:
       disclosed: "<yellow><disclosed></yellow>"
       none: "<gray>Variety penalty:</gray> <green>not active</green>"
   reload:
-    no_permission: "<red>You do not have permission to run this command (jobs.admin).</red>"
     ok: "<green>Jobs reloaded. <gray>(<jobs> jobs / <rewards> rewards)</gray></green>"
     failed: "<red>Reload failed: <error></red>"
   select:

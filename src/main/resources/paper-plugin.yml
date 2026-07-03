@@ -18,3 +18,50 @@ dependencies:
             load: BEFORE
             required: false
 
+permissions:
+    jobs.command.use:
+        description: /jobs コマンドの実行を許可
+        default: true
+    jobs.command.select:
+        description: /jobs select の実行を許可
+        default: true
+    jobs.command.info:
+        description: /jobs info の実行を許可
+        default: true
+    jobs.command.status:
+        description: /jobs status の実行を許可
+        default: true
+
+    jobs.admin:
+        description: Jobs プラグインの管理系コマンドをすべて許可
+        default: op
+        children:
+            jobs.admin.reload: true
+    jobs.admin.reload:
+        description: /jobs reload の実行を許可
+        default: op
+
+    jobs.bypass.specialty:
+        description: 専業外アクションでも報酬を受け取れる
+        default: false
+    jobs.bypass.anti-automation:
+        description: 自動化対策 0 判定を無視する
+        default: false
+    jobs.bypass.daily-cap:
+        description: 日次キャップを無視する
+        default: false
+    jobs.bypass.variety-penalty:
+        description: 単調性ペナルティを無視する
+        default: false
+    jobs.bypass.cooldown:
+        description: 専業変更クールダウンを無視する
+        default: false
+    jobs.bypass.*:
+        description: すべての Jobs バイパス権限を許可
+        default: false
+        children:
+            jobs.bypass.specialty: true
+            jobs.bypass.anti-automation: true
+            jobs.bypass.daily-cap: true
+            jobs.bypass.variety-penalty: true
+            jobs.bypass.cooldown: true

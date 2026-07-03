@@ -48,13 +48,21 @@ public final class JobsCommands {
 
     public LiteralCommandNode<CommandSourceStack> buildTree() {
         return Commands.literal("jobs")
-                .then(Commands.literal("select").executes(this::executeSelect))
+                .requires(s -> s.getSender().hasPermission("jobs.command.use"))
+                .then(Commands.literal("select")
+                        .requires(s -> s.getSender().hasPermission("jobs.command.select"))
+                        .executes(this::executeSelect))
                 .then(Commands.literal("info")
+                        .requires(s -> s.getSender().hasPermission("jobs.command.info"))
                         .executes(this::executeInfo)
                         .then(Commands.argument("job", com.mojang.brigadier.arguments.StringArgumentType.word())
                                 .executes(this::executeInfoWithJob)))
-                .then(Commands.literal("status").executes(this::executeStatus))
-                .then(Commands.literal("reload").executes(this::executeReload))
+                .then(Commands.literal("status")
+                        .requires(s -> s.getSender().hasPermission("jobs.command.status"))
+                        .executes(this::executeStatus))
+                .then(Commands.literal("reload")
+                        .requires(s -> s.getSender().hasPermission("jobs.admin.reload"))
+                        .executes(this::executeReload))
                 .build();
     }
 
@@ -148,10 +156,6 @@ public final class JobsCommands {
         JobsServices bound = requireBound(ctx);
         if (bound == null) return Command.SINGLE_SUCCESS;
         CommandSender sender = ctx.getSource().getSender();
-        if (!sender.hasPermission("jobs.admin")) {
-            sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_RELOAD_NO_PERMISSION));
-            return Command.SINGLE_SUCCESS;
-        }
         try {
             bound.reload();
             int jobs = bound.jobRegistry().all().size();

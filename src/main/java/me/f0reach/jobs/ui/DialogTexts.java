@@ -29,7 +29,7 @@ public final class DialogTexts {
     public static final String COMMAND_STATUS_VARIETY_NONE = "command.status.variety.none";
 
     // /jobs reload (Phase 10)
-    public static final String COMMAND_RELOAD_NO_PERMISSION = "command.reload.no_permission";
+    // 権限チェックは Brigadier .requires で行うため no_permission key は持たない。
     public static final String COMMAND_RELOAD_OK = "command.reload.ok";
     public static final String COMMAND_RELOAD_FAILED = "command.reload.failed";
 

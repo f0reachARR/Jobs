@@ -17,7 +17,6 @@ command:
       disclosed: "<yellow><disclosed></yellow>"
       none: "<gray>単調性ペナルティ:</gray> <green>作動していません</green>"
   reload:
-    no_permission: "<red>このコマンドを実行する権限がありません (jobs.admin)。</red>"
     ok: "<green>Jobs を再読込しました。 <gray>(<jobs> ジョブ / <rewards> 報酬)</gray></green>"
     failed: "<red>再読込に失敗しました: <error></red>"
   select:
