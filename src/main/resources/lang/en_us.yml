@@ -24,6 +24,8 @@ command:
   change:
     opened: "<gray>Opened specialty change dialog.</gray>"
     no_selection: "<yellow>No specialty selected yet. Use /jobs select.</yellow>"
+  info:
+    unknown_job: "<red>Unknown job: <job>.</red>"
 
 dialog:
   select:
@@ -38,6 +40,71 @@ dialog:
     cooldown:
       title: "Cannot change now"
       body: "Current: <current_job>. Next available: <next_available> (<remaining> left)."
+  info:
+    title: "<display_name> conditions"
+    description: "<gray><description></gray>"
+    header:
+      rewards: "<gold>Reward actions</gold>"
+      variety: "<gold>Variety penalty</gold>"
+      anti_automation: "<gold>Anti-automation</gold>"
+    reward:
+      template: "<gray>- </gray><label><gray>:</gray> <target><amount><rare>"
+      label:
+        entity_killed: "Kill"
+        block_broken: "Break"
+        block_placed: "Place"
+        item_fished: "Fish"
+        item_smelted: "Smelt"
+        item_crafted: "Craft"
+        item_enchanted: "Enchant"
+        item_repaired: "Repair"
+        entity_bred: "Breed"
+        entity_tamed: "Tame"
+        entity_sheared: "Shear"
+        item_consumed: "Consume"
+        villager_traded: "Trade"
+        item_brewed: "Brew"
+        advancement: "Advancement"
+      amount:
+        fixed: " <gray>-></gray> <white><value></white>"
+        range: " <gray>-></gray> <white><min>-<max></white>"
+      rare_hint: " <yellow>(rare bonus)</yellow>"
+      truncated: "<gray>...and <count> more</gray>"
+    target:
+      list_separator: " / "
+      tag_suffix: " (tag)"
+      crop_mature: " (mature only)"
+      via_tnt: " (via TNT)"
+      fish_treasure: " (treasure)"
+      fish_treasure_only: "treasure"
+      enchant_with_level: " (<enchant> Lv<level_min>+)"
+      enchant_only: " (<enchant>)"
+      level_only: " (Lv<level_min>+)"
+      repair_anvil: " (anvil)"
+      repair_mending: " (mending)"
+      consume_food: " (food)"
+      consume_drink: " (drink)"
+    variety:
+      none: "None"
+      disclosed: "<yellow><disclosed></yellow>"
+      active_no_message: "Enabled"
+    anti_automation:
+      none: "None"
+      spawner_origin_kill: "Spawner-originated kills pay 0"
+      unplanted_crop_harvest: "Unplanted crop harvests pay 0"
+      recently_placed_break: "Recently placed blocks pay 0 (within <window_sec>s)"
+      auto_fed_processing: "Hopper/dispenser auto-fed items pay 0"
+      villager_repeat_trade: "Same villager x recipe within cooldown pays 0 (<cooldown_sec>s)"
+      breed_non_player_breeder: "Non-player breeding pays 0"
+    list:
+      title: "Jobs"
+      body: "Pick a job to see its conditions."
+      button: "<display_name>"
+    button:
+      select: "Select this job"
+      change: "Change to this job"
+      back: "Back to list"
+      close: "Close"
 
 notify:
   selected: "<green>Specialty set to <job>.</green>"

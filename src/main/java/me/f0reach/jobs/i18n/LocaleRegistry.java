@@ -34,6 +34,20 @@ public final class LocaleRegistry {
         this.plugin = plugin;
     }
 
+    /** テスト用に、事前構築済みの locale→key→value マップから直接組み立てる。 */
+    public static LocaleRegistry forTesting(Map<String, Map<String, String>> preloaded) {
+        LocaleRegistry r = new LocaleRegistry((Plugin) null);
+        for (var entry : preloaded.entrySet()) {
+            r.locales.put(entry.getKey(), new LinkedHashMap<>(entry.getValue()));
+        }
+        if (!r.locales.containsKey(DEFAULT_LOCALE)) {
+            throw new IllegalStateException(
+                    "Required locale '" + DEFAULT_LOCALE + "' is missing"
+            );
+        }
+        return r;
+    }
+
     public void load() {
         locales.clear();
         // まず jar 同梱のロケールを読む。

@@ -26,6 +26,8 @@ command:
   change:
     opened: "<gray>専業変更ダイアログを開きました。</gray>"
     no_selection: "<yellow>まだ専業が未選択です。/jobs select から選んでください。</yellow>"
+  info:
+    unknown_job: "<red>ジョブ '<job>' は存在しません。</red>"
 
 dialog:
   select:
@@ -40,6 +42,71 @@ dialog:
     cooldown:
       title: "専業変更は不可"
       body: "現在の専業: <current_job>。次回変更可能: <next_available>（あと <remaining>）。"
+  info:
+    title: "<display_name> の条件"
+    description: "<gray><description></gray>"
+    header:
+      rewards: "<gold>報酬対象アクション</gold>"
+      variety: "<gold>単調性ペナルティ</gold>"
+      anti_automation: "<gold>自動化対策</gold>"
+    reward:
+      template: "<gray>- </gray><label><gray>:</gray> <target><amount><rare>"
+      label:
+        entity_killed: "討伐"
+        block_broken: "採掘・伐採"
+        block_placed: "設置"
+        item_fished: "釣り"
+        item_smelted: "精錬"
+        item_crafted: "クラフト"
+        item_enchanted: "付呪"
+        item_repaired: "修理"
+        entity_bred: "繁殖"
+        entity_tamed: "手懐け"
+        entity_sheared: "毛刈り"
+        item_consumed: "消費"
+        villager_traded: "取引"
+        item_brewed: "醸造"
+        advancement: "達成"
+      amount:
+        fixed: " <gray>→</gray> <white><value></white>"
+        range: " <gray>→</gray> <white><min>〜<max></white>"
+      rare_hint: " <yellow>(レア報酬あり)</yellow>"
+      truncated: "<gray>…ほか <count> 件</gray>"
+    target:
+      list_separator: " / "
+      tag_suffix: " (タグ)"
+      crop_mature: " (完熟のみ)"
+      via_tnt: " (TNT 由来)"
+      fish_treasure: " (宝箱ループ)"
+      fish_treasure_only: "宝箱ループ"
+      enchant_with_level: " (<enchant> Lv<level_min>+)"
+      enchant_only: " (<enchant>)"
+      level_only: " (Lv<level_min>+)"
+      repair_anvil: " (金床)"
+      repair_mending: " (mending)"
+      consume_food: " (food)"
+      consume_drink: " (drink)"
+    variety:
+      none: "なし"
+      disclosed: "<yellow><disclosed></yellow>"
+      active_no_message: "有効"
+    anti_automation:
+      none: "なし"
+      spawner_origin_kill: "スポナー由来の敵の討伐は報酬 0"
+      unplanted_crop_harvest: "自分で植えていない作物の収穫は報酬 0"
+      recently_placed_break: "直近に設置した block の破壊は報酬 0 (<window_sec> 秒以内)"
+      auto_fed_processing: "hopper / dispenser 経由の自動投入は報酬 0"
+      villager_repeat_trade: "同 villager × 同 recipe の連続取引は cooldown 中 0 (<cooldown_sec> 秒)"
+      breed_non_player_breeder: "プレイヤー以外による交配は報酬 0"
+    list:
+      title: "職業一覧"
+      body: "詳細を見たい職業を選んでください。"
+      button: "<display_name>"
+    button:
+      select: "この職業を選ぶ"
+      change: "この職業に変更する"
+      back: "一覧に戻る"
+      close: "閉じる"
 
 notify:
   selected: "<green>専業を <job> に決定しました。</green>"
