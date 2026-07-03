@@ -177,6 +177,29 @@ Dialog 動線を「詳細を見てから決める」に付け替える。
 - `/jobs info` 引数なしで一覧、`/jobs info combat` で単職の詳細。選択・cooldown 状態に依らない。
 - `disclose_reward_amount: false` で額が伏せられる。
 
+## Phase 12: パーミッション整備
+
+`paper-plugin.yml` にパーミッションノードを宣言し、Brigadier `.requires(...)` とパイプラインバイパスに反映する（[spec/08-permissions.md](../spec/08-permissions.md)）。
+
+- **Phase 12-A：コマンド権限**
+  - `paper-plugin.yml` に `permissions:` 節を追加（コマンド系 4 + 管理系 2 + バイパス系 6）
+  - `JobsCommands` の Brigadier ツリーに `.requires(...)` を張る
+  - 既存の `/jobs reload` の `hasPermission("jobs.admin")` を `jobs.admin.reload` に置換（`jobs.admin` は親経由で継続許可）
+  - `command.reload.no_permission` を `command.no_permission` に汎用化して他コマンドでも再利用可能に
+
+- **Phase 12-B：バイパス系**
+  - `SpecialtyStage` に `jobs.bypass.specialty`
+  - `AntiAutomationStage` に `jobs.bypass.anti-automation`
+  - `BuiltinModifierStage` の variety_penalty / daily_cap 分岐に `jobs.bypass.variety-penalty` / `jobs.bypass.daily-cap`
+  - `SpecialtyService#change` に `jobs.bypass.cooldown`
+  - 各バイパス経路について unit test を追加
+
+**動作確認**：
+- 権限なしプレイヤーのタブ補完から `/jobs` が消える。
+- `jobs.command.status` 付与済みのプレイヤーは `/jobs status` のみ実行可。
+- `jobs.bypass.specialty` を付けたプレイヤーが、専業外アクションで報酬を受け取れる（行動ログにも記録される）。
+- `jobs.bypass.cooldown` を付けたプレイヤーが、cooldown を無視して `/jobs select` から変更確定できる。
+
 ## テストのフェーズ配分
 
 - Phase 2, 6, 7 は特に unit test を厚めに書く（parser、curve lookup、KVS 判定）。

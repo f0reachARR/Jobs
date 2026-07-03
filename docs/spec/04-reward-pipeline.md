@@ -49,6 +49,8 @@ Track A と Track B はマッチ確定後に合流し、以降は共通の流れ
 
 未専業のプレイヤーは、すべてのアクションがこの段階で落ちる。
 
+プレイヤーが `jobs.bypass.specialty` を持つ場合、この段階を通過させて以降を実行する（[08-permissions.md](./08-permissions.md)）。専業未選択のプレイヤーは対象外（判定材料が無い）。
+
 ### 3. 自動化対策
 
 `anti_automation` で有効化されているフラグに応じて、無効化条件を確認する（[ADR-0011](./adr/0011-builtin-anti-automation.md)）。
@@ -71,6 +73,8 @@ Track A と Track B はマッチ確定後に合流し、以降は共通の流れ
 プレイヤーへ ActionBar で `notify.anti_automation.<reason>` の lang メッセージを送る。
 ActionBar 送信は main thread から `Player#sendActionBar` を直接叩く。
 通知の有効化は config.yml のグローバルフラグのみ（per-job override は無い）。
+
+プレイヤーが `jobs.bypass.anti-automation` を持つ場合、この段階を丸ごとスキップし、6 種のいずれの判定も走らせない（[08-permissions.md](./08-permissions.md)）。
 
 ### 4. 基礎報酬
 
@@ -107,12 +111,16 @@ ring buffer が `window` 件に満たない間は penalty を発動しない（`
 
 `hide_numbers: true` のとき、`disclosed_message` 以外の数値情報を Dialog UI に出さない。
 
+プレイヤーが `jobs.bypass.variety-penalty` を持つ場合、倍率 1.0 固定で通過させる（[08-permissions.md](./08-permissions.md)）。ring buffer の記録は継続する（バイパスを外したときに履歴が消えないよう）。
+
 #### daily_cap
 
 その日の累計報酬を取得し、`amount` との差分を確認する。
 報酬を支払うと差分を超える場合、超過分だけ報酬を削る。
 日次累計が既に上限に達している場合は報酬 0。
 `scope: total` は全ジョブ合算、`scope: per_job` は職業別。
+
+プレイヤーが `jobs.bypass.daily-cap` を持つ場合、この判定をスキップして報酬を素通しする（[08-permissions.md](./08-permissions.md)）。
 
 ### 7. 拡張 Modifier chain
 
