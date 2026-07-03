@@ -192,8 +192,8 @@ public final class JobsCommands {
         };
         player.sendMessage(bound.i18n().format(
                 player, DialogTexts.COMMAND_STATUS_DAILY_TOTAL,
-                Placeholder.parsed("total", formatAmount(total)),
-                Placeholder.parsed("cap", formatAmount(cfg.amount()))
+                Placeholder.parsed("total", bound.amountFormatter().format(total)),
+                Placeholder.parsed("cap", bound.amountFormatter().format(cfg.amount()))
         ));
 
         int percent = Math.min(100, (int) Math.round(total * 100.0 / cfg.amount()));
@@ -263,13 +263,6 @@ public final class JobsCommands {
             }
         }
         return mult;
-    }
-
-    private static String formatAmount(double amount) {
-        if (amount == Math.floor(amount) && !Double.isInfinite(amount)) {
-            return Long.toString((long) amount);
-        }
-        return String.format(Locale.ROOT, "%.2f", amount);
     }
 
     private JobsServices requireBound(com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx) {

@@ -12,6 +12,7 @@ import me.f0reach.jobs.domain.job.RewardAmount;
 import me.f0reach.jobs.domain.job.RewardEntry;
 import me.f0reach.jobs.domain.job.VarietyPenaltyConfig;
 import me.f0reach.jobs.domain.matcher.KeyMatcher;
+import me.f0reach.jobs.economy.AmountFormatter;
 import me.f0reach.jobs.i18n.I18n;
 import me.f0reach.jobs.i18n.LocaleRegistry;
 import me.f0reach.jobs.registry.ActionKeyDeriver;
@@ -87,7 +88,17 @@ class JobConditionsFormatterTest {
         keys.put("dialog.info.anti_automation.breed_non_player_breeder", "非 Player 交配 0");
 
         LocaleRegistry reg = LocaleRegistry.forTesting(Map.of(LOCALE, keys));
-        return new JobConditionsFormatter(new I18n(reg));
+        return new JobConditionsFormatter(new I18n(reg), fakeAmountFormatter());
+    }
+
+    /** テストでは Vault provider を持たないため、整数は "N coins"、小数は "N.NN coins"。 */
+    private AmountFormatter fakeAmountFormatter() {
+        return amount -> {
+            if (amount == Math.floor(amount) && !Double.isInfinite(amount)) {
+                return ((long) amount) + " coins";
+            }
+            return String.format(java.util.Locale.ROOT, "%.2f coins", amount);
+        };
     }
 
     private String plain(Component c) {
@@ -119,8 +130,8 @@ class JobConditionsFormatterTest {
 
         String body = plain(formatter().build(LOCALE, job, true));
         assertTrue(body.contains("戦って稼ぐ"));
-        assertTrue(body.contains("討伐: minecraft:zombie → 5"));
-        assertTrue(body.contains("採掘: minecraft:diamond_ore → 10〜20"));
+        assertTrue(body.contains("討伐: minecraft:zombie → 5 coins"));
+        assertTrue(body.contains("採掘: minecraft:diamond_ore → 10 coins〜20 coins"));
         assertTrue(body.contains("飽きた"));
         assertTrue(body.contains("スポナー討伐 0"));
     }
@@ -137,7 +148,8 @@ class JobConditionsFormatterTest {
 
         String body = plain(formatter().build(LOCALE, job, false));
         assertTrue(body.contains("討伐: minecraft:zombie"));
-        assertFalse(body.contains("→ 5"), () -> "should not contain amount arrow; got:\n" + body);
+        assertFalse(body.contains("→"), () -> "should not contain amount arrow; got:\n" + body);
+        assertFalse(body.contains("coins"), () -> "should not contain amount unit; got:\n" + body);
     }
 
     @Test

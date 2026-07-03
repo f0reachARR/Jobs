@@ -10,6 +10,7 @@ import me.f0reach.jobs.domain.job.RewardAmount;
 import me.f0reach.jobs.domain.job.RewardEntry;
 import me.f0reach.jobs.domain.job.VarietyPenaltyConfig;
 import me.f0reach.jobs.domain.matcher.KeyMatcher;
+import me.f0reach.jobs.economy.AmountFormatter;
 import me.f0reach.jobs.i18n.I18n;
 import me.f0reach.jobs.i18n.LocaleRegistry;
 import net.kyori.adventure.text.Component;
@@ -36,9 +37,11 @@ public final class JobConditionsFormatter {
     static final int MAX_REWARD_LINES = 30;
 
     private final I18n i18n;
+    private final AmountFormatter amountFormatter;
 
-    public JobConditionsFormatter(I18n i18n) {
+    public JobConditionsFormatter(I18n i18n, AmountFormatter amountFormatter) {
         this.i18n = i18n;
+        this.amountFormatter = amountFormatter;
     }
 
     public Component build(Player viewer, JobDefinition job, boolean discloseRewardAmount) {
@@ -100,18 +103,11 @@ public final class JobConditionsFormatter {
     private Component formatAmount(String locale, RewardAmount amount) {
         return switch (amount) {
             case RewardAmount.Fixed f -> i18n.format(locale, DialogTexts.DIALOG_INFO_REWARD_AMOUNT_FIXED,
-                    Placeholder.parsed("value", formatNumber(f.value())));
+                    Placeholder.parsed("value", amountFormatter.format(f.value())));
             case RewardAmount.Range r -> i18n.format(locale, DialogTexts.DIALOG_INFO_REWARD_AMOUNT_RANGE,
-                    Placeholder.parsed("min", formatNumber(r.min())),
-                    Placeholder.parsed("max", formatNumber(r.max())));
+                    Placeholder.parsed("min", amountFormatter.format(r.min())),
+                    Placeholder.parsed("max", amountFormatter.format(r.max())));
         };
-    }
-
-    private static String formatNumber(double v) {
-        if (v == Math.floor(v) && !Double.isInfinite(v)) {
-            return Long.toString((long) v);
-        }
-        return String.format(Locale.ROOT, "%.2f", v);
     }
 
     private Component formatCriteria(String locale, MatchCriteria criteria) {

@@ -37,6 +37,8 @@ import me.f0reach.jobs.detection.native_.TameListener;
 import me.f0reach.jobs.detection.native_.VillagerTradeListener;
 import me.f0reach.jobs.detection.tnt.TntPrimerTracker;
 import me.f0reach.jobs.domain.job.JobDefinition;
+import me.f0reach.jobs.economy.AmountFormatter;
+import me.f0reach.jobs.economy.VaultAmountFormatter;
 import me.f0reach.jobs.economy.VaultEconomyAdapter;
 import me.f0reach.jobs.i18n.I18n;
 import me.f0reach.jobs.i18n.LocaleRegistry;
@@ -137,6 +139,7 @@ public final class JobsServices {
     private SpecialtyCooldownDialog specialtyCooldownDialog;
 
     private VaultEconomyAdapter economy;
+    private AmountFormatter amountFormatter;
     private ActionLogWriteQueue actionLogQueue;
     private BatchFlushWorker batchFlushWorker;
     private RewardMatcher rewardMatcher;
@@ -263,6 +266,7 @@ public final class JobsServices {
 
     private void wireEconomy() {
         this.economy = VaultEconomyAdapter.setup();
+        this.amountFormatter = new VaultAmountFormatter(economy);
     }
 
     private void wireSpecialty() {
@@ -272,7 +276,7 @@ public final class JobsServices {
 
     private void wireDialogs() {
         this.dialogService = new DialogService(asyncExecutor);
-        this.jobConditionsFormatter = new JobConditionsFormatter(i18n);
+        this.jobConditionsFormatter = new JobConditionsFormatter(i18n, amountFormatter);
         this.jobConditionsDialog = new JobConditionsDialog(
                 i18n, jobRegistry, specialtyService, dialogService,
                 jobConditionsFormatter, config.specialtyMode());
@@ -527,6 +531,10 @@ public final class JobsServices {
 
     public VaultEconomyAdapter economy() {
         return economy;
+    }
+
+    public AmountFormatter amountFormatter() {
+        return amountFormatter;
     }
 
     public ActionLogWriteQueue actionLogQueue() {

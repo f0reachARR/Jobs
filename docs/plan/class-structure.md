@@ -276,6 +276,8 @@ Splitter の例外はキャッチしてログに記録し、次に進む。
 起動時に Vault が有効か確認し、ない場合は起動失敗にする（`paper-plugin.yml` で `required: true`）。
 `transfer(from, to, amount, reason, tag)` の抽象を提供し、`JobRewardSplitter` の Transfer にも同じ interface を提供する。
 
+**AmountFormatter / VaultAmountFormatter**：報酬額の表示文字列を組み立てる interface。本番実装は Vault の `Economy#format(double)` に委譲し、通貨単位・小数桁は Economy provider 側に集約する。`JobConditionsFormatter` と `/jobs status` の daily 表示から呼ばれる。テストは fake 実装を差し込める。
+
 ### specialty
 
 **SpecialtyService**：現在の専業取得、初回選択、変更を扱う。
