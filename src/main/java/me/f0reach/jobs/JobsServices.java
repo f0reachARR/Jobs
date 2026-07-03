@@ -55,12 +55,14 @@ import me.f0reach.jobs.modifier.variety.VarietyPenaltyEvaluator;
 import me.f0reach.jobs.persistence.ActionLogQueryServiceImpl;
 import me.f0reach.jobs.persistence.ActionLogRepository;
 import me.f0reach.jobs.persistence.DailyRewardTotalRepository;
+import me.f0reach.jobs.persistence.PlayerJobHistoryRepository;
 import me.f0reach.jobs.persistence.PlayerJobRepository;
 import me.f0reach.jobs.persistence.async.ActionLogWriteQueue;
 import me.f0reach.jobs.persistence.async.BatchFlushWorker;
 import me.f0reach.jobs.persistence.mysql.MySqlActionLogRepository;
 import me.f0reach.jobs.persistence.mysql.MySqlDailyRewardTotalRepository;
 import me.f0reach.jobs.persistence.mysql.MySqlDataSource;
+import me.f0reach.jobs.persistence.mysql.MySqlPlayerJobHistoryRepository;
 import me.f0reach.jobs.persistence.mysql.MySqlPlayerJobRepository;
 import me.f0reach.jobs.persistence.mysql.SchemaInitializer;
 import me.f0reach.jobs.pipeline.RewardPipeline;
@@ -128,6 +130,7 @@ public final class JobsServices {
     private JobsKVStore kvStore;
     private MySqlDataSource dataSource;
     private PlayerJobRepository playerJobRepository;
+    private PlayerJobHistoryRepository playerJobHistoryRepository;
     private ActionLogRepository actionLogRepository;
     private DailyRewardTotalRepository dailyRewardTotalRepository;
 
@@ -255,6 +258,7 @@ public final class JobsServices {
             throw new RuntimeException("Failed to initialize MySQL persistence", e);
         }
         this.playerJobRepository = new MySqlPlayerJobRepository(dataSource.dataSource());
+        this.playerJobHistoryRepository = new MySqlPlayerJobHistoryRepository(dataSource.dataSource());
         this.actionLogRepository = new MySqlActionLogRepository(dataSource.dataSource());
         this.dailyRewardTotalRepository = new MySqlDailyRewardTotalRepository(dataSource.dataSource());
     }
@@ -271,7 +275,8 @@ public final class JobsServices {
 
     private void wireSpecialty() {
         CooldownPolicy policy = new CooldownPolicy(config.specialtyMode().changePolicy());
-        this.specialtyService = new SpecialtyService(plugin, playerJobRepository, jobRegistry, policy);
+        this.specialtyService = new SpecialtyService(
+                plugin, playerJobRepository, playerJobHistoryRepository, jobRegistry, policy);
     }
 
     private void wireDialogs() {
@@ -495,6 +500,10 @@ public final class JobsServices {
 
     public PlayerJobRepository playerJobRepository() {
         return playerJobRepository;
+    }
+
+    public PlayerJobHistoryRepository playerJobHistoryRepository() {
+        return playerJobHistoryRepository;
     }
 
     public ActionLogRepository actionLogRepository() {

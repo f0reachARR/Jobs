@@ -15,7 +15,10 @@ import me.f0reach.jobs.domain.job.RewardAmount;
 import me.f0reach.jobs.domain.job.RewardEntry;
 import me.f0reach.jobs.domain.job.VarietyPenaltyConfig;
 import me.f0reach.jobs.domain.matcher.KeyMatcher;
+import me.f0reach.jobs.persistence.PlayerJobHistoryRepository;
 import me.f0reach.jobs.persistence.PlayerJobRepository;
+import me.f0reach.jobs.persistence.dto.Actor;
+import me.f0reach.jobs.persistence.dto.PlayerJobHistoryRow;
 import me.f0reach.jobs.persistence.dto.PlayerJobRow;
 import me.f0reach.jobs.pipeline.stage.SpecialtyStage;
 import me.f0reach.jobs.registry.JobRegistry;
@@ -35,7 +38,10 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -81,7 +87,8 @@ class SpecialtyStageTest {
                 List.of(new PluginConfig.ChangePolicy(
                         true, PluginConfig.WithinCondition.none(), Duration.ofDays(5))),
                 ZoneOffset.UTC);
-        return new SpecialtyService(plugin, new InMemoryRepo(), registry, policy, Clock.systemUTC());
+        return new SpecialtyService(
+                plugin, new InMemoryRepo(), new InMemoryHistory(), registry, policy, Clock.systemUTC());
     }
 
     @Test
@@ -150,28 +157,53 @@ class SpecialtyStageTest {
     }
 
     private static final class InMemoryRepo implements PlayerJobRepository {
-        record Entry(UUID player, String jobId, Instant selectedAt) {}
-        final List<Entry> rows = new ArrayList<>();
+        final Map<UUID, PlayerJobRow> rows = new HashMap<>();
 
         @Override
-        public Optional<PlayerJobRow> findCurrent(UUID player) {
-            Entry latest = null;
-            for (Entry e : rows) {
-                if (!e.player().equals(player)) continue;
-                if (latest == null || e.selectedAt().isAfter(latest.selectedAt())) latest = e;
+        public Optional<PlayerJobRow> find(UUID player) {
+            return Optional.ofNullable(rows.get(player));
+        }
+
+        @Override
+        public void upsert(UUID player, String jobId, Instant cooldownBaseAt) {
+            rows.put(player, new PlayerJobRow(player, jobId, cooldownBaseAt));
+        }
+
+        @Override
+        public void resetCooldownBase(UUID player) {
+            PlayerJobRow existing = rows.get(player);
+            if (existing != null) {
+                rows.put(player, new PlayerJobRow(player, existing.jobId(), Instant.EPOCH));
             }
-            return latest == null ? Optional.empty()
-                    : Optional.of(new PlayerJobRow(latest.player(), latest.jobId(), latest.selectedAt()));
         }
 
         @Override
-        public void insertSelection(UUID player, String jobId, Instant selectedAt) {
-            rows.add(new Entry(player, jobId, selectedAt));
+        public void delete(UUID player) {
+            rows.remove(player);
+        }
+    }
+
+    private static final class InMemoryHistory implements PlayerJobHistoryRepository {
+        final List<PlayerJobHistoryRow> rows = new ArrayList<>();
+        long nextId = 1;
+
+        @Override
+        public void append(UUID player, String jobId, String previousJobId,
+                           Instant changedAt, Actor actor, UUID actorUuid) {
+            rows.add(new PlayerJobHistoryRow(nextId++, player, jobId, previousJobId, changedAt, actor, actorUuid));
         }
 
         @Override
-        public Optional<Instant> lastChangedAt(UUID player) {
-            return findCurrent(player).map(PlayerJobRow::selectedAt);
+        public List<PlayerJobHistoryRow> recent(UUID player, int limit) {
+            return rows.stream().filter(r -> r.playerUuid().equals(player))
+                    .sorted(Comparator.comparing(PlayerJobHistoryRow::changedAt).reversed())
+                    .limit(limit).toList();
+        }
+
+        @Override
+        public Optional<Instant> firstSelectedAt(UUID player) {
+            return rows.stream().filter(r -> r.playerUuid().equals(player))
+                    .map(PlayerJobHistoryRow::changedAt).min(Comparator.naturalOrder());
         }
     }
 }

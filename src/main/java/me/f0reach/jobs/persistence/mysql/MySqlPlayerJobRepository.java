@@ -20,25 +20,26 @@ import java.util.UUID;
  */
 public final class MySqlPlayerJobRepository implements PlayerJobRepository {
 
-    private static final String SQL_FIND_CURRENT = """
-            SELECT job_id, selected_at
+    private static final String SQL_FIND = """
+            SELECT job_id, cooldown_base_at
             FROM player_job
             WHERE player_uuid = ?
-            ORDER BY selected_at DESC
-            LIMIT 1
             """;
 
-    private static final String SQL_INSERT = """
-            INSERT INTO player_job (player_uuid, job_id, selected_at)
+    private static final String SQL_UPSERT = """
+            INSERT INTO player_job (player_uuid, job_id, cooldown_base_at)
             VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+              job_id = VALUES(job_id),
+              cooldown_base_at = VALUES(cooldown_base_at)
             """;
 
-    private static final String SQL_LAST_CHANGED = """
-            SELECT selected_at
-            FROM player_job
-            WHERE player_uuid = ?
-            ORDER BY selected_at DESC
-            LIMIT 1
+    private static final String SQL_RESET_COOLDOWN = """
+            UPDATE player_job SET cooldown_base_at = ? WHERE player_uuid = ?
+            """;
+
+    private static final String SQL_DELETE = """
+            DELETE FROM player_job WHERE player_uuid = ?
             """;
 
     private final DataSource dataSource;
@@ -48,45 +49,54 @@ public final class MySqlPlayerJobRepository implements PlayerJobRepository {
     }
 
     @Override
-    public Optional<PlayerJobRow> findCurrent(UUID player) {
+    public Optional<PlayerJobRow> find(UUID player) {
         try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(SQL_FIND_CURRENT)) {
+             PreparedStatement ps = conn.prepareStatement(SQL_FIND)) {
             ps.setBytes(1, UuidBytes.toBytes(player));
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) return Optional.empty();
                 String jobId = rs.getString(1);
-                Instant selectedAt = rs.getTimestamp(2).toInstant();
-                return Optional.of(new PlayerJobRow(player, jobId, selectedAt));
+                Instant cooldownBaseAt = rs.getTimestamp(2).toInstant();
+                return Optional.of(new PlayerJobRow(player, jobId, cooldownBaseAt));
             }
         } catch (SQLException e) {
-            throw new RuntimeException("findCurrent failed for " + player, e);
+            throw new RuntimeException("find failed for " + player, e);
         }
     }
 
     @Override
-    public void insertSelection(UUID player, String jobId, Instant selectedAt) {
+    public void upsert(UUID player, String jobId, Instant cooldownBaseAt) {
         try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(SQL_INSERT)) {
+             PreparedStatement ps = conn.prepareStatement(SQL_UPSERT)) {
             ps.setBytes(1, UuidBytes.toBytes(player));
             ps.setString(2, jobId);
-            ps.setTimestamp(3, Timestamp.from(selectedAt));
+            ps.setTimestamp(3, Timestamp.from(cooldownBaseAt));
             ps.executeUpdate();
         } catch (SQLException e) {
-            throw new RuntimeException("insertSelection failed for " + player, e);
+            throw new RuntimeException("upsert failed for " + player, e);
         }
     }
 
     @Override
-    public Optional<Instant> lastChangedAt(UUID player) {
+    public void resetCooldownBase(UUID player) {
         try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(SQL_LAST_CHANGED)) {
-            ps.setBytes(1, UuidBytes.toBytes(player));
-            try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) return Optional.empty();
-                return Optional.of(rs.getTimestamp(1).toInstant());
-            }
+             PreparedStatement ps = conn.prepareStatement(SQL_RESET_COOLDOWN)) {
+            ps.setTimestamp(1, Timestamp.from(Instant.EPOCH));
+            ps.setBytes(2, UuidBytes.toBytes(player));
+            ps.executeUpdate();
         } catch (SQLException e) {
-            throw new RuntimeException("lastChangedAt failed for " + player, e);
+            throw new RuntimeException("resetCooldownBase failed for " + player, e);
+        }
+    }
+
+    @Override
+    public void delete(UUID player) {
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(SQL_DELETE)) {
+            ps.setBytes(1, UuidBytes.toBytes(player));
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("delete failed for " + player, e);
         }
     }
 }

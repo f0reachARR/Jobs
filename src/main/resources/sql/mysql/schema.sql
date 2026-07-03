@@ -3,11 +3,20 @@
 -- SchemaInitializer が起動時に本ファイルを読み実行する。
 
 CREATE TABLE IF NOT EXISTS player_job (
-  player_uuid     BINARY(16) NOT NULL,
-  job_id          VARCHAR(32) NOT NULL,
-  selected_at     DATETIME(3) NOT NULL,
-  PRIMARY KEY (player_uuid, selected_at),
-  INDEX idx_current (player_uuid, selected_at DESC)
+  player_uuid       BINARY(16) NOT NULL PRIMARY KEY,
+  job_id            VARCHAR(32) NOT NULL,
+  cooldown_base_at  DATETIME(3) NOT NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS player_job_history (
+  id                BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  player_uuid       BINARY(16) NOT NULL,
+  job_id            VARCHAR(32) NOT NULL,
+  previous_job_id   VARCHAR(32) NULL,
+  changed_at        DATETIME(3) NOT NULL,
+  actor             ENUM('player','admin','system') NOT NULL DEFAULT 'player',
+  actor_uuid        BINARY(16) NULL,
+  INDEX idx_player_time (player_uuid, changed_at DESC)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS action_log (

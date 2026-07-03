@@ -5,7 +5,10 @@ import me.f0reach.jobs.domain.job.AntiAutomationConfig;
 import me.f0reach.jobs.domain.job.JobDefinition;
 import me.f0reach.jobs.domain.job.JobId;
 import me.f0reach.jobs.domain.job.VarietyPenaltyConfig;
+import me.f0reach.jobs.persistence.PlayerJobHistoryRepository;
 import me.f0reach.jobs.persistence.PlayerJobRepository;
+import me.f0reach.jobs.persistence.dto.Actor;
+import me.f0reach.jobs.persistence.dto.PlayerJobHistoryRow;
 import me.f0reach.jobs.persistence.dto.PlayerJobRow;
 import me.f0reach.jobs.registry.JobRegistry;
 import org.bukkit.NamespacedKey;
@@ -16,19 +19,22 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
-import org.mockbukkit.mockbukkit.plugin.PluginMock;
 
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SpecialtyServiceTest {
@@ -59,33 +65,72 @@ class SpecialtyServiceTest {
         );
     }
 
-    private static final class InMemoryPlayerJobRepository implements PlayerJobRepository {
-        record Entry(UUID player, String jobId, Instant selectedAt) {}
-        final List<Entry> rows = new ArrayList<>();
+    /** 1 player 1 row + cooldown_base_at の in-memory 実装。 */
+    static final class InMemoryPlayerJobRepository implements PlayerJobRepository {
+        final Map<UUID, PlayerJobRow> rows = new HashMap<>();
 
         @Override
-        public Optional<PlayerJobRow> findCurrent(UUID player) {
-            Entry latest = null;
-            for (Entry e : rows) {
-                if (!e.player().equals(player)) continue;
-                if (latest == null || e.selectedAt().isAfter(latest.selectedAt())) latest = e;
+        public Optional<PlayerJobRow> find(UUID player) {
+            return Optional.ofNullable(rows.get(player));
+        }
+
+        @Override
+        public void upsert(UUID player, String jobId, Instant cooldownBaseAt) {
+            rows.put(player, new PlayerJobRow(player, jobId, cooldownBaseAt));
+        }
+
+        @Override
+        public void resetCooldownBase(UUID player) {
+            PlayerJobRow existing = rows.get(player);
+            if (existing != null) {
+                rows.put(player, new PlayerJobRow(player, existing.jobId(), Instant.EPOCH));
             }
-            return latest == null ? Optional.empty()
-                    : Optional.of(new PlayerJobRow(latest.player(), latest.jobId(), latest.selectedAt()));
         }
 
         @Override
-        public void insertSelection(UUID player, String jobId, Instant selectedAt) {
-            rows.add(new Entry(player, jobId, selectedAt));
-        }
-
-        @Override
-        public Optional<Instant> lastChangedAt(UUID player) {
-            return findCurrent(player).map(PlayerJobRow::selectedAt);
+        public void delete(UUID player) {
+            rows.remove(player);
         }
     }
 
-    private SpecialtyService buildService(PlayerJobRepository repo, JobRegistry reg, Clock clock, Duration cooldown) {
+    /** append-only 履歴の in-memory 実装。 */
+    static final class InMemoryPlayerJobHistoryRepository implements PlayerJobHistoryRepository {
+        final List<PlayerJobHistoryRow> rows = new ArrayList<>();
+        long nextId = 1;
+
+        @Override
+        public void append(UUID player, String jobId, String previousJobId,
+                           Instant changedAt, Actor actor, UUID actorUuid) {
+            rows.add(new PlayerJobHistoryRow(
+                    nextId++, player, jobId, previousJobId, changedAt, actor, actorUuid
+            ));
+        }
+
+        @Override
+        public List<PlayerJobHistoryRow> recent(UUID player, int limit) {
+            return rows.stream()
+                    .filter(r -> r.playerUuid().equals(player))
+                    .sorted(Comparator.comparing(PlayerJobHistoryRow::changedAt).reversed())
+                    .limit(limit)
+                    .toList();
+        }
+
+        @Override
+        public Optional<Instant> firstSelectedAt(UUID player) {
+            return rows.stream()
+                    .filter(r -> r.playerUuid().equals(player))
+                    .map(PlayerJobHistoryRow::changedAt)
+                    .min(Comparator.naturalOrder());
+        }
+    }
+
+    private SpecialtyService buildService(
+            PlayerJobRepository repo,
+            PlayerJobHistoryRepository history,
+            JobRegistry reg,
+            Clock clock,
+            Duration cooldown
+    ) {
         CooldownPolicy policy = new CooldownPolicy(
                 List.of(new me.f0reach.jobs.config.PluginConfig.ChangePolicy(
                         true,
@@ -94,7 +139,7 @@ class SpecialtyServiceTest {
                 )),
                 ZoneOffset.UTC
         );
-        return new SpecialtyService(plugin, repo, reg, policy, clock);
+        return new SpecialtyService(plugin, repo, history, reg, policy, clock);
     }
 
     @Test
@@ -102,7 +147,8 @@ class SpecialtyServiceTest {
         JobRegistry registry = new JobRegistry();
         registry.loadAll(List.of(job("combat")));
         InMemoryPlayerJobRepository repo = new InMemoryPlayerJobRepository();
-        SpecialtyService service = buildService(repo, registry, Clock.systemUTC(), Duration.ofDays(5));
+        InMemoryPlayerJobHistoryRepository history = new InMemoryPlayerJobHistoryRepository();
+        SpecialtyService service = buildService(repo, history, registry, Clock.systemUTC(), Duration.ofDays(5));
 
         Player player = server.addPlayer();
         service.loadPlayer(player.getUniqueId());
@@ -112,6 +158,11 @@ class SpecialtyServiceTest {
         assertTrue(((SpecialtyChangeResult.Success) result).initial());
         assertEquals(1, repo.rows.size());
         assertEquals("combat", service.currentJob(player.getUniqueId()).get().value());
+        assertEquals(1, history.rows.size());
+        PlayerJobHistoryRow row = history.rows.get(0);
+        assertEquals("combat", row.jobId());
+        assertNull(row.previousJobId());
+        assertEquals(Actor.PLAYER, row.actor());
     }
 
     @Test
@@ -119,7 +170,8 @@ class SpecialtyServiceTest {
         JobRegistry registry = new JobRegistry();
         registry.loadAll(List.of(job("combat")));
         InMemoryPlayerJobRepository repo = new InMemoryPlayerJobRepository();
-        SpecialtyService service = buildService(repo, registry, Clock.systemUTC(), Duration.ofDays(5));
+        InMemoryPlayerJobHistoryRepository history = new InMemoryPlayerJobHistoryRepository();
+        SpecialtyService service = buildService(repo, history, registry, Clock.systemUTC(), Duration.ofDays(5));
 
         Player player = server.addPlayer();
         service.loadPlayer(player.getUniqueId());
@@ -134,18 +186,19 @@ class SpecialtyServiceTest {
         JobRegistry registry = new JobRegistry();
         registry.loadAll(List.of(job("combat"), job("mining")));
         InMemoryPlayerJobRepository repo = new InMemoryPlayerJobRepository();
+        InMemoryPlayerJobHistoryRepository history = new InMemoryPlayerJobHistoryRepository();
 
         // 固定 clock で最初の select を過去に済ませ、change 呼び出し時に cooldown 未経過にする
         Instant t0 = Instant.parse("2026-01-01T00:00:00Z");
         Clock atT0 = Clock.fixed(t0, ZoneOffset.UTC);
-        SpecialtyService serviceT0 = buildService(repo, registry, atT0, Duration.ofDays(5));
+        SpecialtyService serviceT0 = buildService(repo, history, registry, atT0, Duration.ofDays(5));
         Player player = server.addPlayer();
         serviceT0.loadPlayer(player.getUniqueId());
         serviceT0.select(player, new JobId("combat"));
 
         // 1 時間後に change を試みる → 5d cooldown 内
         Clock atT1 = Clock.fixed(t0.plus(Duration.ofHours(1)), ZoneOffset.UTC);
-        SpecialtyService serviceT1 = buildService(repo, registry, atT1, Duration.ofDays(5));
+        SpecialtyService serviceT1 = buildService(repo, history, registry, atT1, Duration.ofDays(5));
         serviceT1.loadPlayer(player.getUniqueId());
         SpecialtyChangeResult result = serviceT1.change(player, new JobId("mining"));
 
@@ -159,22 +212,25 @@ class SpecialtyServiceTest {
         JobRegistry registry = new JobRegistry();
         registry.loadAll(List.of(job("combat"), job("mining")));
         InMemoryPlayerJobRepository repo = new InMemoryPlayerJobRepository();
+        InMemoryPlayerJobHistoryRepository history = new InMemoryPlayerJobHistoryRepository();
 
         Instant t0 = Instant.parse("2026-01-01T00:00:00Z");
-        SpecialtyService serviceT0 = buildService(repo, registry,
+        SpecialtyService serviceT0 = buildService(repo, history, registry,
                 Clock.fixed(t0, ZoneOffset.UTC), Duration.ofHours(1));
         Player player = server.addPlayer();
         serviceT0.loadPlayer(player.getUniqueId());
         serviceT0.select(player, new JobId("combat"));
 
-        SpecialtyService serviceT1 = buildService(repo, registry,
+        SpecialtyService serviceT1 = buildService(repo, history, registry,
                 Clock.fixed(t0.plus(Duration.ofHours(2)), ZoneOffset.UTC), Duration.ofHours(1));
         serviceT1.loadPlayer(player.getUniqueId());
         SpecialtyChangeResult result = serviceT1.change(player, new JobId("mining"));
 
         assertInstanceOf(SpecialtyChangeResult.Success.class, result);
         assertEquals("mining", serviceT1.currentJob(player.getUniqueId()).get().value());
-        assertEquals(2, repo.rows.size());
+        assertEquals(1, repo.rows.size(), "player_job は 1 player 1 row");
+        assertEquals(2, history.rows.size(), "history には 2 行入る");
+        assertEquals("combat", history.rows.get(1).previousJobId());
     }
 
     @Test
@@ -182,9 +238,10 @@ class SpecialtyServiceTest {
         JobRegistry registry = new JobRegistry();
         registry.loadAll(List.of(job("combat"), job("mining")));
         InMemoryPlayerJobRepository repo = new InMemoryPlayerJobRepository();
+        InMemoryPlayerJobHistoryRepository history = new InMemoryPlayerJobHistoryRepository();
 
         Instant t0 = Instant.parse("2026-01-01T00:00:00Z");
-        SpecialtyService serviceT0 = buildService(repo, registry,
+        SpecialtyService serviceT0 = buildService(repo, history, registry,
                 Clock.fixed(t0, ZoneOffset.UTC), Duration.ofDays(5));
         Player player = server.addPlayer();
         serviceT0.loadPlayer(player.getUniqueId());
@@ -192,14 +249,15 @@ class SpecialtyServiceTest {
 
         // cooldown 未経過だが bypass 権限を持たせる
         player.addAttachment(plugin, Permissions.BYPASS_COOLDOWN, true);
-        SpecialtyService serviceT1 = buildService(repo, registry,
+        SpecialtyService serviceT1 = buildService(repo, history, registry,
                 Clock.fixed(t0.plus(Duration.ofHours(1)), ZoneOffset.UTC), Duration.ofDays(5));
         serviceT1.loadPlayer(player.getUniqueId());
         SpecialtyChangeResult result = serviceT1.change(player, new JobId("mining"));
 
         assertInstanceOf(SpecialtyChangeResult.Success.class, result);
         assertEquals("mining", serviceT1.currentJob(player.getUniqueId()).get().value());
-        assertEquals(2, repo.rows.size());
+        assertEquals(1, repo.rows.size());
+        assertEquals(2, history.rows.size());
     }
 
     @Test
@@ -208,9 +266,10 @@ class SpecialtyServiceTest {
         JobRegistry registry = new JobRegistry();
         registry.loadAll(List.of(job("combat")));
         InMemoryPlayerJobRepository repo = new InMemoryPlayerJobRepository();
+        InMemoryPlayerJobHistoryRepository history = new InMemoryPlayerJobHistoryRepository();
 
         Instant t0 = Instant.parse("2026-01-01T00:00:00Z");
-        SpecialtyService service = buildService(repo, registry,
+        SpecialtyService service = buildService(repo, history, registry,
                 Clock.fixed(t0, ZoneOffset.UTC), Duration.ofDays(5));
         Player player = server.addPlayer();
         service.loadPlayer(player.getUniqueId());
@@ -227,12 +286,79 @@ class SpecialtyServiceTest {
         JobRegistry registry = new JobRegistry();
         registry.loadAll(List.of(job("combat")));
         InMemoryPlayerJobRepository repo = new InMemoryPlayerJobRepository();
-        SpecialtyService service = buildService(repo, registry, Clock.systemUTC(), Duration.ofDays(5));
+        InMemoryPlayerJobHistoryRepository history = new InMemoryPlayerJobHistoryRepository();
+        SpecialtyService service = buildService(repo, history, registry, Clock.systemUTC(), Duration.ofDays(5));
 
         Player player = server.addPlayer();
         service.loadPlayer(player.getUniqueId());
         SpecialtyChangeResult result = service.select(player, new JobId("nonexistent"));
 
         assertInstanceOf(SpecialtyChangeResult.UnknownJob.class, result);
+    }
+
+    @Test
+    void setForcedWritesAdminHistoryForOnlinePlayer() {
+        JobRegistry registry = new JobRegistry();
+        registry.loadAll(List.of(job("combat"), job("mining")));
+        InMemoryPlayerJobRepository repo = new InMemoryPlayerJobRepository();
+        InMemoryPlayerJobHistoryRepository history = new InMemoryPlayerJobHistoryRepository();
+        SpecialtyService service = buildService(repo, history, registry, Clock.systemUTC(), Duration.ofDays(5));
+
+        Player target = server.addPlayer();
+        service.loadPlayer(target.getUniqueId());
+        service.select(target, new JobId("combat"));
+        UUID actor = UUID.randomUUID();
+
+        SpecialtyChangeResult result = service.setForced(target.getUniqueId(), new JobId("mining"), actor);
+        assertInstanceOf(SpecialtyChangeResult.Success.class, result);
+        assertEquals("mining", service.currentJob(target.getUniqueId()).get().value());
+        assertEquals(2, history.rows.size());
+        PlayerJobHistoryRow adminRow = history.rows.get(1);
+        assertEquals(Actor.ADMIN, adminRow.actor());
+        assertEquals(actor, adminRow.actorUuid());
+        assertEquals("combat", adminRow.previousJobId());
+    }
+
+    @Test
+    void setForcedIsCooldownAgnostic() {
+        JobRegistry registry = new JobRegistry();
+        registry.loadAll(List.of(job("combat"), job("mining")));
+        InMemoryPlayerJobRepository repo = new InMemoryPlayerJobRepository();
+        InMemoryPlayerJobHistoryRepository history = new InMemoryPlayerJobHistoryRepository();
+        Instant t0 = Instant.parse("2026-01-01T00:00:00Z");
+        SpecialtyService service = buildService(repo, history, registry,
+                Clock.fixed(t0, ZoneOffset.UTC), Duration.ofDays(5));
+
+        Player target = server.addPlayer();
+        service.loadPlayer(target.getUniqueId());
+        service.select(target, new JobId("combat"));
+        // cooldown 未経過でも admin 経路は通る
+        SpecialtyChangeResult result = service.setForced(
+                target.getUniqueId(), new JobId("mining"), UUID.randomUUID());
+        assertInstanceOf(SpecialtyChangeResult.Success.class, result);
+    }
+
+    @Test
+    void resetCooldownClearsBaseWithoutHistoryEntry() {
+        JobRegistry registry = new JobRegistry();
+        registry.loadAll(List.of(job("combat")));
+        InMemoryPlayerJobRepository repo = new InMemoryPlayerJobRepository();
+        InMemoryPlayerJobHistoryRepository history = new InMemoryPlayerJobHistoryRepository();
+        Instant t0 = Instant.parse("2026-01-01T00:00:00Z");
+        SpecialtyService service = buildService(repo, history, registry,
+                Clock.fixed(t0, ZoneOffset.UTC), Duration.ofDays(5));
+
+        Player player = server.addPlayer();
+        service.loadPlayer(player.getUniqueId());
+        service.select(player, new JobId("combat"));
+        int historyBefore = history.rows.size();
+
+        service.resetCooldown(player.getUniqueId());
+
+        assertEquals(historyBefore, history.rows.size(), "reset-cooldown は履歴を残さない");
+        assertEquals(Instant.EPOCH, repo.rows.get(player.getUniqueId()).cooldownBaseAt());
+        // cache も EPOCH に落ちるので、次の nextAvailableAt は過去
+        Instant next = service.nextAvailableAt(player.getUniqueId()).orElseThrow();
+        assertTrue(next.isBefore(t0));
     }
 }

@@ -12,7 +12,10 @@ import me.f0reach.jobs.domain.job.VarietyPenaltyConfig;
 import me.f0reach.jobs.domain.matcher.KeyMatcher;
 import me.f0reach.jobs.matcher.MatchContext;
 import me.f0reach.jobs.matcher.RewardMatcher;
+import me.f0reach.jobs.persistence.PlayerJobHistoryRepository;
 import me.f0reach.jobs.persistence.PlayerJobRepository;
+import me.f0reach.jobs.persistence.dto.Actor;
+import me.f0reach.jobs.persistence.dto.PlayerJobHistoryRow;
 import me.f0reach.jobs.persistence.dto.PlayerJobRow;
 import me.f0reach.jobs.pipeline.RewardPipeline;
 import me.f0reach.jobs.pipeline.Stage;
@@ -31,7 +34,10 @@ import org.mockbukkit.mockbukkit.ServerMock;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -54,15 +60,34 @@ class EventDispatcherTest {
 
     /** in-memory PlayerJobRepository。SpecialtyService の unit test 版と同じ簡易実装。 */
     private static final class InMemoryRepo implements PlayerJobRepository {
-        record Entry(UUID player, String jobId, Instant selectedAt) {}
-        final List<Entry> rows = new ArrayList<>();
-        @Override public Optional<PlayerJobRow> findCurrent(UUID player) {
-            Entry latest = null;
-            for (Entry e : rows) if (e.player().equals(player) && (latest == null || e.selectedAt().isAfter(latest.selectedAt()))) latest = e;
-            return latest == null ? Optional.empty() : Optional.of(new PlayerJobRow(latest.player(), latest.jobId(), latest.selectedAt()));
+        final Map<UUID, PlayerJobRow> rows = new HashMap<>();
+        @Override public Optional<PlayerJobRow> find(UUID player) { return Optional.ofNullable(rows.get(player)); }
+        @Override public void upsert(UUID player, String jobId, Instant cooldownBaseAt) {
+            rows.put(player, new PlayerJobRow(player, jobId, cooldownBaseAt));
         }
-        @Override public void insertSelection(UUID player, String jobId, Instant at) { rows.add(new Entry(player, jobId, at)); }
-        @Override public Optional<Instant> lastChangedAt(UUID player) { return findCurrent(player).map(PlayerJobRow::selectedAt); }
+        @Override public void resetCooldownBase(UUID player) {
+            PlayerJobRow existing = rows.get(player);
+            if (existing != null) rows.put(player, new PlayerJobRow(player, existing.jobId(), Instant.EPOCH));
+        }
+        @Override public void delete(UUID player) { rows.remove(player); }
+    }
+
+    private static final class InMemoryHistory implements PlayerJobHistoryRepository {
+        final List<PlayerJobHistoryRow> rows = new ArrayList<>();
+        long nextId = 1;
+        @Override public void append(UUID player, String jobId, String previousJobId,
+                                     Instant changedAt, Actor actor, UUID actorUuid) {
+            rows.add(new PlayerJobHistoryRow(nextId++, player, jobId, previousJobId, changedAt, actor, actorUuid));
+        }
+        @Override public List<PlayerJobHistoryRow> recent(UUID player, int limit) {
+            return rows.stream().filter(r -> r.playerUuid().equals(player))
+                    .sorted(Comparator.comparing(PlayerJobHistoryRow::changedAt).reversed())
+                    .limit(limit).toList();
+        }
+        @Override public Optional<Instant> firstSelectedAt(UUID player) {
+            return rows.stream().filter(r -> r.playerUuid().equals(player))
+                    .map(PlayerJobHistoryRow::changedAt).min(Comparator.naturalOrder());
+        }
     }
 
     private JobDefinition makeCombatJob() {
@@ -86,8 +111,9 @@ class EventDispatcherTest {
         JobRegistry registry = new JobRegistry();
         registry.loadAll(List.of(makeCombatJob()));
         InMemoryRepo repo = new InMemoryRepo();
+        InMemoryHistory history = new InMemoryHistory();
         SpecialtyService specialty = new SpecialtyService(
-                plugin, repo, registry,
+                plugin, repo, history, registry,
                 new CooldownPolicy(List.of())
         );
         AtomicInteger stageCalls = new AtomicInteger();
@@ -107,8 +133,9 @@ class EventDispatcherTest {
         JobRegistry registry = new JobRegistry();
         registry.loadAll(List.of(makeCombatJob()));
         InMemoryRepo repo = new InMemoryRepo();
+        InMemoryHistory history = new InMemoryHistory();
         SpecialtyService specialty = new SpecialtyService(
-                plugin, repo, registry,
+                plugin, repo, history, registry,
                 new CooldownPolicy(List.of())
         );
         AtomicInteger stageCalls = new AtomicInteger();
@@ -130,8 +157,9 @@ class EventDispatcherTest {
         JobRegistry registry = new JobRegistry();
         registry.loadAll(List.of(makeCombatJob()));
         InMemoryRepo repo = new InMemoryRepo();
+        InMemoryHistory history = new InMemoryHistory();
         SpecialtyService specialty = new SpecialtyService(
-                plugin, repo, registry,
+                plugin, repo, history, registry,
                 new CooldownPolicy(List.of())
         );
         AtomicInteger stageCalls = new AtomicInteger();
@@ -154,8 +182,9 @@ class EventDispatcherTest {
         JobRegistry registry = new JobRegistry();
         registry.loadAll(List.of(makeCombatJob()));
         InMemoryRepo repo = new InMemoryRepo();
+        InMemoryHistory history = new InMemoryHistory();
         SpecialtyService specialty = new SpecialtyService(
-                plugin, repo, registry,
+                plugin, repo, history, registry,
                 new CooldownPolicy(List.of())
         );
         AtomicInteger firstCalls = new AtomicInteger();
