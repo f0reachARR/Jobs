@@ -18,9 +18,9 @@ jobs:
         image: mysql:8.4
         env:
           MYSQL_ROOT_PASSWORD: rootpw
-          MYSQL_DATABASE: vshop_test
-          MYSQL_USER: vshop
-          MYSQL_PASSWORD: vshop
+          MYSQL_DATABASE: jobs
+          MYSQL_USER: jobs
+          MYSQL_PASSWORD: jobs
         ports:
           - 3306:3306
         options: >-
@@ -53,27 +53,31 @@ jobs:
           echo "MySQL never came up" >&2
           exit 1
 
-      - name: Grant CREATE on test schemas
-        # Each test JVM allocates its own throwaway `vshop_test_<uuid>` schema,
-        # so the test user needs CREATE/DROP on anything matching that prefix.
+      - name: Grant privileges on jobs schema
+        # MySqlPersistenceIntegrationTest は毎テストラン開始時に DROP TABLE を
+        # 走らせるので、`jobs` DB 上の全権限を付与しておく。
         run: |
           mysql -h 127.0.0.1 -uroot -prootpw -e "
-            GRANT ALL PRIVILEGES ON \`vshop_test_%\`.* TO 'vshop'@'%';
-            GRANT CREATE, DROP ON *.* TO 'vshop'@'%';
+            GRANT ALL PRIVILEGES ON \`jobs\`.* TO 'jobs'@'%';
             FLUSH PRIVILEGES;"
 
       - name: Build & test
         env:
-          VSHOP_TEST_MYSQL_URL: jdbc:mysql://127.0.0.1:3306
-          VSHOP_TEST_MYSQL_USER: vshop
-          VSHOP_TEST_MYSQL_PASSWORD: vshop
+          # MySqlPersistenceIntegrationTest はこれらの環境変数が揃った時のみ
+          # @EnabledIfEnvironmentVariable で有効化される。
+          JOBS_TEST_MYSQL_HOST: 127.0.0.1
+          JOBS_TEST_MYSQL_PORT: '3306'
+          JOBS_TEST_MYSQL_DATABASE: jobs
+          JOBS_TEST_MYSQL_USER: jobs
+          JOBS_TEST_MYSQL_PASSWORD: jobs
         run: ./gradlew build --no-daemon --stacktrace
 
-      - name: Upload test reports on failure
-        if: failure()
+      - name: Upload test reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-reports
           path: |
             build/reports/tests/test
             build/test-results/test
+          if-no-files-found: ignore
