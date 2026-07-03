@@ -1,5 +1,6 @@
 package me.f0reach.jobs.specialty;
 
+import me.f0reach.jobs.Permissions;
 import me.f0reach.jobs.domain.job.AntiAutomationConfig;
 import me.f0reach.jobs.domain.job.JobDefinition;
 import me.f0reach.jobs.domain.job.JobId;
@@ -190,7 +191,7 @@ class SpecialtyServiceTest {
         serviceT0.select(player, new JobId("combat"));
 
         // cooldown 未経過だが bypass 権限を持たせる
-        player.addAttachment(plugin, "jobs.bypass.cooldown", true);
+        player.addAttachment(plugin, Permissions.BYPASS_COOLDOWN, true);
         SpecialtyService serviceT1 = buildService(repo, registry,
                 Clock.fixed(t0.plus(Duration.ofHours(1)), ZoneOffset.UTC), Duration.ofDays(5));
         serviceT1.loadPlayer(player.getUniqueId());
@@ -214,7 +215,7 @@ class SpecialtyServiceTest {
         Player player = server.addPlayer();
         service.loadPlayer(player.getUniqueId());
         service.select(player, new JobId("combat"));
-        player.addAttachment(plugin, "jobs.bypass.cooldown", true);
+        player.addAttachment(plugin, Permissions.BYPASS_COOLDOWN, true);
 
         Optional<Instant> next = service.nextAvailableAt(player.getUniqueId());
         assertTrue(next.isPresent());

@@ -1,5 +1,6 @@
 package me.f0reach.jobs.pipeline.stage;
 
+import me.f0reach.jobs.Permissions;
 import me.f0reach.jobs.modifier.dailycap.DailyCapEvaluator;
 import me.f0reach.jobs.modifier.variety.VarietyPenaltyEvaluator;
 import me.f0reach.jobs.pipeline.PipelineContext;
@@ -16,9 +17,6 @@ import me.f0reach.jobs.pipeline.Stage;
  * finalReward を 0 まで下げても以降の RewardRoundingStage / EconomyTransferStage に流し続ける。
  */
 public final class BuiltinModifierStage implements Stage {
-
-    static final String BYPASS_VARIETY = "jobs.bypass.variety-penalty";
-    static final String BYPASS_DAILY_CAP = "jobs.bypass.daily-cap";
 
     private final VarietyPenaltyEvaluator variety;
     private final DailyCapEvaluator dailyCap;
@@ -41,14 +39,14 @@ public final class BuiltinModifierStage implements Stage {
                 ctx.jobDefinition(),
                 ctx.derivedKey().value()
         );
-        boolean bypassVariety = ctx.player().hasPermission(BYPASS_VARIETY);
+        boolean bypassVariety = ctx.player().hasPermission(Permissions.BYPASS_VARIETY_PENALTY);
         if (varietyResult.isPenalized() && !bypassVariety) {
             reward = reward * varietyResult.multiplier();
         }
         ctx.setFinalReward(reward);
 
         // daily_cap: バイパス時は判定と累計 increment を丸ごとスキップして素通し。
-        if (ctx.player().hasPermission(BYPASS_DAILY_CAP)) {
+        if (ctx.player().hasPermission(Permissions.BYPASS_DAILY_CAP)) {
             return Result.CONTINUE;
         }
 

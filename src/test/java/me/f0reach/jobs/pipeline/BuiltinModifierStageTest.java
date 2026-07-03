@@ -1,5 +1,6 @@
 package me.f0reach.jobs.pipeline;
 
+import me.f0reach.jobs.Permissions;
 import me.f0reach.jobs.config.PluginConfig;
 import me.f0reach.jobs.detection.DetectedAction;
 import me.f0reach.jobs.detection.SourceFlags;
@@ -197,7 +198,7 @@ class BuiltinModifierStageTest {
         );
         JobDefinition job = makeJob(variety);
         Player player = server.addPlayer();
-        player.addAttachment(plugin, "jobs.bypass.variety-penalty", true);
+        player.addAttachment(plugin, Permissions.BYPASS_VARIETY_PENALTY, true);
 
         VarietyPenaltyEvaluator varietyEval = new VarietyPenaltyEvaluator(
                 plugin, new StubActionLogRepo(), new me.f0reach.jobs.util.AsyncExecutor(plugin)
@@ -223,7 +224,7 @@ class BuiltinModifierStageTest {
         VarietyPenaltyConfig variety = VarietyPenaltyConfig.disabled();
         JobDefinition job = makeJob(variety);
         Player player = server.addPlayer();
-        player.addAttachment(plugin, "jobs.bypass.daily-cap", true);
+        player.addAttachment(plugin, Permissions.BYPASS_DAILY_CAP, true);
 
         VarietyPenaltyEvaluator varietyEval = new VarietyPenaltyEvaluator(
                 plugin, new StubActionLogRepo(), new me.f0reach.jobs.util.AsyncExecutor(plugin)

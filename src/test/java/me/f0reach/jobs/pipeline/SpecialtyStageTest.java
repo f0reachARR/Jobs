@@ -1,5 +1,6 @@
 package me.f0reach.jobs.pipeline;
 
+import me.f0reach.jobs.Permissions;
 import me.f0reach.jobs.config.PluginConfig;
 import me.f0reach.jobs.detection.DetectedAction;
 import me.f0reach.jobs.detection.DetectionSubject;
@@ -126,7 +127,7 @@ class SpecialtyStageTest {
         SpecialtyService service = makeService();
         Player player = server.addPlayer();
         service.loadPlayer(player.getUniqueId());
-        player.addAttachment(plugin, "jobs.bypass.specialty", true);
+        player.addAttachment(plugin, Permissions.BYPASS_SPECIALTY, true);
         SpecialtyStage stage = new SpecialtyStage(service);
 
         Stage.Result r = stage.execute(ctxFor(player, makeJob("combat")));
@@ -140,7 +141,7 @@ class SpecialtyStageTest {
         Player player = server.addPlayer();
         service.loadPlayer(player.getUniqueId());
         service.select(player, new JobId("mining"));
-        player.addAttachment(plugin, "jobs.bypass.specialty", true);
+        player.addAttachment(plugin, Permissions.BYPASS_SPECIALTY, true);
         SpecialtyStage stage = new SpecialtyStage(service);
 
         Stage.Result r = stage.execute(ctxFor(player, makeJob("combat")));

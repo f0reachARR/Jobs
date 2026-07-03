@@ -1,5 +1,6 @@
 package me.f0reach.jobs.pipeline.stage;
 
+import me.f0reach.jobs.Permissions;
 import me.f0reach.jobs.antiautomation.AntiAutomationCoordinator;
 import me.f0reach.jobs.antiautomation.AntiAutomationNotifier;
 import me.f0reach.jobs.pipeline.PipelineContext;
@@ -17,8 +18,6 @@ import me.f0reach.jobs.pipeline.Stage;
  */
 public final class AntiAutomationStage implements Stage {
 
-    static final String BYPASS_PERMISSION = "jobs.bypass.anti-automation";
-
     private final AntiAutomationCoordinator coordinator;
     private final AntiAutomationNotifier notifier;
 
@@ -30,8 +29,8 @@ public final class AntiAutomationStage implements Stage {
     @Override
     public Result execute(PipelineContext ctx) {
         if (ctx.zeroLocked()) return Result.CONTINUE;
-        // jobs.bypass.anti-automation を持つプレイヤーは 6 種いずれの判定も走らせない。
-        if (ctx.player().hasPermission(BYPASS_PERMISSION)) return Result.CONTINUE;
+        // BYPASS_ANTI_AUTOMATION を持つプレイヤーは 6 種いずれの判定も走らせない。
+        if (ctx.player().hasPermission(Permissions.BYPASS_ANTI_AUTOMATION)) return Result.CONTINUE;
         String reason = coordinator.firstZero(ctx, ctx.matchedEntry().actionType());
         if (reason != null) {
             ctx.lockZero(reason);

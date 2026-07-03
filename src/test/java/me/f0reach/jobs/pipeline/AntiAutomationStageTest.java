@@ -1,5 +1,6 @@
 package me.f0reach.jobs.pipeline;
 
+import me.f0reach.jobs.Permissions;
 import me.f0reach.jobs.antiautomation.AntiAutomationCheck;
 import me.f0reach.jobs.antiautomation.AntiAutomationCoordinator;
 import me.f0reach.jobs.antiautomation.AntiAutomationNotifier;
@@ -112,7 +113,7 @@ class AntiAutomationStageTest {
     @Test
     void bypassPermissionSkipsCoordinatorAndNotifier() {
         Player player = server.addPlayer();
-        player.addAttachment(plugin, "jobs.bypass.anti-automation", true);
+        player.addAttachment(plugin, Permissions.BYPASS_ANTI_AUTOMATION, true);
         PipelineContext ctx = makeContext(player);
         AntiAutomationCheck exploding = new AntiAutomationCheck() {
             @Override public boolean appliesTo(PipelineContext ctx2, ActionType t) {

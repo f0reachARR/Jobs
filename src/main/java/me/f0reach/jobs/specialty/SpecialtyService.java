@@ -1,5 +1,6 @@
 package me.f0reach.jobs.specialty;
 
+import me.f0reach.jobs.Permissions;
 import me.f0reach.jobs.api.event.JobSpecialtyChangedEvent;
 import me.f0reach.jobs.domain.job.JobId;
 import me.f0reach.jobs.persistence.PlayerJobRepository;
@@ -26,8 +27,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * 以降は cache とリポジトリを同期して扱う。
  */
 public final class SpecialtyService {
-
-    static final String BYPASS_COOLDOWN = "jobs.bypass.cooldown";
 
     private final Plugin plugin;
     private final PlayerJobRepository repository;
@@ -126,10 +125,10 @@ public final class SpecialtyService {
             return new SpecialtyChangeResult.NoChange();
         }
         Instant now = Instant.now(clock);
-        // jobs.bypass.cooldown を持つプレイヤーはクールダウン判定をスキップする。
+        // BYPASS_COOLDOWN を持つプレイヤーはクールダウン判定をスキップする。
         // nextAvailableAt が返す値は履歴通り (last + cooldown) のままなので、
         // /jobs status の表示は変わらない。
-        if (!player.hasPermission(BYPASS_COOLDOWN)) {
+        if (!player.hasPermission(Permissions.BYPASS_COOLDOWN)) {
             Duration cooldown = cooldownPolicy.currentCooldown(now);
             Instant lastChanged = lastChangedCache.get(uuid);
             if (lastChanged != null && !cooldown.isZero()) {

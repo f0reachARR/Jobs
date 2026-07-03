@@ -5,6 +5,7 @@ import com.mojang.brigadier.tree.LiteralCommandNode;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import me.f0reach.jobs.JobsServices;
+import me.f0reach.jobs.Permissions;
 import me.f0reach.jobs.config.PluginConfig;
 import me.f0reach.jobs.domain.job.JobDefinition;
 import me.f0reach.jobs.domain.job.JobId;
@@ -48,20 +49,20 @@ public final class JobsCommands {
 
     public LiteralCommandNode<CommandSourceStack> buildTree() {
         return Commands.literal("jobs")
-                .requires(s -> s.getSender().hasPermission("jobs.command.use"))
+                .requires(s -> s.getSender().hasPermission(Permissions.COMMAND_USE))
                 .then(Commands.literal("select")
-                        .requires(s -> s.getSender().hasPermission("jobs.command.select"))
+                        .requires(s -> s.getSender().hasPermission(Permissions.COMMAND_SELECT))
                         .executes(this::executeSelect))
                 .then(Commands.literal("info")
-                        .requires(s -> s.getSender().hasPermission("jobs.command.info"))
+                        .requires(s -> s.getSender().hasPermission(Permissions.COMMAND_INFO))
                         .executes(this::executeInfo)
                         .then(Commands.argument("job", com.mojang.brigadier.arguments.StringArgumentType.word())
                                 .executes(this::executeInfoWithJob)))
                 .then(Commands.literal("status")
-                        .requires(s -> s.getSender().hasPermission("jobs.command.status"))
+                        .requires(s -> s.getSender().hasPermission(Permissions.COMMAND_STATUS))
                         .executes(this::executeStatus))
                 .then(Commands.literal("reload")
-                        .requires(s -> s.getSender().hasPermission("jobs.admin.reload"))
+                        .requires(s -> s.getSender().hasPermission(Permissions.ADMIN_RELOAD))
                         .executes(this::executeReload))
                 .build();
     }
