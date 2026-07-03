@@ -10,13 +10,21 @@
 
 リレーショナルストアへのアクセスはリポジトリインタフェース越しに限定する。
 インタフェースはドメイン操作だけを露出し、SQL は各実装が方言別に丸ごと書く。
-共有するのはメソッドシグネチャと DTO 型（`PlayerJobRow`, `ActionLogRow`, `ActionFilter`, `TimeRange` 等）だけで、SQL 文字列・DDL・マイグレーションスクリプトは方言別に独立管理する。
+共有するのはメソッドシグネチャと DTO 型（`PlayerJobRow`, `PlayerJobHistoryRow`, `Actor`, `ActionLogRow`, `ActionFilter`, `TimeRange` 等）だけで、SQL 文字列・DDL・マイグレーションスクリプトは方言別に独立管理する。
 
 ```java
 public interface PlayerJobRepository {
-  Optional<PlayerJobRow> findCurrent(UUID player);
-  void insertSelection(UUID player, String jobId, Instant selectedAt);
-  Optional<Instant> lastChangedAt(UUID player);
+  Optional<PlayerJobRow> find(UUID player);
+  void upsert(UUID player, String jobId, Instant cooldownBaseAt);
+  void resetCooldownBase(UUID player);
+  void delete(UUID player);
+}
+
+public interface PlayerJobHistoryRepository {
+  void append(UUID player, String jobId, String previousJobId,
+              Instant changedAt, Actor actor, UUID actorUuid);
+  List<PlayerJobHistoryRow> recent(UUID player, int limit);
+  Optional<Instant> firstSelectedAt(UUID player);
 }
 
 public interface ActionLogRepository {
@@ -58,7 +66,8 @@ Phase 1 の具象実装は MySQL 前提で書く。
 
 | テーブル | 用途 |
 |---|---|
-| `player_job` | プレイヤーの専業選択履歴 |
+| `player_job` | プレイヤーの現在専業と cooldown 起点（1 player 1 row） |
+| `player_job_history` | 専業選択・変更の監査ログ（append-only） |
 | `action_log` | 1 アクション 1 行の生ログ |
 | `daily_reward_total` | 日次キャップ用の集計 |
 | `hourly_aggregate` | 業績指標クエリ用の集計キャッシュ（任意） |
@@ -68,21 +77,59 @@ Phase 1 の具象実装は MySQL 前提で書く。
 
 ### player_job
 
-プレイヤーの専業選択を履歴付きで保持する。
-最新行が現在の専業である。
+プレイヤーの**現在の専業** 1 行だけを保持する。監査目的の変更履歴は [player_job_history](#player_job_history) 側に分離する。
 
 ```sql
 CREATE TABLE player_job (
-  player_uuid     BINARY(16) NOT NULL,
-  job_id          VARCHAR(32) NOT NULL,
-  selected_at     DATETIME(3) NOT NULL,
-  PRIMARY KEY (player_uuid, selected_at),
-  INDEX idx_current (player_uuid, selected_at DESC)
+  player_uuid       BINARY(16) NOT NULL PRIMARY KEY,
+  job_id            VARCHAR(32) NOT NULL,
+  cooldown_base_at  DATETIME(3) NOT NULL
 ) ENGINE=InnoDB;
 ```
 
-専業変更のクールダウン判定では、`MAX(selected_at)` を見る。
-変更履歴はクエスト評価（since: quest_start などの境界）で参照される余地もある。
+**player_uuid**：プレイヤー UUID。1 プレイヤー 1 行。
+
+**job_id**：現在の専業。
+
+**cooldown_base_at**：cooldown 計算の起点。通常は最終選択時刻。`SpecialtyService#change` は `cooldown_base_at + CooldownPolicy.currentCooldown(now)` を「次回変更可能時刻」として使う。
+
+- 通常の `select` / `change` では `now` に更新する。
+- `/jobs admin reset-cooldown` は `Instant.EPOCH` に上書きする。EPOCH は現在時刻より十分過去なので、`nextAvailable` が必ず過去に落ち、cooldown が経過扱いになる（[08-permissions.md](./08-permissions.md)）。
+- `CooldownPolicy` が時刻依存で変わる（イベント割引など）ため、resolved な `next_change_at` ではなく base を保持する。判定は毎回 policy を再評価する。
+
+現在専業の取得は `WHERE player_uuid = ?` の単純クエリで済み、`MAX(selected_at)` の集計が不要になる。
+
+### player_job_history
+
+専業選択・変更の監査ログ。append-only。
+
+```sql
+CREATE TABLE player_job_history (
+  id                BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  player_uuid       BINARY(16) NOT NULL,
+  job_id            VARCHAR(32) NOT NULL,
+  previous_job_id   VARCHAR(32) NULL,
+  changed_at        DATETIME(3) NOT NULL,
+  actor             ENUM('player','admin','system') NOT NULL DEFAULT 'player',
+  actor_uuid        BINARY(16) NULL,
+  INDEX idx_player_time (player_uuid, changed_at DESC)
+) ENGINE=InnoDB;
+```
+
+**previous_job_id**：初回選択時は NULL。`JobSpecialtyChangedEvent#getPreviousJobId` と揃える（[06-public-api.md](./06-public-api.md)）。
+
+**actor**：この変更を起こした主体の種別。
+- `player`：プレイヤー本人による `/jobs select`。
+- `admin`：`/jobs admin set` による強制付与。
+- `system`：将来的な自動付与（未使用、枠だけ確保）。
+
+**actor_uuid**：`actor='admin'` のとき、実行した管理者の UUID。`player` / `system` では NULL 可。
+
+**書き込みタイミング**：
+- `select` / `change` / `admin set` の成功時に 1 行 append。
+- `reset-cooldown` は行を追加しない（専業は変わっておらず、cooldown 起点だけを触るため）。cooldown 変更の監査が必要になったら別テーブルまたは actor 種別の拡張で対応する。
+
+**参照用途**：Quest プラグインの `since: quest_start` 判定（`firstSelectedAt` として最古の row を引く）、運営監査（「誰がいつ強制付与したか」）。書き込み頻度は選択・変更の実頻度に比例して低い。
 
 ### action_log
 

@@ -29,7 +29,7 @@ Stage の interface は「main thread 前提」で書く。async に載せたい
 
 ## リポジトリ読み書きのスレッド
 
-`ActionLogRepository`, `PlayerJobRepository`, `DailyRewardTotalRepository` の呼び出し規約は次のとおり。
+`ActionLogRepository`, `PlayerJobRepository`, `PlayerJobHistoryRepository`, `DailyRewardTotalRepository` の呼び出し規約は次のとおり。
 
 - **書き込み**：`BatchFlushWorker` から `insertBatch`, `addBatch` を呼ぶ。バッチ間隔 1 秒 / バッチサイズ 1000 件。プラグイン停止時に `drain(timeout)` を呼ぶ。
 - **読み込み**：`ActionLogQueryService` の各メソッドは `CompletableFuture` を返す形で外部プラグインに露出する。実際の JDBC 呼び出しは `AsyncExecutor` のプール上で走る。Bukkit main thread からの同期呼び出しは想定しない。
@@ -55,9 +55,9 @@ UnifiedDialog dialog = MultiButtonDialog.builder()
 
 `AsyncExecutor#runOnMain(Runnable)` は `Bukkit.getScheduler().runTask(plugin, task)` の wrapper。
 
-`SpecialtyService#select` の内部で `PlayerJobRepository#insertSelection` を呼ぶが、これは main thread で JDBC を叩くと BLOCKS on network I/O になる。
-専業選択は 1 プレイヤーあたり数回程度なので、main thread から同期で叩く方針。
-負荷が問題になれば、insertSelection を async 化して結果を main thread に戻す形に切り替える余地を残す。
+`SpecialtyService#select` / `change` / `setForced` の内部で `PlayerJobRepository#upsert` と `PlayerJobHistoryRepository#append` を続けて呼ぶが、いずれも main thread で JDBC を叩くと BLOCKS on network I/O になる。
+専業選択・変更は 1 プレイヤーあたり数回程度なので、main thread から同期で叩く方針。
+負荷が問題になれば、これらを async 化して結果を main thread に戻す形に切り替える余地を残す。
 
 ## ライフサイクル
 
