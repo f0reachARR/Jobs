@@ -50,9 +50,11 @@ class DefaultJobResourcesTest {
         assertFalse(result.errors().hasErrors(),
                 () -> "unexpected YAML errors: " + result.errors().entries());
         assertEquals(RESOURCES.size(), result.jobs().size());
-        // それぞれに少なくとも 1 件の reward が入っていること。
+        // それぞれに少なくとも 1 件の reward と description が入っていること。
         for (var job : result.jobs()) {
             assertTrue(job.rewards().size() > 0, "no rewards in " + job.id());
+            assertNotNull(job.description(), "no description in " + job.id());
+            assertFalse(job.description().isBlank(), "blank description in " + job.id());
         }
     }
 }

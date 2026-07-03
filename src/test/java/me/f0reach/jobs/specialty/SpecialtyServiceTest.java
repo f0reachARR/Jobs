@@ -50,6 +50,7 @@ class SpecialtyServiceTest {
         return new JobDefinition(
                 new JobId(id),
                 "Job " + id,
+                null,
                 NamespacedKey.minecraft("stone"),
                 List.of(),
                 VarietyPenaltyConfig.disabled(),

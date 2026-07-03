@@ -51,7 +51,7 @@ class AntiAutomationCoordinatorTest {
                 actionType, criteria, new RewardAmount.Fixed(10.0), null,
                 new ActionKey("kill:minecraft:zombie"));
         JobDefinition job = new JobDefinition(
-                new JobId("combat"), "Combat", NamespacedKey.minecraft("iron_sword"),
+                new JobId("combat"), "Combat", null, NamespacedKey.minecraft("iron_sword"),
                 List.of(entry), VarietyPenaltyConfig.disabled(), cfg
         );
         DetectedAction action = new DetectedAction(

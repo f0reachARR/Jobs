@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JobYamlLoaderTest {
@@ -45,6 +46,7 @@ class JobYamlLoaderTest {
     Files.writeString(yml, """
         id: combat
         display_name: "Combat"
+        description: "戦って稼ぐ"
         icon: minecraft:iron_sword
 
         rewards:
@@ -80,6 +82,7 @@ class JobYamlLoaderTest {
     JobDefinition job = result.jobs().get(0);
     assertEquals("combat", job.id().value());
     assertEquals("Combat", job.displayName());
+    assertEquals("戦って稼ぐ", job.description());
     assertEquals("minecraft:iron_sword", job.icon().toString());
     assertEquals(5, job.rewards().size());
 
@@ -111,6 +114,19 @@ class JobYamlLoaderTest {
     assertNotNull(fifth.rareBonus());
     assertEquals(0.0005, fifth.rareBonus().chance());
     assertEquals("<player> gold!", fifth.rareBonus().announceMessage());
+  }
+
+  @Test
+  void descriptionIsOptional(@TempDir Path dir) throws IOException {
+    Path yml = dir.resolve("nodesc.yml");
+    Files.writeString(yml, """
+        id: nodesc
+        display_name: "NoDesc"
+        icon: minecraft:stone
+        """, StandardCharsets.UTF_8);
+    JobYamlLoader.LoadResult result = newLoader().loadDirectory(dir.toFile());
+    assertFalse(result.errors().hasErrors());
+    assertNull(result.jobs().get(0).description());
   }
 
   @Test

@@ -3,6 +3,7 @@
 
 id: crafter
 display_name: "生産"
+description: "アイテムを作る・精錬する・付呪する・修理することで稼ぐ。設備を活かした職人向け。"
 icon: minecraft:crafting_table
 
 rewards:

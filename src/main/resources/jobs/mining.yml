@@ -2,6 +2,7 @@
 
 id: mining
 display_name: "採掘"
+description: "ブロックを掘り、鉱石や資源を集めて稼ぐ。地下探索と資材確保が中心。"
 icon: minecraft:diamond_pickaxe
 
 rewards:

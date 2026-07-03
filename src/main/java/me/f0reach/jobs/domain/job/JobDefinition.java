@@ -12,6 +12,7 @@ import java.util.Objects;
 public record JobDefinition(
         JobId id,
         String displayName,
+        String description,
         NamespacedKey icon,
         List<RewardEntry> rewards,
         VarietyPenaltyConfig varietyPenalty,

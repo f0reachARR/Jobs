@@ -103,6 +103,8 @@ public final class JobYamlLoader {
             return null;
         }
 
+        String description = yaml.getString("description");
+
         String iconRaw = yaml.getString("icon");
         if (iconRaw == null) {
             errors.add(file.getName(), "icon", "required");
@@ -120,7 +122,7 @@ public final class JobYamlLoader {
         var override = antiParser.parse(yaml.getConfigurationSection("anti_automation"), file.getName() + " anti_automation");
         var anti = AntiAutomationConfig.merge(antiAutomationDefaults, override);
 
-        return new JobDefinition(id, displayName, icon, rewards, variety, anti);
+        return new JobDefinition(id, displayName, description, icon, rewards, variety, anti);
     }
 
     private List<RewardEntry> loadRewards(List<?> raw, String fileName, YamlErrors errors) {

@@ -3,6 +3,7 @@
 
 id: explorer
 display_name: "探検"
+description: "釣り・取引・食料や飲料の消費で稼ぐ。動き回って世界と接する暮らしに向く。"
 icon: minecraft:filled_map
 
 rewards:

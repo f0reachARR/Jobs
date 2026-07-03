@@ -40,6 +40,7 @@ class RewardMatcherTest {
         return new JobDefinition(
                 new JobId("combat"),
                 "Combat",
+                null,
                 NamespacedKey.minecraft("iron_sword"),
                 entries,
                 VarietyPenaltyConfig.disabled(),

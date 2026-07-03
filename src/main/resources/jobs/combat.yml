@@ -4,6 +4,7 @@
 
 id: combat
 display_name: "討伐"
+description: "敵性 mob を討伐して稼ぐ。冒険と戦闘が中心。"
 icon: minecraft:iron_sword
 
 rewards:

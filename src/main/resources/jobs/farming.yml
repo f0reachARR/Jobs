@@ -2,6 +2,7 @@
 
 id: farming
 display_name: "農業"
+description: "作物を育てて収穫し、動物を繁殖・毛刈り・手懐けして稼ぐ。定住型の生産に向く。"
 icon: minecraft:wheat
 
 rewards:

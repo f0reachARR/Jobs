@@ -56,7 +56,7 @@ class BuiltinModifierStageTest {
                 ActionType.ENTITY_KILLED, c, new RewardAmount.Fixed(10.0), null,
                 new ActionKey("kill:minecraft:zombie"));
         return new JobDefinition(
-                new JobId("combat"), "Combat", NamespacedKey.minecraft("iron_sword"),
+                new JobId("combat"), "Combat", null, NamespacedKey.minecraft("iron_sword"),
                 List.of(entry), variety, AntiAutomationConfig.empty()
         );
     }

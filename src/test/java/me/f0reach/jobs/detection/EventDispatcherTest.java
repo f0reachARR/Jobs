@@ -70,7 +70,7 @@ class EventDispatcherTest {
         RewardEntry entry = new RewardEntry(ActionType.ENTITY_KILLED, criteria,
                 new RewardAmount.Fixed(5), null, new ActionKey("kill:minecraft:zombie"));
         return new JobDefinition(
-                new JobId("combat"), "Combat", NamespacedKey.minecraft("iron_sword"),
+                new JobId("combat"), "Combat", null, NamespacedKey.minecraft("iron_sword"),
                 List.of(entry), VarietyPenaltyConfig.disabled(), AntiAutomationConfig.empty()
         );
     }

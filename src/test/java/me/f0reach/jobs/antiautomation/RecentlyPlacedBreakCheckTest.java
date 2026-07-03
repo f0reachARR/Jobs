@@ -56,7 +56,7 @@ class RecentlyPlacedBreakCheckTest {
                 ActionType.BLOCK_BROKEN, criteria, new RewardAmount.Fixed(1.0), null,
                 new ActionKey("break:minecraft:stone"));
         JobDefinition job = new JobDefinition(
-                new JobId("miner"), "Miner", NamespacedKey.minecraft("iron_pickaxe"),
+                new JobId("miner"), "Miner", null, NamespacedKey.minecraft("iron_pickaxe"),
                 List.of(entry), VarietyPenaltyConfig.disabled(), cfg
         );
         DetectionSubject subject = DetectionSubject.builder().block(block).build();

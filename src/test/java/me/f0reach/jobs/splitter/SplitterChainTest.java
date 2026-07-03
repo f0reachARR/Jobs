@@ -54,7 +54,7 @@ class SplitterChainTest {
                 ActionType.ENTITY_KILLED, criteria, new RewardAmount.Fixed(1.0), null,
                 new ActionKey("kill:minecraft:zombie"));
         JobDefinition job = new JobDefinition(
-                new JobId("combat"), "Combat", NamespacedKey.minecraft("iron_sword"),
+                new JobId("combat"), "Combat", null, NamespacedKey.minecraft("iron_sword"),
                 List.of(entry), VarietyPenaltyConfig.disabled(), AntiAutomationConfig.empty()
         );
         DetectedAction action = new DetectedAction(

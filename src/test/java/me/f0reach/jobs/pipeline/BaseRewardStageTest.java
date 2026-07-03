@@ -50,6 +50,7 @@ class BaseRewardStageTest {
         JobDefinition job = new JobDefinition(
                 new JobId("combat"),
                 "Combat",
+                null,
                 NamespacedKey.minecraft("iron_sword"),
                 List.of(entry),
                 VarietyPenaltyConfig.disabled(),
