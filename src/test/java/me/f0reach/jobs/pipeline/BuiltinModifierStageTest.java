@@ -187,6 +187,64 @@ class BuiltinModifierStageTest {
     }
 
     @Test
+    void bypassVarietyKeepsMultiplierOneButStillRecords() {
+        VarietyPenaltyConfig variety = new VarietyPenaltyConfig(
+                true, 3, List.of(
+                        new VarietyPenaltyConfig.CurvePoint(0.5, 1.0),
+                        new VarietyPenaltyConfig.CurvePoint(1.01, 0.1)
+                ),
+                "monotonous", false
+        );
+        JobDefinition job = makeJob(variety);
+        Player player = server.addPlayer();
+        player.addAttachment(plugin, "jobs.bypass.variety-penalty", true);
+
+        VarietyPenaltyEvaluator varietyEval = new VarietyPenaltyEvaluator(
+                plugin, new StubActionLogRepo(), new me.f0reach.jobs.util.AsyncExecutor(plugin)
+        );
+        DailyCapEvaluator capEval = new DailyCapEvaluator(
+                new NoopDailyTotal(),
+                new PluginConfig.DailyCapConfig(0, "00:00", PluginConfig.DailyCapConfig.Scope.TOTAL)
+        );
+        BuiltinModifierStage stage = new BuiltinModifierStage(varietyEval, capEval);
+
+        // window=3 を超えて連打しても reward が削られない。
+        // 通常なら 4 回目以降 curve が働き 1.0 まで落ちるはず。
+        for (int i = 0; i < 5; i++) {
+            PipelineContext c = ctx(player, job, 10.0);
+            stage.execute(c);
+            assertEquals(10.0, c.finalReward(), 1e-9,
+                    "bypass 中は penalty 未発動 (i=" + i + ")");
+        }
+    }
+
+    @Test
+    void bypassDailyCapSkipsTrimAndDoesNotRecordPaid() {
+        VarietyPenaltyConfig variety = VarietyPenaltyConfig.disabled();
+        JobDefinition job = makeJob(variety);
+        Player player = server.addPlayer();
+        player.addAttachment(plugin, "jobs.bypass.daily-cap", true);
+
+        VarietyPenaltyEvaluator varietyEval = new VarietyPenaltyEvaluator(
+                plugin, new StubActionLogRepo(), new me.f0reach.jobs.util.AsyncExecutor(plugin)
+        );
+        PresetDailyTotal total = new PresetDailyTotal(950.0);
+        DailyCapEvaluator capEval = new DailyCapEvaluator(
+                total,
+                new PluginConfig.DailyCapConfig(1000, "00:00", PluginConfig.DailyCapConfig.Scope.TOTAL)
+        );
+        BuiltinModifierStage stage = new BuiltinModifierStage(varietyEval, capEval);
+
+        PipelineContext c = ctx(player, job, 100.0);
+        stage.execute(c);
+        // 通常なら 50 に削られるが、bypass で 100 そのまま。
+        assertEquals(100.0, c.finalReward(), 1e-9);
+        // 累計にも足されない (950 のまま)。
+        assertEquals(950.0, total.todayTotal(player.getUniqueId()));
+        assertTrue(!c.zeroReasons().contains("daily_cap_hit"));
+    }
+
+    @Test
     void zeroLockedSkipsBothModifiers() {
         VarietyPenaltyConfig variety = new VarietyPenaltyConfig(
                 true, 3,

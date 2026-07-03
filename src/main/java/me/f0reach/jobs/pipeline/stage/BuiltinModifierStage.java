@@ -17,6 +17,9 @@ import me.f0reach.jobs.pipeline.Stage;
  */
 public final class BuiltinModifierStage implements Stage {
 
+    static final String BYPASS_VARIETY = "jobs.bypass.variety-penalty";
+    static final String BYPASS_DAILY_CAP = "jobs.bypass.daily-cap";
+
     private final VarietyPenaltyEvaluator variety;
     private final DailyCapEvaluator dailyCap;
 
@@ -31,15 +34,23 @@ public final class BuiltinModifierStage implements Stage {
 
         double reward = ctx.finalReward();
 
+        // variety: 記録は継続し（バイパスを外した後に履歴が消えないよう）、
+        // multiplier だけ 1.0 固定にする。
         VarietyPenaltyEvaluator.Result varietyResult = variety.evaluateAndRecord(
                 ctx.player().getUniqueId(),
                 ctx.jobDefinition(),
                 ctx.derivedKey().value()
         );
-        if (varietyResult.isPenalized()) {
+        boolean bypassVariety = ctx.player().hasPermission(BYPASS_VARIETY);
+        if (varietyResult.isPenalized() && !bypassVariety) {
             reward = reward * varietyResult.multiplier();
         }
         ctx.setFinalReward(reward);
+
+        // daily_cap: バイパス時は判定と累計 increment を丸ごとスキップして素通し。
+        if (ctx.player().hasPermission(BYPASS_DAILY_CAP)) {
+            return Result.CONTINUE;
+        }
 
         DailyCapEvaluator.Result capResult = dailyCap.evaluate(
                 ctx.player().getUniqueId(),

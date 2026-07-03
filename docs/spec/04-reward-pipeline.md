@@ -49,7 +49,7 @@ Track A と Track B はマッチ確定後に合流し、以降は共通の流れ
 
 未専業のプレイヤーは、すべてのアクションがこの段階で落ちる。
 
-プレイヤーが `jobs.bypass.specialty` を持つ場合、この段階を通過させて以降を実行する（[08-permissions.md](./08-permissions.md)）。専業未選択のプレイヤーは対象外（判定材料が無い）。
+プレイヤーが `jobs.bypass.specialty` を持つ場合、`currentJob` の判定を省いてそのまま通過させる（[08-permissions.md](./08-permissions.md)）。専業未選択の状態でもこの段階は通り、以降のパイプラインが進む。
 
 ### 3. 自動化対策
 

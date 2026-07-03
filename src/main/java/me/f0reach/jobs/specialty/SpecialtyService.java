@@ -27,6 +27,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class SpecialtyService {
 
+    static final String BYPASS_COOLDOWN = "jobs.bypass.cooldown";
+
     private final Plugin plugin;
     private final PlayerJobRepository repository;
     private final JobRegistry jobRegistry;
@@ -124,14 +126,19 @@ public final class SpecialtyService {
             return new SpecialtyChangeResult.NoChange();
         }
         Instant now = Instant.now(clock);
-        Duration cooldown = cooldownPolicy.currentCooldown(now);
-        Instant lastChanged = lastChangedCache.get(uuid);
-        if (lastChanged != null && !cooldown.isZero()) {
-            Instant nextAvailable = lastChanged.plus(cooldown);
-            if (nextAvailable.isAfter(now)) {
-                return new SpecialtyChangeResult.CooldownRemaining(
-                        Duration.between(now, nextAvailable), nextAvailable
-                );
+        // jobs.bypass.cooldown を持つプレイヤーはクールダウン判定をスキップする。
+        // nextAvailableAt が返す値は履歴通り (last + cooldown) のままなので、
+        // /jobs status の表示は変わらない。
+        if (!player.hasPermission(BYPASS_COOLDOWN)) {
+            Duration cooldown = cooldownPolicy.currentCooldown(now);
+            Instant lastChanged = lastChangedCache.get(uuid);
+            if (lastChanged != null && !cooldown.isZero()) {
+                Instant nextAvailable = lastChanged.plus(cooldown);
+                if (nextAvailable.isAfter(now)) {
+                    return new SpecialtyChangeResult.CooldownRemaining(
+                            Duration.between(now, nextAvailable), nextAvailable
+                    );
+                }
             }
         }
         repository.insertSelection(uuid, newJobId.value(), now);

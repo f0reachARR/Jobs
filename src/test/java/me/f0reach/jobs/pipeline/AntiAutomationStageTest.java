@@ -110,6 +110,27 @@ class AntiAutomationStageTest {
     }
 
     @Test
+    void bypassPermissionSkipsCoordinatorAndNotifier() {
+        Player player = server.addPlayer();
+        player.addAttachment(plugin, "jobs.bypass.anti-automation", true);
+        PipelineContext ctx = makeContext(player);
+        AntiAutomationCheck exploding = new AntiAutomationCheck() {
+            @Override public boolean appliesTo(PipelineContext ctx2, ActionType t) {
+                throw new AssertionError("coordinator must not be called when bypass is granted");
+            }
+            @Override public String evaluate(PipelineContext ctx2) { return "boom"; }
+        };
+        RecordingNotifier notifier = new RecordingNotifier();
+        AntiAutomationStage stage = new AntiAutomationStage(
+                new AntiAutomationCoordinator(plugin, List.of(exploding)), notifier);
+
+        stage.execute(ctx);
+
+        assertTrue(!ctx.zeroLocked());
+        assertTrue(notifier.calls.isEmpty());
+    }
+
+    @Test
     void alreadyLockedSkipsCoordinatorAndNotifier() {
         Player player = server.addPlayer();
         PipelineContext ctx = makeContext(player);

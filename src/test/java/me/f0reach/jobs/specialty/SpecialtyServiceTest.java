@@ -177,6 +177,51 @@ class SpecialtyServiceTest {
     }
 
     @Test
+    void changeWithCooldownBypassPermissionSucceeds() {
+        JobRegistry registry = new JobRegistry();
+        registry.loadAll(List.of(job("combat"), job("mining")));
+        InMemoryPlayerJobRepository repo = new InMemoryPlayerJobRepository();
+
+        Instant t0 = Instant.parse("2026-01-01T00:00:00Z");
+        SpecialtyService serviceT0 = buildService(repo, registry,
+                Clock.fixed(t0, ZoneOffset.UTC), Duration.ofDays(5));
+        Player player = server.addPlayer();
+        serviceT0.loadPlayer(player.getUniqueId());
+        serviceT0.select(player, new JobId("combat"));
+
+        // cooldown 未経過だが bypass 権限を持たせる
+        player.addAttachment(plugin, "jobs.bypass.cooldown", true);
+        SpecialtyService serviceT1 = buildService(repo, registry,
+                Clock.fixed(t0.plus(Duration.ofHours(1)), ZoneOffset.UTC), Duration.ofDays(5));
+        serviceT1.loadPlayer(player.getUniqueId());
+        SpecialtyChangeResult result = serviceT1.change(player, new JobId("mining"));
+
+        assertInstanceOf(SpecialtyChangeResult.Success.class, result);
+        assertEquals("mining", serviceT1.currentJob(player.getUniqueId()).get().value());
+        assertEquals(2, repo.rows.size());
+    }
+
+    @Test
+    void nextAvailableAtIgnoresBypassPermission() {
+        // bypass はクールダウン判定だけをスキップし、履歴上の「次回変更可能時刻」は動かさない。
+        JobRegistry registry = new JobRegistry();
+        registry.loadAll(List.of(job("combat")));
+        InMemoryPlayerJobRepository repo = new InMemoryPlayerJobRepository();
+
+        Instant t0 = Instant.parse("2026-01-01T00:00:00Z");
+        SpecialtyService service = buildService(repo, registry,
+                Clock.fixed(t0, ZoneOffset.UTC), Duration.ofDays(5));
+        Player player = server.addPlayer();
+        service.loadPlayer(player.getUniqueId());
+        service.select(player, new JobId("combat"));
+        player.addAttachment(plugin, "jobs.bypass.cooldown", true);
+
+        Optional<Instant> next = service.nextAvailableAt(player.getUniqueId());
+        assertTrue(next.isPresent());
+        assertEquals(t0.plus(Duration.ofDays(5)), next.get());
+    }
+
+    @Test
     void unknownJobReturnsUnknownJob() {
         JobRegistry registry = new JobRegistry();
         registry.loadAll(List.of(job("combat")));
