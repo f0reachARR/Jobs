@@ -94,6 +94,14 @@ public final class DailyTotalCache implements DailyTotalView {
         byPlayer.remove(playerUuid);
     }
 
+    /**
+     * {@code /jobs admin reset-daily-cap} 用。in-memory 側の当日累計を破棄する。
+     * オフライン相手には何もしない（cache に載っていない）。
+     */
+    public void reset(UUID playerUuid) {
+        byPlayer.remove(playerUuid);
+    }
+
     /** 現在時刻の LocalDate。日次境界の判定に使う。 */
     public LocalDate today() {
         return Instant.now(clock).atZone(zone).toLocalDate();

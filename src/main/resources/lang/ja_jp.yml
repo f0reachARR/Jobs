@@ -56,6 +56,15 @@ command:
     reset_cooldown:
       ok: "<green><name> の変更 cooldown をリセットしました。</green>"
       no_specialty: "<yellow><name> はまだ専業を選択していません。</yellow>"
+    pay:
+      ok: "<green><name> に <amount> を支給しました。<reason></green>"
+      failed: "<red><name> への支給に失敗しました (Vault が拒否)。</red>"
+      invalid_amount: "<red>金額は正の数を指定してください。</red>"
+    reset_daily_cap:
+      ok: "<green><name> の当日累計をリセットしました。</green>"
+    reset_variety:
+      ok: "<green><name> の単調性 ring buffer をクリアしました。</green>"
+      offline: "<yellow><name> はオフラインです (variety は memory-only)。</yellow>"
 
 dialog:
   select:

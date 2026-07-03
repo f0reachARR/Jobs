@@ -42,6 +42,9 @@ permissions:
             jobs.admin.actions: true
             jobs.admin.set: true
             jobs.admin.reset-cooldown: true
+            jobs.admin.pay: true
+            jobs.admin.reset-daily-cap: true
+            jobs.admin.reset-variety: true
     jobs.admin.reload:
         description: /jobs reload の実行を許可
         default: op
@@ -59,6 +62,15 @@ permissions:
         default: op
     jobs.admin.reset-cooldown:
         description: /jobs admin reset-cooldown の実行を許可
+        default: op
+    jobs.admin.pay:
+        description: /jobs admin pay の実行を許可
+        default: op
+    jobs.admin.reset-daily-cap:
+        description: /jobs admin reset-daily-cap の実行を許可
+        default: op
+    jobs.admin.reset-variety:
+        description: /jobs admin reset-variety の実行を許可
         default: op
 
     jobs.bypass.specialty:

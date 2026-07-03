@@ -54,6 +54,15 @@ command:
     reset_cooldown:
       ok: "<green>Cleared change cooldown for <name>.</green>"
       no_specialty: "<yellow><name> has not selected a specialty yet.</yellow>"
+    pay:
+      ok: "<green>Paid <amount> to <name>.<reason></green>"
+      failed: "<red>Payment to <name> was rejected by Vault.</red>"
+      invalid_amount: "<red>Amount must be positive.</red>"
+    reset_daily_cap:
+      ok: "<green>Reset today's total for <name>.</green>"
+    reset_variety:
+      ok: "<green>Cleared variety ring buffer for <name>.</green>"
+      offline: "<yellow><name> is offline (variety is memory-only).</yellow>"
 
 dialog:
   select:

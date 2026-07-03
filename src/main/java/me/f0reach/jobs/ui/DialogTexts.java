@@ -61,6 +61,12 @@ public final class DialogTexts {
     public static final String COMMAND_ADMIN_SET_NO_CHANGE = "command.admin.set.no_change";
     public static final String COMMAND_ADMIN_RESET_COOLDOWN_OK = "command.admin.reset_cooldown.ok";
     public static final String COMMAND_ADMIN_RESET_COOLDOWN_NO_SPECIALTY = "command.admin.reset_cooldown.no_specialty";
+    public static final String COMMAND_ADMIN_PAY_OK = "command.admin.pay.ok";
+    public static final String COMMAND_ADMIN_PAY_FAILED = "command.admin.pay.failed";
+    public static final String COMMAND_ADMIN_PAY_INVALID_AMOUNT = "command.admin.pay.invalid_amount";
+    public static final String COMMAND_ADMIN_RESET_DAILY_CAP_OK = "command.admin.reset_daily_cap.ok";
+    public static final String COMMAND_ADMIN_RESET_VARIETY_OK = "command.admin.reset_variety.ok";
+    public static final String COMMAND_ADMIN_RESET_VARIETY_OFFLINE = "command.admin.reset_variety.offline";
 
     // Dialog: select
     public static final String DIALOG_SELECT_TITLE = "dialog.select.title";

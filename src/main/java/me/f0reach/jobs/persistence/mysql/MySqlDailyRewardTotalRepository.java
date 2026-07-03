@@ -32,6 +32,10 @@ public final class MySqlDailyRewardTotalRepository implements DailyRewardTotalRe
             ON DUPLICATE KEY UPDATE total_reward = total_reward + VALUES(total_reward)
             """;
 
+    private static final String SQL_RESET = """
+            DELETE FROM daily_reward_total WHERE player_uuid = ? AND reward_date = ?
+            """;
+
     private final DataSource dataSource;
 
     public MySqlDailyRewardTotalRepository(DataSource dataSource) {
@@ -50,6 +54,18 @@ public final class MySqlDailyRewardTotalRepository implements DailyRewardTotalRe
             }
         } catch (SQLException e) {
             throw new RuntimeException("getTotal failed for " + player + " on " + date, e);
+        }
+    }
+
+    @Override
+    public void reset(UUID player, LocalDate date) {
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(SQL_RESET)) {
+            ps.setBytes(1, UuidBytes.toBytes(player));
+            ps.setDate(2, Date.valueOf(date));
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("reset failed for " + player + " on " + date, e);
         }
     }
 

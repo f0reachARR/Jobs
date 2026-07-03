@@ -1,6 +1,7 @@
 package me.f0reach.jobs.command.admin;
 
 import com.mojang.brigadier.Command;
+import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -15,6 +16,7 @@ import me.f0reach.jobs.api.query.TimeRange;
 import me.f0reach.jobs.domain.job.JobDefinition;
 import me.f0reach.jobs.domain.job.JobId;
 import me.f0reach.jobs.modifier.variety.VarietyPenaltyEvaluator;
+import me.f0reach.jobs.api.event.JobActionPaidEvent;
 import me.f0reach.jobs.persistence.ActionLogRepository;
 import me.f0reach.jobs.persistence.dto.ActionLogRow;
 import me.f0reach.jobs.persistence.dto.PlayerJobRow;
@@ -70,7 +72,10 @@ public final class AdminCommands {
                 .then(buildStats())
                 .then(buildActions())
                 .then(buildSet())
-                .then(buildResetCooldown());
+                .then(buildResetCooldown())
+                .then(buildPay())
+                .then(buildResetDailyCap())
+                .then(buildResetVariety());
     }
 
     private LiteralArgumentBuilder<CommandSourceStack> buildInspect() {
@@ -109,6 +114,33 @@ public final class AdminCommands {
                 .then(Commands.argument("player", StringArgumentType.word())
                         .suggests(this::suggestPlayerNames)
                         .executes(this::executeResetCooldown));
+    }
+
+    private LiteralArgumentBuilder<CommandSourceStack> buildPay() {
+        return Commands.literal("pay")
+                .requires(s -> s.getSender().hasPermission(Permissions.ADMIN_PAY))
+                .then(Commands.argument("player", StringArgumentType.word())
+                        .suggests(this::suggestPlayerNames)
+                        .then(Commands.argument("amount", DoubleArgumentType.doubleArg(Double.MIN_VALUE, Double.MAX_VALUE))
+                                .executes(this::executePay)
+                                .then(Commands.argument("reason", StringArgumentType.greedyString())
+                                        .executes(this::executePay))));
+    }
+
+    private LiteralArgumentBuilder<CommandSourceStack> buildResetDailyCap() {
+        return Commands.literal("reset-daily-cap")
+                .requires(s -> s.getSender().hasPermission(Permissions.ADMIN_RESET_DAILY_CAP))
+                .then(Commands.argument("player", StringArgumentType.word())
+                        .suggests(this::suggestPlayerNames)
+                        .executes(this::executeResetDailyCap));
+    }
+
+    private LiteralArgumentBuilder<CommandSourceStack> buildResetVariety() {
+        return Commands.literal("reset-variety")
+                .requires(s -> s.getSender().hasPermission(Permissions.ADMIN_RESET_VARIETY))
+                .then(Commands.argument("player", StringArgumentType.word())
+                        .suggests(this::suggestPlayerNames)
+                        .executes(this::executeResetVariety));
     }
 
     private LiteralArgumentBuilder<CommandSourceStack> buildStats() {
@@ -381,6 +413,126 @@ public final class AdminCommands {
         return Command.SINGLE_SUCCESS;
     }
 
+    private int executePay(CommandContext<CommandSourceStack> ctx) {
+        JobsServices bound = requireBound(ctx);
+        if (bound == null) return Command.SINGLE_SUCCESS;
+        CommandSender sender = ctx.getSource().getSender();
+        String name = StringArgumentType.getString(ctx, "player");
+        double amount = DoubleArgumentType.getDouble(ctx, "amount");
+        String reason = getOptionalString(ctx, "reason", "");
+
+        if (amount <= 0) {
+            sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_PAY_INVALID_AMOUNT));
+            return Command.SINGLE_SUCCESS;
+        }
+
+        OfflinePlayer target = resolveOfflinePlayer(name);
+        if (target == null) {
+            sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_UNKNOWN_PLAYER,
+                    Placeholder.parsed("name", name)));
+            return Command.SINGLE_SUCCESS;
+        }
+        UUID uuid = target.getUniqueId();
+        String displayName = target.getName() == null ? uuid.toString() : target.getName();
+
+        boolean ok = bound.economy().deposit(target, amount);
+        if (!ok) {
+            sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_PAY_FAILED,
+                    Placeholder.parsed("name", displayName)));
+            return Command.SINGLE_SUCCESS;
+        }
+
+        // 現在専業があればその job_id、無ければ 'admin' を sentinel として使う。
+        // (sentinel は JobRegistry に載らないため /jobs admin stats の職業別集計には現れない。)
+        String jobId = bound.playerJobRepository().find(uuid)
+                .map(PlayerJobRow::jobId)
+                .orElse("admin");
+        Instant now = Instant.now();
+        ActionLogRow row = new ActionLogRow(
+                uuid, jobId, "admin:manual", amount, amount, false, 1, now
+        );
+        // pipeline を通さないため BackPressure 経路の考慮は最小限にする。
+        if (!bound.actionLogQueue().offer(row)) {
+            bound.plugin().getLogger().warning(
+                    "admin pay: action_log queue full, drop row for " + uuid);
+        }
+
+        // JobActionPaidEvent は Player インスタンスを要求するのでオンライン時のみ発火する。
+        Player online = Bukkit.getPlayer(uuid);
+        if (online != null) {
+            bound.asyncExecutor().runAsync(() -> {
+                JobActionPaidEvent event = new JobActionPaidEvent(
+                        online, jobId, "admin:manual",
+                        amount, amount, amount, false, 1, now);
+                Bukkit.getPluginManager().callEvent(event);
+            });
+        }
+
+        // 監査ログ (chat には出さず、サーバログに残す)。
+        String reasonSuffix = reason.isBlank() ? "" : " (" + reason + ")";
+        bound.plugin().getLogger().info("admin pay by " + sender.getName()
+                + " -> " + displayName + " amount=" + amount + reasonSuffix);
+
+        String reasonForChat = reason.isBlank() ? "" : " " + reason;
+        sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_PAY_OK,
+                Placeholder.parsed("name", displayName),
+                Placeholder.parsed("amount", bound.amountFormatter().format(amount)),
+                Placeholder.parsed("reason", reasonForChat)));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private int executeResetDailyCap(CommandContext<CommandSourceStack> ctx) {
+        JobsServices bound = requireBound(ctx);
+        if (bound == null) return Command.SINGLE_SUCCESS;
+        CommandSender sender = ctx.getSource().getSender();
+        String name = StringArgumentType.getString(ctx, "player");
+
+        OfflinePlayer target = resolveOfflinePlayer(name);
+        if (target == null) {
+            sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_UNKNOWN_PLAYER,
+                    Placeholder.parsed("name", name)));
+            return Command.SINGLE_SUCCESS;
+        }
+        UUID uuid = target.getUniqueId();
+        String displayName = target.getName() == null ? uuid.toString() : target.getName();
+        LocalDate today = LocalDate.now(ZoneId.systemDefault());
+
+        bound.dailyRewardTotalRepository().reset(uuid, today);
+        bound.dailyTotalCache().reset(uuid);
+
+        sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_RESET_DAILY_CAP_OK,
+                Placeholder.parsed("name", displayName)));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private int executeResetVariety(CommandContext<CommandSourceStack> ctx) {
+        JobsServices bound = requireBound(ctx);
+        if (bound == null) return Command.SINGLE_SUCCESS;
+        CommandSender sender = ctx.getSource().getSender();
+        String name = StringArgumentType.getString(ctx, "player");
+
+        OfflinePlayer target = resolveOfflinePlayer(name);
+        if (target == null) {
+            sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_UNKNOWN_PLAYER,
+                    Placeholder.parsed("name", name)));
+            return Command.SINGLE_SUCCESS;
+        }
+        UUID uuid = target.getUniqueId();
+        String displayName = target.getName() == null ? uuid.toString() : target.getName();
+
+        // オンラインでないと ring buffer 自体が memory に無い。
+        if (Bukkit.getPlayer(uuid) == null) {
+            sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_RESET_VARIETY_OFFLINE,
+                    Placeholder.parsed("name", displayName)));
+            return Command.SINGLE_SUCCESS;
+        }
+
+        bound.varietyPenaltyEvaluator().unload(uuid);
+        sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_RESET_VARIETY_OK,
+                Placeholder.parsed("name", displayName)));
+        return Command.SINGLE_SUCCESS;
+    }
+
     // --- helpers ---
 
     private void renderJobCounts(CommandSender sender, JobsServices bound, Map<String, Long> counts) {
@@ -418,6 +570,14 @@ public final class AdminCommands {
     private int getOptionalInt(CommandContext<CommandSourceStack> ctx, String name, int defaultValue) {
         try {
             return IntegerArgumentType.getInteger(ctx, name);
+        } catch (IllegalArgumentException e) {
+            return defaultValue;
+        }
+    }
+
+    private String getOptionalString(CommandContext<CommandSourceStack> ctx, String name, String defaultValue) {
+        try {
+            return StringArgumentType.getString(ctx, name);
         } catch (IllegalArgumentException e) {
             return defaultValue;
         }
