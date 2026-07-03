@@ -21,6 +21,8 @@ public record PluginConfig(
     public record SpecialtyModeConfig(
             double rewardNonSpecialty,
             boolean showSelectDialogOnJoin,
+            boolean discloseBeforeSelect,
+            boolean discloseRewardAmount,
             List<ChangePolicy> changePolicy
     ) {}
 

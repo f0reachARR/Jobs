@@ -7,6 +7,12 @@ specialty_mode:
   # 未選択プレイヤーのログイン直後に選択ダイアログを自動表示するか。
   # false のときはプレイヤーが自発的に /jobs select を実行するまで表示しない。
   show_select_dialog_on_join: true
+  # 一覧ダイアログのボタン押下で即確定せず、まず JobConditionsDialog を挟むか。
+  # false のときは従来通りボタン押下で即確定する。
+  disclose_before_select: true
+  # JobConditionsDialog / /jobs info で報酬額を出すか。
+  # false のときは対象のみ列挙し、額は伏せる。rare の chance/reward はどちらでも出さない。
+  disclose_reward_amount: true
   # 専業変更のクールダウン。上から評価し within にマッチした最初のポリシーが適用される。
   change_policy:
     - within:

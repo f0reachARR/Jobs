@@ -55,6 +55,8 @@ public final class ConfigLoader {
         }
         double reward = section.getDouble("reward_non_specialty", 0.0);
         boolean showSelectDialogOnJoin = section.getBoolean("show_select_dialog_on_join", true);
+        boolean discloseBeforeSelect = section.getBoolean("disclose_before_select", true);
+        boolean discloseRewardAmount = section.getBoolean("disclose_reward_amount", true);
         List<PluginConfig.ChangePolicy> policies = new ArrayList<>();
         List<?> raw = section.getList("change_policy");
         if (raw != null) {
@@ -65,7 +67,13 @@ public final class ConfigLoader {
                 policies.add(parseChangePolicy(map));
             }
         }
-        return new PluginConfig.SpecialtyModeConfig(reward, showSelectDialogOnJoin, List.copyOf(policies));
+        return new PluginConfig.SpecialtyModeConfig(
+                reward,
+                showSelectDialogOnJoin,
+                discloseBeforeSelect,
+                discloseRewardAmount,
+                List.copyOf(policies)
+        );
     }
 
     private PluginConfig.ChangePolicy parseChangePolicy(java.util.Map<?, ?> map) {
