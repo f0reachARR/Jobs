@@ -46,6 +46,14 @@ command:
       rare_hits: "<gray>Rare hit rate:</gray> <white><percent>%</white> <gray>(<rare>/<total>)</gray>"
       error: "<red>Failed to aggregate: <error></red>"
       unknown_job: "<red>Unknown job: <job>.</red>"
+    set:
+      unknown_job: "<red>Unknown job: <job>.</red>"
+      ok_initial: "<green>Assigned specialty <job> to <name>.</green>"
+      ok_changed: "<green>Changed <name>'s specialty from <previous> to <job>.</green>"
+      no_change: "<yellow><name> is already on <job>.</yellow>"
+    reset_cooldown:
+      ok: "<green>Cleared change cooldown for <name>.</green>"
+      no_specialty: "<yellow><name> has not selected a specialty yet.</yellow>"
 
 dialog:
   select:

@@ -48,6 +48,14 @@ command:
       rare_hits: "<gray>rare ヒット率:</gray> <white><percent>%</white> <gray>(<rare>/<total>)</gray>"
       error: "<red>集計に失敗しました: <error></red>"
       unknown_job: "<red>ジョブ '<job>' は存在しません。</red>"
+    set:
+      unknown_job: "<red>ジョブ '<job>' は存在しません。</red>"
+      ok_initial: "<green><name> の専業を <job> に付与しました。</green>"
+      ok_changed: "<green><name> の専業を <previous> から <job> に変更しました。</green>"
+      no_change: "<yellow><name> はすでに <job> に設定されています。</yellow>"
+    reset_cooldown:
+      ok: "<green><name> の変更 cooldown をリセットしました。</green>"
+      no_specialty: "<yellow><name> はまだ専業を選択していません。</yellow>"
 
 dialog:
   select:

@@ -22,6 +22,8 @@ public final class Permissions {
     public static final String ADMIN_INSPECT = "jobs.admin.inspect";
     public static final String ADMIN_STATS = "jobs.admin.stats";
     public static final String ADMIN_ACTIONS = "jobs.admin.actions";
+    public static final String ADMIN_SET = "jobs.admin.set";
+    public static final String ADMIN_RESET_COOLDOWN = "jobs.admin.reset-cooldown";
 
     // バイパス系 (default: false)
     public static final String BYPASS_SPECIALTY = "jobs.bypass.specialty";

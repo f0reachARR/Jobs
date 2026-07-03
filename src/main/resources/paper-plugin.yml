@@ -40,6 +40,8 @@ permissions:
             jobs.admin.inspect: true
             jobs.admin.stats: true
             jobs.admin.actions: true
+            jobs.admin.set: true
+            jobs.admin.reset-cooldown: true
     jobs.admin.reload:
         description: /jobs reload の実行を許可
         default: op
@@ -51,6 +53,12 @@ permissions:
         default: op
     jobs.admin.actions:
         description: /jobs admin actions の実行を許可
+        default: op
+    jobs.admin.set:
+        description: /jobs admin set の実行を許可
+        default: op
+    jobs.admin.reset-cooldown:
+        description: /jobs admin reset-cooldown の実行を許可
         default: op
 
     jobs.bypass.specialty:

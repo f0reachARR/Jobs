@@ -18,6 +18,7 @@ import me.f0reach.jobs.modifier.variety.VarietyPenaltyEvaluator;
 import me.f0reach.jobs.persistence.ActionLogRepository;
 import me.f0reach.jobs.persistence.dto.ActionLogRow;
 import me.f0reach.jobs.persistence.dto.PlayerJobRow;
+import me.f0reach.jobs.specialty.SpecialtyChangeResult;
 import me.f0reach.jobs.ui.DialogTexts;
 import me.f0reach.jobs.util.AsyncExecutor;
 import me.f0reach.jobs.util.MiniMessages;
@@ -25,6 +26,7 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -66,7 +68,9 @@ public final class AdminCommands {
         return Commands.literal("admin")
                 .then(buildInspect())
                 .then(buildStats())
-                .then(buildActions());
+                .then(buildActions())
+                .then(buildSet())
+                .then(buildResetCooldown());
     }
 
     private LiteralArgumentBuilder<CommandSourceStack> buildInspect() {
@@ -87,6 +91,24 @@ public final class AdminCommands {
                                 .executes(this::executeActions)
                                 .then(Commands.argument("limit", IntegerArgumentType.integer(1, MAX_ACTIONS_LIMIT))
                                         .executes(this::executeActions))));
+    }
+
+    private LiteralArgumentBuilder<CommandSourceStack> buildSet() {
+        return Commands.literal("set")
+                .requires(s -> s.getSender().hasPermission(Permissions.ADMIN_SET))
+                .then(Commands.argument("player", StringArgumentType.word())
+                        .suggests(this::suggestPlayerNames)
+                        .then(Commands.argument("job", StringArgumentType.word())
+                                .suggests(this::suggestJobIds)
+                                .executes(this::executeSet)));
+    }
+
+    private LiteralArgumentBuilder<CommandSourceStack> buildResetCooldown() {
+        return Commands.literal("reset-cooldown")
+                .requires(s -> s.getSender().hasPermission(Permissions.ADMIN_RESET_COOLDOWN))
+                .then(Commands.argument("player", StringArgumentType.word())
+                        .suggests(this::suggestPlayerNames)
+                        .executes(this::executeResetCooldown));
     }
 
     private LiteralArgumentBuilder<CommandSourceStack> buildStats() {
@@ -270,6 +292,92 @@ public final class AdminCommands {
                     Placeholder.parsed("count", Long.toString(count))));
             renderRareStats(sender, bound, stats);
         }));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private int executeSet(CommandContext<CommandSourceStack> ctx) {
+        JobsServices bound = requireBound(ctx);
+        if (bound == null) return Command.SINGLE_SUCCESS;
+        CommandSender sender = ctx.getSource().getSender();
+        String name = StringArgumentType.getString(ctx, "player");
+        String rawJob = StringArgumentType.getString(ctx, "job");
+
+        JobId jobId;
+        try {
+            jobId = new JobId(rawJob);
+        } catch (IllegalArgumentException e) {
+            sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_SET_UNKNOWN_JOB,
+                    Placeholder.parsed("job", rawJob)));
+            return Command.SINGLE_SUCCESS;
+        }
+        if (bound.jobRegistry().get(jobId).isEmpty()) {
+            sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_SET_UNKNOWN_JOB,
+                    Placeholder.parsed("job", rawJob)));
+            return Command.SINGLE_SUCCESS;
+        }
+
+        OfflinePlayer target = resolveOfflinePlayer(name);
+        if (target == null) {
+            sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_UNKNOWN_PLAYER,
+                    Placeholder.parsed("name", name)));
+            return Command.SINGLE_SUCCESS;
+        }
+        UUID uuid = target.getUniqueId();
+        String displayName = target.getName() == null ? uuid.toString() : target.getName();
+
+        UUID actorUuid = ctx.getSource().getSender() instanceof Player p ? p.getUniqueId() : null;
+        SpecialtyChangeResult result = bound.specialtyService().setForced(uuid, jobId, actorUuid);
+
+        if (result instanceof SpecialtyChangeResult.NoChange) {
+            sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_SET_NO_CHANGE,
+                    Placeholder.parsed("name", displayName),
+                    Placeholder.parsed("job", jobId.value())));
+        } else if (result instanceof SpecialtyChangeResult.Success success) {
+            if (success.initial()) {
+                sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_SET_OK_INITIAL,
+                        Placeholder.parsed("name", displayName),
+                        Placeholder.parsed("job", jobId.value())));
+            } else {
+                String previous = success.previous() == null ? "-" : success.previous().value();
+                sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_SET_OK_CHANGED,
+                        Placeholder.parsed("name", displayName),
+                        Placeholder.parsed("previous", previous),
+                        Placeholder.parsed("job", jobId.value())));
+            }
+        } else if (result instanceof SpecialtyChangeResult.UnknownJob) {
+            // 前段の validate で弾いているので通常は到達しない。念のためのフォールバック。
+            sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_SET_UNKNOWN_JOB,
+                    Placeholder.parsed("job", rawJob)));
+        }
+        // setForced は cooldown を無視するため CooldownRemaining は返らない。
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private int executeResetCooldown(CommandContext<CommandSourceStack> ctx) {
+        JobsServices bound = requireBound(ctx);
+        if (bound == null) return Command.SINGLE_SUCCESS;
+        CommandSender sender = ctx.getSource().getSender();
+        String name = StringArgumentType.getString(ctx, "player");
+
+        OfflinePlayer target = resolveOfflinePlayer(name);
+        if (target == null) {
+            sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_UNKNOWN_PLAYER,
+                    Placeholder.parsed("name", name)));
+            return Command.SINGLE_SUCCESS;
+        }
+        UUID uuid = target.getUniqueId();
+        String displayName = target.getName() == null ? uuid.toString() : target.getName();
+
+        // 未選択プレイヤーには reset する対象がない。DB 上の存在を確認してから実行する。
+        if (bound.playerJobRepository().find(uuid).isEmpty()) {
+            sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_RESET_COOLDOWN_NO_SPECIALTY,
+                    Placeholder.parsed("name", displayName)));
+            return Command.SINGLE_SUCCESS;
+        }
+
+        bound.specialtyService().resetCooldown(uuid);
+        sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_RESET_COOLDOWN_OK,
+                Placeholder.parsed("name", displayName)));
         return Command.SINGLE_SUCCESS;
     }
 

@@ -55,6 +55,12 @@ public final class DialogTexts {
     public static final String COMMAND_ADMIN_STATS_RARE_HITS = "command.admin.stats.rare_hits";
     public static final String COMMAND_ADMIN_STATS_ERROR = "command.admin.stats.error";
     public static final String COMMAND_ADMIN_STATS_UNKNOWN_JOB = "command.admin.stats.unknown_job";
+    public static final String COMMAND_ADMIN_SET_UNKNOWN_JOB = "command.admin.set.unknown_job";
+    public static final String COMMAND_ADMIN_SET_OK_INITIAL = "command.admin.set.ok_initial";
+    public static final String COMMAND_ADMIN_SET_OK_CHANGED = "command.admin.set.ok_changed";
+    public static final String COMMAND_ADMIN_SET_NO_CHANGE = "command.admin.set.no_change";
+    public static final String COMMAND_ADMIN_RESET_COOLDOWN_OK = "command.admin.reset_cooldown.ok";
+    public static final String COMMAND_ADMIN_RESET_COOLDOWN_NO_SPECIALTY = "command.admin.reset_cooldown.no_specialty";
 
     // Dialog: select
     public static final String DIALOG_SELECT_TITLE = "dialog.select.title";
