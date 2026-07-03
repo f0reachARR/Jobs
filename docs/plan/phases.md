@@ -61,11 +61,11 @@ DB に書き込む最初の経路。
 
 - `specialty.SpecialtyService`, `CooldownPolicy`, `SpecialtyChangeResult`
 - `ui.DialogService`
-- `ui.SpecialtySelectDialog`, `SpecialtyChangeDialog`, `StatusDialog`（一部は Phase 6 で完成）
+- `ui.SpecialtyListDialog`, `SpecialtyCooldownDialog`, `StatusDialog`（一部は Phase 6 で完成）
 - `api.event.JobSpecialtyChangedEvent`（外部プラグイン向け）
-- `command.SelectSub`, `ChangeSub`（`ReloadSub`, `StatusSub` は後）
+- `command.SelectSub`（`ReloadSub`, `StatusSub`, `InfoSub` は後）
 
-**動作確認**：初回参加時に選択 Dialog が出る、選択で `player_job` に行が入る、`/jobs change` でクールダウン挙動が動く。
+**動作確認**：初回参加時に選択 Dialog が出る、選択で `player_job` に行が入る、`/jobs select` でクールダウン挙動が動く。
 Bedrock クライアント（Geyser）でも同じ動線が通る（可能なら Floodgate を入れた環境で）。
 
 ## Phase 5: 検知とパイプラインの最小構成
@@ -157,6 +157,25 @@ Splitter が例外を投げたら 1 件だけ skip されること。
 - `Player#updateCommands()` の呼び出し（permission が動的に変わる箇所があれば）
 
 **動作確認**：`/jobs reload` で YAML 変更が反映される。
+
+## Phase 11: 職業条件の開示ダイアログ統合
+
+Dialog 動線を「詳細を見てから決める」に付け替える。
+
+- `ui.JobConditionsFormatter`, `ui.JobConditionsDialog`
+- `ui.SpecialtyListDialog`（旧 `SpecialtySelectDialog` + `SpecialtyChangeDialog` の統合先）
+- `ui.SpecialtyCooldownDialog`（旧 `SpecialtyChangeDialog#showCooldown` の切り出し）
+- `command.JobsCommands` の再構成（`/jobs select` を state 分岐に一本化し `/jobs change` を削除、`/jobs info` を新設）
+- `JobDefinition.description` の追加と YAML パーサ拡張、5 個の job YAML への文言注入
+- `PluginConfig.SpecialtyMode` に `disclose_before_select` / `disclose_reward_amount` を追加
+- `DialogTexts` の key リネームと lang ファイル整備
+
+**動作確認**：
+- 未選択者が `/jobs select` → 一覧 → 詳細 → 「この職業を選ぶ」で確定。
+- 選択済み & 変更可能プレイヤーが `/jobs select` → 一覧（現専業除外）→ 詳細 → 変更確定。
+- cooldown 中の `/jobs select` は NoticeDialog で残り時間を示すのみ。
+- `/jobs info` 引数なしで一覧、`/jobs info combat` で単職の詳細。選択・cooldown 状態に依らない。
+- `disclose_reward_amount: false` で額が伏せられる。
 
 ## テストのフェーズ配分
 
