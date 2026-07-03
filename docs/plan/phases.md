@@ -200,6 +200,46 @@ Dialog 動線を「詳細を見てから決める」に付け替える。
 - `jobs.bypass.specialty` を付けたプレイヤーが、専業外アクションで報酬を受け取れる（行動ログにも記録される）。
 - `jobs.bypass.cooldown` を付けたプレイヤーが、cooldown を無視して `/jobs select` から変更確定できる。
 
+## Phase 13: 管理コマンドとテーブル分割
+
+管理系サブコマンド（[spec/08-permissions.md](../spec/08-permissions.md) の Tier 1 + Tier 2、計 9 コマンド）を実装する。同時に `player_job` を「現在専業 1 行のテーブル」と「履歴 append-only テーブル」に分ける（[spec/05-persistence.md](../spec/05-persistence.md)）。開発中のため migration は考慮せず、スキーマを丸ごと差し替える。
+
+サブフェーズは動作確認が独立に取れる粒度で切る。
+
+- **Phase 13-A：inspect + stats + actions**（読み取り専用）
+  - `PlayerJobRepository` を `find` / `upsert` / `resetCooldownBase` / `delete` に再定義（`insertSelection` / `findCurrent` / `lastChangedAt` は破棄）。
+  - `PlayerJobHistoryRepository` を新設。`Actor` enum、`PlayerJobHistoryRow` を追加。
+  - `SchemaInitializer` の DDL を 2 テーブル構成に置換。
+  - `SpecialtyService` を新 repository シグネチャに追随。既存の `select` / `change` は upsert + history append の 2 呼び出しに変更（`Actor.PLAYER` 固定）。
+  - `command.admin.AdminInspectSub`, `AdminStatsSub`, `AdminActionsSub` を実装。`ActionLogRepository#recent(uuid, range, limit)` を新設。
+  - 対応する `Permissions.ADMIN_INSPECT` / `ADMIN_STATS` / `ADMIN_ACTIONS` 定数と `paper-plugin.yml` の permissions セクション拡張。
+  - Brigadier ツリーに `admin inspect|stats|actions` を追加。
+
+- **Phase 13-B：set + reset-cooldown**（書き込みだが cooldown / current 更新のみ）
+  - `SpecialtyService#setForced(uuid, jobId, actorUuid)`, `#resetCooldown(uuid, actorUuid)` を新設。
+  - `PlayerJobHistoryRepository#append` の呼び出しを `setForced` に組み込み、`actor=ADMIN` を残す。`resetCooldown` は履歴を残さない。
+  - `command.admin.AdminSetSub`, `AdminResetCooldownSub` を実装。
+  - オフライン対象の受け入れ（`Bukkit.getOfflinePlayer(name)` で UUID 解決）。オンラインなら `currentCache` / `cooldownBaseCache` を同期更新。
+
+- **Phase 13-C：pay + reset-daily-cap + reset-variety**（Vault / cache への副作用系）
+  - `command.admin.AdminPaySub`：`VaultEconomyAdapter#deposit` → `ActionLogWriteQueue#enqueue`（`action_key='admin:manual'`, `base=final=amount`, `rare=false`）→ `JobActionPaidEvent` 発火。パイプライン非経由。
+  - `command.admin.AdminResetDailyCapSub`：`DailyRewardTotalRepository#reset(uuid, today)`（新規メソッド）+ `DailyTotalCache#reset(uuid)`（新規メソッド）。
+  - `command.admin.AdminResetVarietySub`：既存 `VarietyPenaltyEvaluator#unload(uuid)` を呼ぶだけ。オフラインは no-op。
+
+- **Phase 13-D：flush**
+  - `BatchFlushWorker#flushNow(timeoutMs)` を新設（`drainAndStop` から stop 部分を抜いた形）。呼び出し後に「N 件 flush」を chat に返す。
+  - `command.admin.AdminFlushSub` を実装。
+
+**動作確認**：
+- `/jobs admin inspect <player>`：オンライン・オフライン両方で現専業 / cooldown_base_at / 当日累計が出る。オフラインは variety が「取得不可」で明示される。
+- `/jobs admin set <name> <job>`：オフライン相手でも `player_job` が upsert され、`player_job_history` に `actor='admin'` の 1 行が入る。
+- `/jobs admin reset-cooldown <player>`：`cooldown_base_at` が EPOCH に更新され、直後に `/jobs select` で変更が通る。`player_job_history` には行が増えない。
+- `/jobs admin pay <player> 100 event_reward`：Vault 残高が 100 増え、`action_log` に `action_key=admin:manual` の行が入る。Quest プラグイン側でも `JobActionPaidEvent` が拾える。
+- `/jobs admin reset-daily-cap <player>`：`daily_reward_total` の当日 row が消え、オンラインなら `DailyTotalCache.todayTotal` が 0 になる。
+- `/jobs admin flush`：`BatchFlushWorker` の pending 件数が 0 になる。
+- `/jobs admin actions <player>`：直近 N 件が `HH:mm:ss job/action_key = final_reward (rare?)` で並ぶ。
+- `/jobs admin stats [<job>]`：職業別在籍数、当日総支払、rare 発火率が出る。
+
 ## テストのフェーズ配分
 
 - Phase 2, 6, 7 は特に unit test を厚めに書く（parser、curve lookup、KVS 判定）。
@@ -229,6 +269,12 @@ Phase 3 (Persistence)  ──┘
                           Phase 9 (Advancement)
                               ↓
                           Phase 10 (Reload UI)
+                              ↓
+                          Phase 11 (JobConditions 統合)
+                              ↓
+                          Phase 12 (Permissions)
+                              ↓
+                          Phase 13 (Admin commands + Table split)
 ```
 
 ## Phase 完了の判定基準
