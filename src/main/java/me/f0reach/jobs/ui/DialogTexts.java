@@ -115,6 +115,7 @@ public final class DialogTexts {
     public static final String DIALOG_INFO_TARGET_REPAIR_MENDING = "dialog.info.target.repair_mending";
     public static final String DIALOG_INFO_TARGET_CONSUME_FOOD = "dialog.info.target.consume_food";
     public static final String DIALOG_INFO_TARGET_CONSUME_DRINK = "dialog.info.target.consume_drink";
+    public static final String DIALOG_INFO_TARGET_POTION = "dialog.info.target.potion";
     public static final String DIALOG_INFO_VARIETY_NONE = "dialog.info.variety.none";
     public static final String DIALOG_INFO_VARIETY_DISCLOSED = "dialog.info.variety.disclosed";
     public static final String DIALOG_INFO_VARIETY_ACTIVE_NO_MESSAGE = "dialog.info.variety.active_no_message";

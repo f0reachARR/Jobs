@@ -74,6 +74,8 @@ class JobConditionsFormatterTest {
         keys.put("dialog.info.target.repair_mending", " (mending)");
         keys.put("dialog.info.target.consume_food", " (food)");
         keys.put("dialog.info.target.consume_drink", " (drink)");
+        keys.put("dialog.info.target.potion", " (ポーション: <potion>)");
+        keys.put("dialog.info.reward.label.item_brewed", "醸造");
         // variety
         keys.put("dialog.info.variety.none", "なし");
         keys.put("dialog.info.variety.disclosed", "<disclosed>");
@@ -230,6 +232,29 @@ class JobConditionsFormatterTest {
         assertTrue(body.contains("(minecraft:sharpness Lv3+)"));
         assertTrue(body.contains("(金床)"));
         assertTrue(body.contains("(food)"));
+    }
+
+    @Test
+    void brewedWithPotionAppendsPotionSuffix() {
+        RewardEntry brewedNoPotion = entry(
+                new MatchCriteria.ItemBrewed(
+                        new KeyMatcher.Single(NamespacedKey.minecraft("potion")), null),
+                new RewardAmount.Fixed(8), null);
+        RewardEntry brewedWithPotion = entry(
+                new MatchCriteria.ItemBrewed(
+                        new KeyMatcher.Single(NamespacedKey.minecraft("splash_potion")),
+                        new KeyMatcher.Single(NamespacedKey.minecraft("strong_healing"))),
+                new RewardAmount.Fixed(20), null);
+        JobDefinition job = new JobDefinition(
+                new JobId("brewer"), "醸造", null, NamespacedKey.minecraft("brewing_stand"),
+                List.of(brewedNoPotion, brewedWithPotion),
+                VarietyPenaltyConfig.disabled(), AntiAutomationConfig.empty());
+
+        String body = plain(formatter().build(LOCALE, job, true));
+        assertTrue(body.contains("醸造: minecraft:potion"), () -> body);
+        assertFalse(body.contains("minecraft:potion (ポーション:"), () -> body);
+        assertTrue(body.contains("醸造: minecraft:splash_potion (ポーション: minecraft:strong_healing)"),
+                () -> body);
     }
 
     @Test

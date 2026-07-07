@@ -147,7 +147,10 @@ public final class JobConditionsFormatter {
                     formatConsumeCategory(locale, c.category())
             );
             case MatchCriteria.VillagerTraded c -> formatKeyMatcher(locale, c.item());
-            case MatchCriteria.ItemBrewed c -> formatKeyMatcher(locale, c.item());
+            case MatchCriteria.ItemBrewed c -> concat(
+                    formatKeyMatcher(locale, c.item()),
+                    formatPotion(locale, c.potion())
+            );
             case MatchCriteria.Advancement c -> Component.text(c.advancement().toString());
         };
     }
@@ -189,6 +192,12 @@ public final class JobConditionsFormatter {
             case ANVIL -> i18n.format(locale, DialogTexts.DIALOG_INFO_TARGET_REPAIR_ANVIL);
             case MENDING -> i18n.format(locale, DialogTexts.DIALOG_INFO_TARGET_REPAIR_MENDING);
         };
+    }
+
+    private Component formatPotion(String locale, KeyMatcher potion) {
+        if (potion == null) return null;
+        return i18n.format(locale, DialogTexts.DIALOG_INFO_TARGET_POTION,
+                Placeholder.component("potion", formatKeyMatcher(locale, potion)));
     }
 
     private Component formatConsumeCategory(String locale, ConsumeCategory category) {

@@ -124,6 +124,7 @@ dialog:
       repair_mending: " (mending)"
       consume_food: " (food)"
       consume_drink: " (drink)"
+      potion: " (potion: <potion>)"
     variety:
       none: "None"
       disclosed: "<yellow><disclosed></yellow>"
