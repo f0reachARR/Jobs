@@ -26,7 +26,8 @@ public record MatchContext(
         ConsumeCategory consumedCategory,
         NamespacedKey advancementKey,
         UUID tntPrimer,
-        boolean spawnerOrigin
+        boolean spawnerOrigin,
+        NamespacedKey potionType
 ) {
 
     public static Builder builder() {
@@ -47,6 +48,7 @@ public record MatchContext(
         private NamespacedKey advancementKey;
         private UUID tntPrimer;
         private boolean spawnerOrigin;
+        private NamespacedKey potionType;
 
         public Builder entity(NamespacedKey v) { this.entity = v; return this; }
         public Builder block(NamespacedKey v) { this.block = v; return this; }
@@ -61,12 +63,13 @@ public record MatchContext(
         public Builder advancementKey(NamespacedKey v) { this.advancementKey = v; return this; }
         public Builder tntPrimer(UUID v) { this.tntPrimer = v; return this; }
         public Builder spawnerOrigin(boolean v) { this.spawnerOrigin = v; return this; }
+        public Builder potionType(NamespacedKey v) { this.potionType = v; return this; }
 
         public MatchContext build() {
             return new MatchContext(
                     entity, block, item, cropMature, viaTnt, treasure, amount,
                     enchantments, repairSource, consumedCategory, advancementKey,
-                    tntPrimer, spawnerOrigin
+                    tntPrimer, spawnerOrigin, potionType
             );
         }
     }

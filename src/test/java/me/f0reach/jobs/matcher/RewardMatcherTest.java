@@ -139,4 +139,77 @@ class RewardMatcherTest {
         assertTrue(matcher.firstMatch(job(List.of(e)), ActionType.ITEM_FISHED, t).isPresent());
         assertFalse(matcher.firstMatch(job(List.of(e)), ActionType.ITEM_FISHED, normal).isPresent());
     }
+
+    @Test
+    void brewedWithoutPotionMatchesAnyBaseType() {
+        var e = entry(new MatchCriteria.ItemBrewed(
+                new KeyMatcher.Single(NamespacedKey.minecraft("potion")), null), 8);
+        MatchContext strong = MatchContext.builder()
+                .item(NamespacedKey.minecraft("potion"))
+                .potionType(NamespacedKey.minecraft("strong_healing"))
+                .build();
+        MatchContext water = MatchContext.builder()
+                .item(NamespacedKey.minecraft("potion"))
+                .potionType(NamespacedKey.minecraft("water"))
+                .build();
+        assertTrue(matcher.firstMatch(job(List.of(e)), ActionType.ITEM_BREWED, strong).isPresent());
+        assertTrue(matcher.firstMatch(job(List.of(e)), ActionType.ITEM_BREWED, water).isPresent());
+    }
+
+    @Test
+    void brewedWithSinglePotionFiltersByBaseType() {
+        var e = entry(new MatchCriteria.ItemBrewed(
+                new KeyMatcher.Single(NamespacedKey.minecraft("splash_potion")),
+                new KeyMatcher.Single(NamespacedKey.minecraft("strong_healing"))), 20);
+        MatchContext hit = MatchContext.builder()
+                .item(NamespacedKey.minecraft("splash_potion"))
+                .potionType(NamespacedKey.minecraft("strong_healing"))
+                .build();
+        MatchContext missPotionType = MatchContext.builder()
+                .item(NamespacedKey.minecraft("splash_potion"))
+                .potionType(NamespacedKey.minecraft("healing"))
+                .build();
+        MatchContext missItem = MatchContext.builder()
+                .item(NamespacedKey.minecraft("potion"))
+                .potionType(NamespacedKey.minecraft("strong_healing"))
+                .build();
+        assertTrue(matcher.firstMatch(job(List.of(e)), ActionType.ITEM_BREWED, hit).isPresent());
+        assertFalse(matcher.firstMatch(job(List.of(e)), ActionType.ITEM_BREWED, missPotionType).isPresent());
+        assertFalse(matcher.firstMatch(job(List.of(e)), ActionType.ITEM_BREWED, missItem).isPresent());
+    }
+
+    @Test
+    void brewedWithListPotionMatchesAnyElement() {
+        var e = entry(new MatchCriteria.ItemBrewed(
+                new KeyMatcher.Single(NamespacedKey.minecraft("potion")),
+                new KeyMatcher.ListOf(List.of(
+                        NamespacedKey.minecraft("healing"),
+                        NamespacedKey.minecraft("strong_healing")))), 15);
+        MatchContext a = MatchContext.builder()
+                .item(NamespacedKey.minecraft("potion"))
+                .potionType(NamespacedKey.minecraft("healing"))
+                .build();
+        MatchContext b = MatchContext.builder()
+                .item(NamespacedKey.minecraft("potion"))
+                .potionType(NamespacedKey.minecraft("strong_healing"))
+                .build();
+        MatchContext miss = MatchContext.builder()
+                .item(NamespacedKey.minecraft("potion"))
+                .potionType(NamespacedKey.minecraft("poison"))
+                .build();
+        assertTrue(matcher.firstMatch(job(List.of(e)), ActionType.ITEM_BREWED, a).isPresent());
+        assertTrue(matcher.firstMatch(job(List.of(e)), ActionType.ITEM_BREWED, b).isPresent());
+        assertFalse(matcher.firstMatch(job(List.of(e)), ActionType.ITEM_BREWED, miss).isPresent());
+    }
+
+    @Test
+    void brewedWithPotionRequiresPotionTypeInContext() {
+        var e = entry(new MatchCriteria.ItemBrewed(
+                new KeyMatcher.Single(NamespacedKey.minecraft("potion")),
+                new KeyMatcher.Single(NamespacedKey.minecraft("strong_healing"))), 20);
+        MatchContext noType = MatchContext.builder()
+                .item(NamespacedKey.minecraft("potion"))
+                .build();
+        assertFalse(matcher.firstMatch(job(List.of(e)), ActionType.ITEM_BREWED, noType).isPresent());
+    }
 }

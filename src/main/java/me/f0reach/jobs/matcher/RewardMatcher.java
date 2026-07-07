@@ -82,8 +82,11 @@ public final class RewardMatcher {
             }
             case MatchCriteria.VillagerTraded c ->
                     matchesKey(c.item(), ctx.item(), TagResolver.Kind.ITEMS);
-            case MatchCriteria.ItemBrewed c ->
-                    matchesKey(c.item(), ctx.item(), TagResolver.Kind.ITEMS);
+            case MatchCriteria.ItemBrewed c -> {
+                if (!matchesKey(c.item(), ctx.item(), TagResolver.Kind.ITEMS)) yield false;
+                if (c.potion() == null) yield true;
+                yield matchesPotion(c.potion(), ctx.potionType());
+            }
             case MatchCriteria.Advancement c ->
                     Objects.equals(c.advancement(), ctx.advancementKey());
         };
@@ -93,5 +96,16 @@ public final class RewardMatcher {
         if (matcher == null || target == null) return false;
         java.util.function.Function<NamespacedKey, Set<NamespacedKey>> lookup = tagResolver.lookupFunction(kind);
         return matcher.matches(target, lookup);
+    }
+
+    // PotionType には TagResolver.Kind が無いため、Single / ListOf のみで直接判定する。
+    // Tag は parser 側で禁止済み。
+    private boolean matchesPotion(KeyMatcher matcher, NamespacedKey target) {
+        if (matcher == null || target == null) return false;
+        return switch (matcher) {
+            case KeyMatcher.Single s -> s.key().equals(target);
+            case KeyMatcher.ListOf l -> l.keys().contains(target);
+            case KeyMatcher.Tag ignored -> false;
+        };
     }
 }
