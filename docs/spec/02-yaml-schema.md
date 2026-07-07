@@ -162,8 +162,9 @@ rare がヒットしたとき、通常報酬は支払わず rare 報酬で置き
 
 `item_brewed` のとき。
 
-- `item`：醸造結果のアイテム種別。
-- このエントリで支払う報酬は「出力 slot 数 × reward」となる。
+- `item`：醸造結果のアイテム種別（`minecraft:potion` / `minecraft:splash_potion` / `minecraft:lingering_potion`）。
+- `potion`：base potion type のキー（例: `minecraft:strong_healing`、`minecraft:long_night_vision`）。省略可・単一値または OR リスト。タグ (`#..`) は resolve 手段がないため受け付けない。
+- 出力 slot ごとに 1 event（`amount=1`）として dispatch されるので、3 slot 全部埋まれば 3 event 発火する。3 slot が別種類の potion のとき、`potion:` は slot ごとに評価される。
 
 `advancement` のとき。
 

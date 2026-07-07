@@ -53,10 +53,16 @@ rewards:
     source: mending
     reward: 5
 
-  # 醸造 (出力 slot 数 × reward。3 slot 全部埋まれば 3 倍)
+  # 醸造 (出力 slot ごとに 1 event として dispatch される)
+  # potion 未指定は「どんなポーション種別でも通す」広い一致
   - on: item_brewed
     item: minecraft:potion
     reward: 8
+  # potion を指定すると base potion type で filter でき、派生キーも別バケットになる
+  - on: item_brewed
+    item: minecraft:splash_potion
+    potion: [minecraft:healing, minecraft:strong_healing]
+    reward: 20
 
 variety_penalty:
   enabled: true

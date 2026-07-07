@@ -24,7 +24,7 @@ Track A だけで 5 職業の代表アクションをすべて表現できる。
 | `entity_sheared` | `PlayerShearEntityEvent` | `entity` | 1 アクションごとに 1 件 |
 | `item_consumed` | `PlayerItemConsumeEvent` | `item`、`category` | 1 アクションごとに 1 件 |
 | `villager_traded` | `InventoryClickEvent`（Merchant の result slot） | `item` | 取引個数 × reward |
-| `item_brewed` | `BrewEvent` | `item` | 出力 slot 数 × reward |
+| `item_brewed` | `BrewEvent` | `item`、`potion` | 出力 slot ごとに 1 event × 1 amount |
 | `advancement` | `PlayerAdvancementDoneEvent`（Track B） | `advancement` | 1 アクションごとに 1 件 |
 
 `BlockPlaceEvent` は報酬イベントであると同時に、未植え作物判定と `recently_placed_break` のマーキングにも使う。
@@ -54,6 +54,7 @@ Track A だけで 5 職業の代表アクションをすべて表現できる。
 | `on: item_consumed`、`item: minecraft:golden_apple` | `consume:minecraft:golden_apple` |
 | `on: villager_traded`、`item: minecraft:emerald` | `trade:minecraft:emerald` |
 | `on: item_brewed`、`item: minecraft:potion` | `brew:minecraft:potion` |
+| `on: item_brewed`、`item: minecraft:splash_potion`、`potion: minecraft:strong_healing` | `brew:minecraft:splash_potion+minecraft:strong_healing` |
 | `on: advancement`、`advancement: jobs:combat/x` | `adv:jobs:combat/x` |
 
 派生キーは行動ログの `action_key` カラムと単調性ペナルティのバケット識別子を兼ねる。
