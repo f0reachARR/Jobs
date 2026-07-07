@@ -74,6 +74,33 @@ class ActionKeyDeriverTest {
     }
 
     @Test
+    void brewedWithoutPotionUsesItemOnly() {
+        var criteria = new MatchCriteria.ItemBrewed(
+                new KeyMatcher.Single(NamespacedKey.minecraft("potion")), null);
+        assertEquals("brew:minecraft:potion", deriver.derive(criteria).value());
+    }
+
+    @Test
+    void brewedWithSinglePotionAppendsWithPlus() {
+        var criteria = new MatchCriteria.ItemBrewed(
+                new KeyMatcher.Single(NamespacedKey.minecraft("splash_potion")),
+                new KeyMatcher.Single(NamespacedKey.minecraft("strong_healing")));
+        assertEquals("brew:minecraft:splash_potion+minecraft:strong_healing",
+                deriver.derive(criteria).value());
+    }
+
+    @Test
+    void brewedWithListPotionSortsInsideList() {
+        var criteria = new MatchCriteria.ItemBrewed(
+                new KeyMatcher.Single(NamespacedKey.minecraft("potion")),
+                new KeyMatcher.ListOf(List.of(
+                        NamespacedKey.minecraft("strong_healing"),
+                        NamespacedKey.minecraft("healing"))));
+        assertEquals("brew:minecraft:potion+[minecraft:healing|minecraft:strong_healing]",
+                deriver.derive(criteria).value());
+    }
+
+    @Test
     void advancementUsesFullKey() {
         var criteria = new MatchCriteria.Advancement(
                 new NamespacedKey("jobs", "combat/charged_creeper_sword_kill"));

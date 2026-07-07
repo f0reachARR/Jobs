@@ -50,8 +50,15 @@ public final class ActionKeyDeriver {
                     key(ActionType.ITEM_CONSUMED.prefix(), c.item().toDerivedKey());
             case MatchCriteria.VillagerTraded c ->
                     key(ActionType.VILLAGER_TRADED.prefix(), c.item().toDerivedKey());
-            case MatchCriteria.ItemBrewed c ->
-                    key(ActionType.ITEM_BREWED.prefix(), c.item().toDerivedKey());
+            case MatchCriteria.ItemBrewed c -> {
+                String body = c.item().toDerivedKey();
+                if (c.potion() != null) {
+                    // potion 指定は variety_penalty のバケットを分ける。'+' は KeyMatcher の
+                    // toDerivedKey で使われず衝突しないので、item と potion の区切りに使う。
+                    body = body + "+" + c.potion().toDerivedKey();
+                }
+                yield key(ActionType.ITEM_BREWED.prefix(), body);
+            }
             case MatchCriteria.Advancement c ->
                     key(ActionType.ADVANCEMENT.prefix(), c.advancement().toString());
         };
