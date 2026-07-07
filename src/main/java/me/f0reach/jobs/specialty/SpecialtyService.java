@@ -177,6 +177,23 @@ public final class SpecialtyService {
      * @param actorUuid 実行した管理者の UUID。監査ログに記録される。null 不可。
      */
     public SpecialtyChangeResult setForced(UUID target, JobId jobId, UUID actorUuid) {
+        return forceAssign(target, jobId, Actor.ADMIN, actorUuid);
+    }
+
+    /**
+     * 外部プラグイン起点の強制付与。cooldown 判定なし、オフライン可。
+     * {@link me.f0reach.jobs.api.specialty.PlayerJobService#setBySystem} の内部実装。
+     *
+     * <p>{@link #setForced} とほぼ同じだが、履歴に {@link Actor#SYSTEM} で 1 行残す。
+     * {@code actorTag} は監査ログには直接残らないが、呼び出し元プラグインが自身の
+     * ログに残すための識別用として API 上で必須にしている。将来的に
+     * {@code player_job_history} に actor_tag カラムを追加するなら activator になる。
+     */
+    public SpecialtyChangeResult setBySystem(UUID target, JobId jobId) {
+        return forceAssign(target, jobId, Actor.SYSTEM, null);
+    }
+
+    private SpecialtyChangeResult forceAssign(UUID target, JobId jobId, Actor actor, UUID actorUuid) {
         if (!jobRegistry.get(jobId).isPresent()) {
             return new SpecialtyChangeResult.UnknownJob(jobId);
         }
@@ -185,16 +202,15 @@ public final class SpecialtyService {
                 .map(PlayerJobRow::jobId)
                 .orElse(null);
         repository.upsert(target, jobId.value(), now);
-        historyRepository.append(target, jobId.value(), previousJobId, now, Actor.ADMIN, actorUuid);
+        historyRepository.append(target, jobId.value(), previousJobId, now, actor, actorUuid);
 
+        JobId previousId = previousJobId == null ? null : new JobId(previousJobId);
         Player online = Bukkit.getPlayer(target);
         if (online != null) {
-            JobId previousId = previousJobId == null ? null : new JobId(previousJobId);
             currentCache.put(target, jobId);
             cooldownBaseCache.put(target, now);
             fireEvent(online, previousId, jobId, now);
         }
-        JobId previousId = previousJobId == null ? null : new JobId(previousJobId);
         return new SpecialtyChangeResult.Success(previousId, jobId, now, previousId == null);
     }
 

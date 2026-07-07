@@ -79,6 +79,53 @@ public class TimeRange {
 呼び出しは非同期前提とする。
 Bukkit main thread から直接呼ぶと MySQL クエリで thread を止めるため、`CompletableFuture` で wrap する補助メソッドを別途提供することを検討する。
 
+## PlayerJobService
+
+プレイヤーの現在専業を取得・変更する API。
+Quest プラグイン等がクエスト報酬として専業を付与したり、コンパニオンプラグインが自作 UI から変更フローを走らせるのに使う。
+
+```java
+public interface PlayerJobService {
+  // キャッシュ経由の同期取得。オンラインのみ。
+  Optional<String> getCurrentJobId(UUID player);
+
+  // DB 直取得。オフラインプレイヤーでも解決できる。
+  CompletableFuture<Optional<String>> fetchCurrentJobId(UUID player);
+
+  // 次回変更可能時刻。キャッシュ依存でオフラインは empty。
+  Optional<Instant> nextChangeAvailableAt(UUID player);
+
+  // プレイヤー起点変更。cooldown / jobs.bypass.cooldown を尊重。main thread 前提。
+  JobChangeResult changeAsPlayer(Player player, String jobId);
+
+  // 外部プラグイン起点強制変更。cooldown 無視、オフライン可。actor='system' で履歴に残る。
+  CompletableFuture<JobChangeResult> setBySystem(UUID player, String jobId, String actorTag);
+}
+
+public sealed interface JobChangeResult {
+  record Success(String previousJobId, String newJobId, Instant changedAt, boolean initial) implements JobChangeResult {}
+  record CooldownRemaining(Duration remaining, Instant nextAvailable) implements JobChangeResult {}
+  record UnknownJob(String requestedJobId) implements JobChangeResult {}
+  record NoChange() implements JobChangeResult {}
+}
+```
+
+`changeAsPlayer` と `setBySystem` は差分が 3 点ある。
+
+|項目|`changeAsPlayer`|`setBySystem`|
+|---|---|---|
+|想定呼び出し元|プレイヤー UI からの操作を代行する外部プラグイン|クエスト報酬・イベント配布など、プレイヤー意思を経由しない付与|
+|cooldown 判定|尊重（`jobs.bypass.cooldown` 保有時のみ skip）|無視|
+|オフライン対応|不可（`Player` を要求）|可|
+|`player_job_history.actor`|`player`|`system`|
+
+いずれの経路も成功時に `JobSpecialtyChangedEvent` を発火する。
+オフラインプレイヤーへの `setBySystem` は発火をスキップする（購読側が `Player` を受け取れないため）。
+
+`actorTag` は呼び出し元識別用の文字列で、現時点では監査ログには保存しない。
+呼び出し元プラグインが自身のログに残す際の識別子として API 上で必須にしている。
+将来 `player_job_history` に `actor_tag` カラムを追加する余地を残すためのシグネチャ。
+
 ## 拡張点
 
 イベント側プラグインが Job プラグインの報酬パイプラインに介入するための拡張点。

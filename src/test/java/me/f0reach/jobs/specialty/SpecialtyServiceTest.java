@@ -5,12 +5,11 @@ import me.f0reach.jobs.domain.job.AntiAutomationConfig;
 import me.f0reach.jobs.domain.job.JobDefinition;
 import me.f0reach.jobs.domain.job.JobId;
 import me.f0reach.jobs.domain.job.VarietyPenaltyConfig;
-import me.f0reach.jobs.persistence.PlayerJobHistoryRepository;
-import me.f0reach.jobs.persistence.PlayerJobRepository;
 import me.f0reach.jobs.persistence.dto.Actor;
 import me.f0reach.jobs.persistence.dto.PlayerJobHistoryRow;
-import me.f0reach.jobs.persistence.dto.PlayerJobRow;
 import me.f0reach.jobs.registry.JobRegistry;
+import me.f0reach.jobs.testsupport.InMemoryPlayerJobHistoryRepository;
+import me.f0reach.jobs.testsupport.InMemoryPlayerJobRepository;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
@@ -24,11 +23,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -65,77 +60,9 @@ class SpecialtyServiceTest {
         );
     }
 
-    /** 1 player 1 row + cooldown_base_at の in-memory 実装。 */
-    static final class InMemoryPlayerJobRepository implements PlayerJobRepository {
-        final Map<UUID, PlayerJobRow> rows = new HashMap<>();
-
-        @Override
-        public Optional<PlayerJobRow> find(UUID player) {
-            return Optional.ofNullable(rows.get(player));
-        }
-
-        @Override
-        public void upsert(UUID player, String jobId, Instant cooldownBaseAt) {
-            rows.put(player, new PlayerJobRow(player, jobId, cooldownBaseAt));
-        }
-
-        @Override
-        public void resetCooldownBase(UUID player) {
-            PlayerJobRow existing = rows.get(player);
-            if (existing != null) {
-                rows.put(player, new PlayerJobRow(player, existing.jobId(), Instant.EPOCH));
-            }
-        }
-
-        @Override
-        public void delete(UUID player) {
-            rows.remove(player);
-        }
-
-        @Override
-        public Map<String, Long> countByJob() {
-            Map<String, Long> counts = new HashMap<>();
-            for (PlayerJobRow row : rows.values()) {
-                counts.merge(row.jobId(), 1L, Long::sum);
-            }
-            return counts;
-        }
-    }
-
-    /** append-only 履歴の in-memory 実装。 */
-    static final class InMemoryPlayerJobHistoryRepository implements PlayerJobHistoryRepository {
-        final List<PlayerJobHistoryRow> rows = new ArrayList<>();
-        long nextId = 1;
-
-        @Override
-        public void append(UUID player, String jobId, String previousJobId,
-                           Instant changedAt, Actor actor, UUID actorUuid) {
-            rows.add(new PlayerJobHistoryRow(
-                    nextId++, player, jobId, previousJobId, changedAt, actor, actorUuid
-            ));
-        }
-
-        @Override
-        public List<PlayerJobHistoryRow> recent(UUID player, int limit) {
-            return rows.stream()
-                    .filter(r -> r.playerUuid().equals(player))
-                    .sorted(Comparator.comparing(PlayerJobHistoryRow::changedAt).reversed())
-                    .limit(limit)
-                    .toList();
-        }
-
-        @Override
-        public Optional<Instant> firstSelectedAt(UUID player) {
-            return rows.stream()
-                    .filter(r -> r.playerUuid().equals(player))
-                    .map(PlayerJobHistoryRow::changedAt)
-                    .min(Comparator.naturalOrder());
-        }
-    }
-
     private SpecialtyService buildService(
-            PlayerJobRepository repo,
-            PlayerJobHistoryRepository history,
+            me.f0reach.jobs.persistence.PlayerJobRepository repo,
+            me.f0reach.jobs.persistence.PlayerJobHistoryRepository history,
             JobRegistry reg,
             Clock clock,
             Duration cooldown
@@ -326,6 +253,64 @@ class SpecialtyServiceTest {
         assertEquals(Actor.ADMIN, adminRow.actor());
         assertEquals(actor, adminRow.actorUuid());
         assertEquals("combat", adminRow.previousJobId());
+    }
+
+    @Test
+    void setBySystemWritesSystemHistoryForOnlinePlayer() {
+        JobRegistry registry = new JobRegistry();
+        registry.loadAll(List.of(job("combat"), job("mining")));
+        InMemoryPlayerJobRepository repo = new InMemoryPlayerJobRepository();
+        InMemoryPlayerJobHistoryRepository history = new InMemoryPlayerJobHistoryRepository();
+        SpecialtyService service = buildService(repo, history, registry, Clock.systemUTC(), Duration.ofDays(5));
+
+        Player target = server.addPlayer();
+        service.loadPlayer(target.getUniqueId());
+        service.select(target, new JobId("combat"));
+
+        SpecialtyChangeResult result = service.setBySystem(target.getUniqueId(), new JobId("mining"));
+        assertInstanceOf(SpecialtyChangeResult.Success.class, result);
+        assertEquals("mining", service.currentJob(target.getUniqueId()).get().value());
+        assertEquals(2, history.rows.size());
+        PlayerJobHistoryRow row = history.rows.get(1);
+        assertEquals(Actor.SYSTEM, row.actor());
+        assertNull(row.actorUuid());
+        assertEquals("combat", row.previousJobId());
+    }
+
+    @Test
+    void setBySystemForOfflinePlayerSkipsCacheUpdate() {
+        JobRegistry registry = new JobRegistry();
+        registry.loadAll(List.of(job("combat")));
+        InMemoryPlayerJobRepository repo = new InMemoryPlayerJobRepository();
+        InMemoryPlayerJobHistoryRepository history = new InMemoryPlayerJobHistoryRepository();
+        SpecialtyService service = buildService(repo, history, registry, Clock.systemUTC(), Duration.ofDays(5));
+
+        UUID offline = UUID.randomUUID();
+        SpecialtyChangeResult result = service.setBySystem(offline, new JobId("combat"));
+
+        assertInstanceOf(SpecialtyChangeResult.Success.class, result);
+        assertEquals(1, repo.rows.size(), "オフラインでも DB は書かれる");
+        assertEquals(1, history.rows.size());
+        assertEquals(Actor.SYSTEM, history.rows.get(0).actor());
+        // オフラインなのでキャッシュには載らない
+        assertTrue(service.currentJob(offline).isEmpty());
+    }
+
+    @Test
+    void setBySystemIsCooldownAgnostic() {
+        JobRegistry registry = new JobRegistry();
+        registry.loadAll(List.of(job("combat"), job("mining")));
+        InMemoryPlayerJobRepository repo = new InMemoryPlayerJobRepository();
+        InMemoryPlayerJobHistoryRepository history = new InMemoryPlayerJobHistoryRepository();
+        Instant t0 = Instant.parse("2026-01-01T00:00:00Z");
+        SpecialtyService service = buildService(repo, history, registry,
+                Clock.fixed(t0, ZoneOffset.UTC), Duration.ofDays(5));
+
+        Player target = server.addPlayer();
+        service.loadPlayer(target.getUniqueId());
+        service.select(target, new JobId("combat"));
+        SpecialtyChangeResult result = service.setBySystem(target.getUniqueId(), new JobId("mining"));
+        assertInstanceOf(SpecialtyChangeResult.Success.class, result);
     }
 
     @Test

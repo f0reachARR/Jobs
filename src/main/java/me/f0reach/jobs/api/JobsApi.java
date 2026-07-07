@@ -3,6 +3,7 @@ package me.f0reach.jobs.api;
 import me.f0reach.jobs.api.extension.JobRewardModifier;
 import me.f0reach.jobs.api.extension.JobRewardSplitter;
 import me.f0reach.jobs.api.query.ActionLogQueryService;
+import me.f0reach.jobs.api.specialty.PlayerJobService;
 
 /**
  * 外部プラグインへの公開 API 起点。
@@ -21,6 +22,9 @@ public interface JobsApi {
 
     /** 行動ログの集計クエリ。 */
     ActionLogQueryService getQueryService();
+
+    /** プレイヤーの現在専業を取得・変更する API。 */
+    PlayerJobService getPlayerJobService();
 
     /**
      * 登録簿の共通 interface。id 単位で register / unregister する。

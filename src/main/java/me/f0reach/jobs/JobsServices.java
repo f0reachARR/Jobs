@@ -3,6 +3,7 @@ package me.f0reach.jobs;
 import me.f0reach.jobs.api.JobsApi;
 import me.f0reach.jobs.api.JobsApiImpl;
 import me.f0reach.jobs.api.lifecycle.JobsPluginReadyEvent;
+import me.f0reach.jobs.api.specialty.PlayerJobServiceImpl;
 import me.f0reach.jobs.antiautomation.AntiAutomationCheck;
 import me.f0reach.jobs.antiautomation.AntiAutomationCoordinator;
 import me.f0reach.jobs.antiautomation.AntiAutomationNotifier;
@@ -197,7 +198,9 @@ public final class JobsServices {
         this.extensionModifierChain = new ExtensionModifierChain(plugin);
         this.splitterChain = new SplitterChain(plugin);
         this.queryService = new ActionLogQueryServiceImpl(actionLogRepository, asyncExecutor);
-        this.jobsApi = new JobsApiImpl(extensionModifierChain, splitterChain, queryService);
+        PlayerJobServiceImpl playerJobService =
+                new PlayerJobServiceImpl(specialtyService, playerJobRepository, asyncExecutor);
+        this.jobsApi = new JobsApiImpl(extensionModifierChain, splitterChain, queryService, playerJobService);
     }
 
     /**
