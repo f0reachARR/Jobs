@@ -143,6 +143,65 @@ class JobYamlLoaderTest {
   }
 
   @Test
+  void parsesItemBrewedWithOptionalPotion(@TempDir Path dir) throws IOException {
+    Path yml = dir.resolve("brew.yml");
+    Files.writeString(yml, """
+        id: brew
+        display_name: "Brew"
+        icon: minecraft:brewing_stand
+
+        rewards:
+          - on: item_brewed
+            item: minecraft:potion
+            reward: 8
+          - on: item_brewed
+            item: minecraft:splash_potion
+            potion: minecraft:strong_healing
+            reward: 20
+          - on: item_brewed
+            item: minecraft:lingering_potion
+            potion: [minecraft:healing, minecraft:strong_healing]
+            reward: 15
+        """, StandardCharsets.UTF_8);
+
+    JobYamlLoader.LoadResult result = newLoader().loadDirectory(dir.toFile());
+    assertFalse(result.errors().hasErrors(), () -> "errors: " + result.errors().entries());
+    JobDefinition job = result.jobs().get(0);
+    assertEquals(3, job.rewards().size());
+
+    MatchCriteria.ItemBrewed noPotion = (MatchCriteria.ItemBrewed) job.rewards().get(0).criteria();
+    assertNull(noPotion.potion());
+
+    MatchCriteria.ItemBrewed single = (MatchCriteria.ItemBrewed) job.rewards().get(1).criteria();
+    assertInstanceOf(KeyMatcher.Single.class, single.potion());
+
+    MatchCriteria.ItemBrewed listOf = (MatchCriteria.ItemBrewed) job.rewards().get(2).criteria();
+    assertInstanceOf(KeyMatcher.ListOf.class, listOf.potion());
+  }
+
+  @Test
+  void rejectsTagMatcherOnBrewedPotion(@TempDir Path dir) throws IOException {
+    Path yml = dir.resolve("brew_tag.yml");
+    Files.writeString(yml, """
+        id: brew_tag
+        display_name: "BrewTag"
+        icon: minecraft:brewing_stand
+
+        rewards:
+          - on: item_brewed
+            item: minecraft:potion
+            potion: "#minecraft:whatever"
+            reward: 8
+        """, StandardCharsets.UTF_8);
+
+    JobYamlLoader.LoadResult result = newLoader().loadDirectory(dir.toFile());
+    assertTrue(result.errors().hasErrors());
+    // rewards entry がスキップされ、job だけ残る (rewards が空)
+    assertEquals(1, result.jobs().size());
+    assertTrue(result.jobs().get(0).rewards().isEmpty());
+  }
+
+  @Test
   void skipsInvalidRewardEntryButKeepsJob(@TempDir Path dir) throws IOException {
     Path yml = dir.resolve("mining.yml");
     Files.writeString(yml, """

@@ -145,9 +145,14 @@ public sealed interface MatchCriteria {
         public ActionType actionType() { return ActionType.VILLAGER_TRADED; }
     }
 
-    record ItemBrewed(KeyMatcher item) implements MatchCriteria {
+    record ItemBrewed(KeyMatcher item, KeyMatcher potion) implements MatchCriteria {
         public ItemBrewed {
             Objects.requireNonNull(item, "item");
+            // potion は optional。指定時は BasePotionType のキーに対する KeyMatcher。
+            // Tag matcher は現時点で resolve 手段がないため、parser 側で禁止する。
+            if (potion instanceof KeyMatcher.Tag) {
+                throw new IllegalArgumentException("item_brewed.potion does not support tag matcher");
+            }
         }
 
         @Override

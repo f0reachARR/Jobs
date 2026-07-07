@@ -51,7 +51,10 @@ public final class MatchCriteriaParser {
                     parseConsumeCategory(entry.get("category"), path)
             );
             case VILLAGER_TRADED -> new MatchCriteria.VillagerTraded(requireMatcher(entry, "item", path));
-            case ITEM_BREWED -> new MatchCriteria.ItemBrewed(requireMatcher(entry, "item", path));
+            case ITEM_BREWED -> new MatchCriteria.ItemBrewed(
+                    requireMatcher(entry, "item", path),
+                    optionalNonTagMatcher(entry, "potion", path)
+            );
             case ADVANCEMENT -> {
                 NamespacedKey key = optionalKey(entry, "advancement", path);
                 if (key == null) throw new YamlParseException(path + ".advancement: required");
@@ -72,6 +75,14 @@ public final class MatchCriteriaParser {
         Object raw = entry.get(field);
         if (raw == null) return null;
         return keyMatcher.parse(raw, path + "." + field);
+    }
+
+    private KeyMatcher optionalNonTagMatcher(Map<?, ?> entry, String field, String path) {
+        KeyMatcher matcher = optionalMatcher(entry, field, path);
+        if (matcher instanceof KeyMatcher.Tag) {
+            throw new YamlParseException(path + "." + field + ": tag matcher (#..) is not supported here");
+        }
+        return matcher;
     }
 
     private NamespacedKey optionalKey(Map<?, ?> entry, String field, String path) {
