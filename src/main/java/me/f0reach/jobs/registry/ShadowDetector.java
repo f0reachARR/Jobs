@@ -99,8 +99,14 @@ public final class ShadowDetector {
             }
             case MatchCriteria.VillagerTraded h ->
                     coversKey(h.item(), ((MatchCriteria.VillagerTraded) lower).item(), TagResolver.Kind.ITEMS);
-            case MatchCriteria.ItemBrewed h ->
-                    coversKey(h.item(), ((MatchCriteria.ItemBrewed) lower).item(), TagResolver.Kind.ITEMS);
+            case MatchCriteria.ItemBrewed h -> {
+                MatchCriteria.ItemBrewed l = (MatchCriteria.ItemBrewed) lower;
+                if (h.potion() != null) {
+                    if (l.potion() == null) yield false;
+                    if (!coversPotion(h.potion(), l.potion())) yield false;
+                }
+                yield coversKey(h.item(), l.item(), TagResolver.Kind.ITEMS);
+            }
             case MatchCriteria.Advancement h ->
                     Objects.equals(h.advancement(), ((MatchCriteria.Advancement) lower).advancement());
         };
@@ -115,6 +121,23 @@ public final class ShadowDetector {
         Set<NamespacedKey> lset = expand(lower, kind);
         if (hset.isEmpty()) return false;
         return hset.containsAll(lset);
+    }
+
+    // PotionType には TagResolver.Kind を用意しないため、Single / ListOf のみで包含判定する。
+    // Tag は parser 側で禁止済みだが、来た場合は空集合扱いで安全側 (包含しない) に倒す。
+    private boolean coversPotion(KeyMatcher higher, KeyMatcher lower) {
+        Set<NamespacedKey> hset = potionSet(higher);
+        Set<NamespacedKey> lset = potionSet(lower);
+        if (hset.isEmpty()) return false;
+        return hset.containsAll(lset);
+    }
+
+    private Set<NamespacedKey> potionSet(KeyMatcher matcher) {
+        return switch (matcher) {
+            case KeyMatcher.Single s -> Set.of(s.key());
+            case KeyMatcher.ListOf l -> Set.copyOf(l.keys());
+            case KeyMatcher.Tag ignored -> Set.of();
+        };
     }
 
     private Set<NamespacedKey> expand(KeyMatcher matcher, TagResolver.Kind kind) {
