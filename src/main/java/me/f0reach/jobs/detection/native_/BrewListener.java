@@ -13,13 +13,20 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.BrewEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.PotionMeta;
+import org.bukkit.potion.PotionType;
 
 /**
- * item_brewed: BrewingStand の醸造完了。amount には出力 slot 数 (0〜3) を載せる。
+ * item_brewed: BrewingStand の醸造完了。
  *
- * <p>BrewEvent は event 単位で発火するが、投入者 (operator) の情報は event に無いため
- * Phase 5 では BrewingStand の周囲にいるプレイヤーの中で最も近い 1 人を仮の owner にする。
- * Phase 7 で auto_fed_processing の OperatorTracker と組み合わせて厳密化する。
+ * <p>出力 slot ごとに 1 event ずつ dispatch する (amount=1)。
+ * 各 slot の {@link PotionMeta#getBasePotionType()} を potionType として ctx に載せ、
+ * `potion:` 条件で filter できるようにする (3 slot が別種類のとき slot ごとに評価される)。
+ *
+ * <p>BrewEvent には投入者 (operator) 情報が無いため、Phase 5 と同じく BrewingStand
+ * 周囲の最近接プレイヤーを仮の owner にする。auto_fed_processing の operator 検査は
+ * {@link me.f0reach.jobs.antiautomation.OperatorTracker} が KVS に書き込んだ値で行う
+ * ため、per-slot dispatch でも同じ operator を read するだけで消費はしない。
  */
 public final class BrewListener implements Listener {
 
@@ -36,24 +43,30 @@ public final class BrewListener implements Listener {
         Player operator = nearestPlayer(event);
         if (operator == null) return;
 
-        NamespacedKey itemKey = null;
-        int outputCount = 0;
-        for (ItemStack stack : event.getResults()) {
-            if (stack == null || stack.getType().isAir()) continue;
-            outputCount++;
-            if (itemKey == null) itemKey = stack.getType().getKey();
-        }
-        if (outputCount == 0 || itemKey == null) return;
-
-        MatchContext ctx = MatchContext.builder()
-                .item(itemKey)
-                .amount(outputCount)
-                .build();
         DetectionSubject subject = DetectionSubject.builder()
                 .containerBlock(event.getBlock())
                 .containerKind(ContainerKind.BREWING_STAND)
                 .build();
-        dispatcher.dispatch(operator, ActionType.ITEM_BREWED, ctx, SourceFlags.none(), subject);
+
+        for (ItemStack stack : event.getResults()) {
+            if (stack == null || stack.getType().isAir()) continue;
+            NamespacedKey itemKey = stack.getType().getKey();
+            NamespacedKey potionKey = basePotionKey(stack);
+
+            MatchContext ctx = MatchContext.builder()
+                    .item(itemKey)
+                    .amount(1)
+                    .potionType(potionKey)
+                    .build();
+            dispatcher.dispatch(operator, ActionType.ITEM_BREWED, ctx, SourceFlags.none(), subject);
+        }
+    }
+
+    private static NamespacedKey basePotionKey(ItemStack stack) {
+        if (!(stack.getItemMeta() instanceof PotionMeta meta)) return null;
+        if (!meta.hasBasePotionType()) return null;
+        PotionType type = meta.getBasePotionType();
+        return type == null ? null : type.getKey();
     }
 
     private Player nearestPlayer(BrewEvent event) {
