@@ -1,0 +1,157 @@
+# 上級採掘職。
+# deepslate 変種と nether ore、amethyst / copper 系まで含めた広い網羅。
+# `via_tnt: true` の別バケットで整地系採掘を分ける。
+
+id: miner_pro
+display_name: "上級採掘"
+description: "全鉱石と特殊資源、そして採石業を含む採掘のプロ。地下探索が中心。"
+icon: minecraft:netherite_pickaxe
+
+rewards:
+  # --- 高額鉱石 (先頭) ---
+  # 派生キー: break:minecraft:ancient_debris
+  - on: block_broken
+    block: minecraft:ancient_debris
+    reward: { min: 80, max: 200 }
+    rare:
+      chance: 0.05
+      reward: 800
+      announce: "<gold><player> がネザライト鉱脈を掘り当てた！</gold>"
+
+  # 派生キー: break:minecraft:deepslate_diamond_ore
+  - on: block_broken
+    block: minecraft:deepslate_diamond_ore
+    reward: 60
+
+  # 派生キー: break:minecraft:diamond_ore
+  - on: block_broken
+    block: minecraft:diamond_ore
+    reward: 40
+
+  # 派生キー: break:minecraft:deepslate_emerald_ore
+  - on: block_broken
+    block: minecraft:deepslate_emerald_ore
+    reward: 40
+
+  # 派生キー: break:minecraft:emerald_ore
+  - on: block_broken
+    block: minecraft:emerald_ore
+    reward: 25
+
+  # --- Nether 由来 ---
+  # 派生キー: break:minecraft:nether_quartz_ore
+  - on: block_broken
+    block: minecraft:nether_quartz_ore
+    reward: 3
+
+  # 派生キー: break:minecraft:nether_gold_ore
+  - on: block_broken
+    block: minecraft:nether_gold_ore
+    reward: 4
+
+  # 派生キー: break:[minecraft:blackstone|minecraft:gilded_blackstone|minecraft:polished_blackstone]
+  - on: block_broken
+    block:
+      - minecraft:blackstone
+      - minecraft:gilded_blackstone
+      - minecraft:polished_blackstone
+    reward: 1
+
+  # --- Amethyst / Sculk / 特殊 ---
+  # 派生キー: break:minecraft:amethyst_cluster
+  - on: block_broken
+    block: minecraft:amethyst_cluster
+    reward: 8
+
+  # 派生キー: break:[minecraft:budding_amethyst|minecraft:large_amethyst_bud|minecraft:medium_amethyst_bud|minecraft:small_amethyst_bud]
+  - on: block_broken
+    block:
+      - minecraft:small_amethyst_bud
+      - minecraft:medium_amethyst_bud
+      - minecraft:large_amethyst_bud
+      - minecraft:budding_amethyst
+    reward: 2
+
+  # 派生キー: break:[minecraft:sculk|minecraft:sculk_catalyst|minecraft:sculk_shrieker|minecraft:sculk_vein]
+  - on: block_broken
+    block:
+      - minecraft:sculk
+      - minecraft:sculk_vein
+      - minecraft:sculk_catalyst
+      - minecraft:sculk_shrieker
+    reward: 5
+
+  # 派生キー: break:minecraft:sculk_sensor
+  - on: block_broken
+    block: minecraft:sculk_sensor
+    reward: 10
+
+  # --- End 石 ---
+  # 派生キー: break:minecraft:end_stone
+  - on: block_broken
+    block: minecraft:end_stone
+    reward: 1
+
+  # --- 個別 → tag の順で。金鉱系 ---
+  # 派生キー: break:[minecraft:deepslate_gold_ore|minecraft:gold_ore]
+  - on: block_broken
+    block: [minecraft:gold_ore, minecraft:deepslate_gold_ore]
+    reward: 8
+
+  # --- 銅系 (deepslate 変種と統合) ---
+  # 派生キー: break:[minecraft:copper_ore|minecraft:deepslate_copper_ore]
+  - on: block_broken
+    block: [minecraft:copper_ore, minecraft:deepslate_copper_ore]
+    reward: 3
+
+  # --- Redstone / Lapis (tag で拾う) ---
+  # 派生キー: break:#minecraft:redstone_ores
+  - on: block_broken
+    block: "#minecraft:redstone_ores"
+    reward: 3
+
+  # 派生キー: break:#minecraft:lapis_ores
+  - on: block_broken
+    block: "#minecraft:lapis_ores"
+    reward: 3
+
+  # --- 鉄系は tag で ---
+  # 派生キー: break:#minecraft:iron_ores
+  - on: block_broken
+    block: "#minecraft:iron_ores"
+    reward: 4
+
+  # --- 石炭系は tag で ---
+  # 派生キー: break:#minecraft:coal_ores
+  - on: block_broken
+    block: "#minecraft:coal_ores"
+    reward: 1
+
+  # --- 整地・採石は TNT 経由だけカウント ---
+  # 派生キー: break_tnt:#minecraft:base_stone_overworld
+  - on: block_broken
+    block: "#minecraft:base_stone_overworld"
+    via_tnt: true
+    reward: 1
+
+  # 派生キー: break_tnt:minecraft:netherrack
+  - on: block_broken
+    block: minecraft:netherrack
+    via_tnt: true
+    reward: 1
+
+variety_penalty:
+  enabled: true
+  window: 60
+  curve:
+    - { up_to: 0.50, multiplier: 1.00 }
+    - { up_to: 0.70, multiplier: 0.85 }
+    - { up_to: 0.90, multiplier: 0.65 }
+    - { up_to: 1.01, multiplier: 0.40 }
+  disclosed_message: "同じ鉱脈にかじりつくと成果が痩せる"
+  hide_numbers: false
+
+anti_automation:
+  # 置いたばかりの block を壊す "整地しなおし" は 0 に
+  recently_placed_break:
+    window_sec: 3600

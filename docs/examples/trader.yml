@@ -1,0 +1,120 @@
+# 商人。
+# villager_traded 一本で、取引で得たアイテム種別ごとにバケットを分ける。
+# 稀少品 (enchanted_book / diamond / netherite / totem) と通常品を分離。
+# villager_repeat_trade cooldown で同 recipe 連打を封殺。
+
+id: trader
+display_name: "商人"
+description: "Villager との取引で稼ぐ。稀少品狙いと日用品仕入れの両立が肝。"
+icon: minecraft:emerald
+
+rewards:
+  # --- 高額稀少 ---
+  # 派生キー: trade:minecraft:totem_of_undying
+  - on: villager_traded
+    item: minecraft:totem_of_undying
+    reward: 500
+
+  # 派生キー: trade:[minecraft:netherite_ingot|minecraft:netherite_scrap]
+  - on: villager_traded
+    item: [minecraft:netherite_ingot, minecraft:netherite_scrap]
+    reward: 200
+
+  # 派生キー: trade:minecraft:diamond
+  - on: villager_traded
+    item: minecraft:diamond
+    reward: 30
+
+  # 派生キー: trade:minecraft:enchanted_book
+  - on: villager_traded
+    item: minecraft:enchanted_book
+    reward: 25
+    rare:
+      chance: 0.01
+      reward: 2000
+      announce: "<gold><player> が伝説の付呪本を引き当てた！</gold>"
+
+  # 派生キー: trade:minecraft:experience_bottle
+  - on: villager_traded
+    item: minecraft:experience_bottle
+    reward: 8
+
+  # --- 中額 ---
+  # 派生キー: trade:[minecraft:elytra|minecraft:trident]
+  # ※ Villager からは通常出ないが、Wandering Trader / データパック追加想定の参考例
+  - on: villager_traded
+    item: [minecraft:elytra, minecraft:trident]
+    reward: 300
+
+  # 派生キー: trade:minecraft:name_tag
+  - on: villager_traded
+    item: minecraft:name_tag
+    reward: 40
+
+  # 派生キー: trade:[minecraft:filled_map|minecraft:map]
+  - on: villager_traded
+    item: [minecraft:map, minecraft:filled_map]
+    reward: 20
+
+  # 派生キー: trade:[minecraft:chainmail_boots|minecraft:chainmail_chestplate|minecraft:chainmail_helmet|minecraft:chainmail_leggings]
+  - on: villager_traded
+    item:
+      - minecraft:chainmail_helmet
+      - minecraft:chainmail_chestplate
+      - minecraft:chainmail_leggings
+      - minecraft:chainmail_boots
+    reward: 10
+
+  # --- Emerald 経路 (最下段、取引回数系のベース) ---
+  # 派生キー: trade:minecraft:emerald
+  - on: villager_traded
+    item: minecraft:emerald
+    reward: 2
+
+  # --- 食料仕入れ (Farmer Villager 想定) ---
+  # 派生キー: trade:[minecraft:apple|minecraft:baked_potato|minecraft:beetroot|minecraft:bread|minecraft:carrot|minecraft:cookie|minecraft:golden_carrot|minecraft:melon_slice|minecraft:pumpkin_pie|minecraft:sweet_berries]
+  - on: villager_traded
+    item:
+      - minecraft:bread
+      - minecraft:cookie
+      - minecraft:pumpkin_pie
+      - minecraft:apple
+      - minecraft:carrot
+      - minecraft:baked_potato
+      - minecraft:beetroot
+      - minecraft:melon_slice
+      - minecraft:sweet_berries
+      - minecraft:golden_carrot
+    reward: 1
+
+  # --- Cleric 由来の魔素材 ---
+  # 派生キー: trade:[minecraft:ender_pearl|minecraft:glowstone|minecraft:lapis_lazuli|minecraft:redstone]
+  - on: villager_traded
+    item:
+      - minecraft:ender_pearl
+      - minecraft:glowstone
+      - minecraft:redstone
+      - minecraft:lapis_lazuli
+    reward: 3
+
+  # --- Librarian の紙 / 本 ---
+  # 派生キー: trade:[minecraft:book|minecraft:paper|minecraft:writable_book]
+  - on: villager_traded
+    item: [minecraft:paper, minecraft:book, minecraft:writable_book]
+    reward: 1
+
+variety_penalty:
+  enabled: true
+  window: 30
+  curve:
+    - { up_to: 0.45, multiplier: 1.00 }
+    - { up_to: 0.65, multiplier: 0.80 }
+    - { up_to: 0.85, multiplier: 0.55 }
+    - { up_to: 1.01, multiplier: 0.30 }
+  disclosed_message: "同じ商人と同じ品を往復すると相場が下がる"
+  hide_numbers: false
+
+anti_automation:
+  # 同 villager × 同 recipe の連打を短時間で封殺
+  villager_repeat_trade:
+    cooldown_sec: 120

@@ -1,0 +1,65 @@
+# 釣り師。
+# treasure entry を上に置いて宝箱経路を最優先マッチさせ、下段に通常魚を並べる。
+# first match wins の教材例。
+
+id: fisher
+display_name: "釣り師"
+description: "水辺と船上で暮らす専業。宝物釣りとレア熱帯魚が目玉。"
+icon: minecraft:fishing_rod
+
+rewards:
+  # --- Treasure ループテーブル由来をまず最優先で拾う ---
+  # 派生キー: fish:treasure
+  - on: item_fished
+    treasure: true
+    reward: 100
+    rare:
+      chance: 0.02
+      reward: 5000
+      announce: "<gold><player> が海底の秘宝を釣り上げた！</gold>"
+
+  # --- Fish 系 ---
+  # 派生キー: fish:minecraft:tropical_fish
+  - on: item_fished
+    item: minecraft:tropical_fish
+    reward: 5
+
+  # 派生キー: fish:minecraft:pufferfish
+  - on: item_fished
+    item: minecraft:pufferfish
+    reward: 4
+
+  # 派生キー: fish:minecraft:salmon
+  - on: item_fished
+    item: minecraft:salmon
+    reward: 3
+
+  # 派生キー: fish:minecraft:cod
+  - on: item_fished
+    item: minecraft:cod
+    reward: 3
+
+  # --- Junk 系 (レンジ乱数) ---
+  # 派生キー: fish:[minecraft:leather|minecraft:leather_boots|minecraft:rotten_flesh|minecraft:stick|minecraft:string]
+  - on: item_fished
+    item:
+      - minecraft:leather
+      - minecraft:leather_boots
+      - minecraft:rotten_flesh
+      - minecraft:string
+      - minecraft:stick
+    reward: { min: 0, max: 1 }
+
+variety_penalty:
+  enabled: true
+  window: 25
+  curve:
+    - { up_to: 0.55, multiplier: 1.00 }
+    - { up_to: 0.75, multiplier: 0.85 }
+    - { up_to: 0.95, multiplier: 0.65 }
+    - { up_to: 1.01, multiplier: 0.40 }
+  disclosed_message: "同じ漁場に居座り続けると魚影が薄れる"
+  hide_numbers: false
+
+# 釣りは特別に anti_automation 対象なし (AFK 釣り機は Modifier 側の別対策に譲る)。
+# キー自体を省略するとグローバル default が引き継がれる。

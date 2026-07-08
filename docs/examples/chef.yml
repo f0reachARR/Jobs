@@ -1,0 +1,146 @@
+# 料理人。
+# item_smelted (Smoker で肉を焼く / Furnace でパンやクッキーの素材) と
+# item_crafted (最終料理) と item_consumed (自分で食べる / 客に振る舞う想定) の三段構成。
+
+id: chef
+display_name: "料理人"
+description: "食材を焼き、菓子を仕上げ、時に自ら味見して稼ぐ。Smoker と Campfire が主戦場。"
+icon: minecraft:cooked_chicken
+
+rewards:
+  # --- 精錬: 生肉 → 焼き物 (取り出し個数 × reward) ---
+  # 派生キー: smelt:minecraft:cooked_beef
+  - on: item_smelted
+    item: minecraft:cooked_beef
+    reward: 3
+
+  # 派生キー: smelt:minecraft:cooked_porkchop
+  - on: item_smelted
+    item: minecraft:cooked_porkchop
+    reward: 3
+
+  # 派生キー: smelt:minecraft:cooked_chicken
+  - on: item_smelted
+    item: minecraft:cooked_chicken
+    reward: 3
+
+  # 派生キー: smelt:minecraft:cooked_mutton
+  - on: item_smelted
+    item: minecraft:cooked_mutton
+    reward: 3
+
+  # 派生キー: smelt:minecraft:cooked_rabbit
+  - on: item_smelted
+    item: minecraft:cooked_rabbit
+    reward: 3
+
+  # 派生キー: smelt:[minecraft:cooked_cod|minecraft:cooked_salmon]
+  - on: item_smelted
+    item: [minecraft:cooked_cod, minecraft:cooked_salmon]
+    reward: 3
+
+  # 派生キー: smelt:minecraft:baked_potato
+  - on: item_smelted
+    item: minecraft:baked_potato
+    reward: 2
+
+  # 派生キー: smelt:minecraft:dried_kelp
+  - on: item_smelted
+    item: minecraft:dried_kelp
+    reward: 1
+
+  # --- クラフト: 最終料理 (シフトクリックで取り出し個数 × reward) ---
+  # 派生キー: craft:minecraft:cake
+  - on: item_crafted
+    item: minecraft:cake
+    reward: 30
+
+  # 派生キー: craft:minecraft:pumpkin_pie
+  - on: item_crafted
+    item: minecraft:pumpkin_pie
+    reward: 8
+
+  # 派生キー: craft:minecraft:rabbit_stew
+  - on: item_crafted
+    item: minecraft:rabbit_stew
+    reward: 15
+
+  # 派生キー: craft:[minecraft:beetroot_soup|minecraft:mushroom_stew|minecraft:suspicious_stew]
+  - on: item_crafted
+    item:
+      - minecraft:mushroom_stew
+      - minecraft:beetroot_soup
+      - minecraft:suspicious_stew
+    reward: 10
+
+  # 派生キー: craft:minecraft:bread
+  - on: item_crafted
+    item: minecraft:bread
+    reward: 3
+
+  # 派生キー: craft:minecraft:cookie
+  - on: item_crafted
+    item: minecraft:cookie
+    reward: 2
+
+  # 派生キー: craft:minecraft:golden_carrot
+  - on: item_crafted
+    item: minecraft:golden_carrot
+    reward: 20
+
+  # 派生キー: craft:minecraft:golden_apple
+  - on: item_crafted
+    item: minecraft:golden_apple
+    reward: 100
+
+  # 派生キー: craft:[minecraft:glow_berries|minecraft:honey_bottle]
+  # honey_bottle は crafting でも取れるが実際は右クリック取得なので実装は環境依存 (参考例として)
+  - on: item_crafted
+    item: minecraft:honey_bottle
+    reward: 5
+
+  # --- 消費: 客に振る舞う (料理を消費する行動そのものに小額) ---
+  # 派生キー: consume:minecraft:enchanted_golden_apple
+  - on: item_consumed
+    item: minecraft:enchanted_golden_apple
+    category: food
+    reward: 500
+    rare:
+      chance: 0.10
+      reward: 5000
+      announce: "<gold><player> がエンチャント林檎の一撃を体感した</gold>"
+
+  # 派生キー: consume:minecraft:golden_apple
+  - on: item_consumed
+    item: minecraft:golden_apple
+    category: food
+    reward: 30
+
+  # 派生キー: consume:[minecraft:cooked_beef|minecraft:cooked_porkchop|minecraft:cooked_chicken|minecraft:cooked_mutton|minecraft:cooked_rabbit]
+  - on: item_consumed
+    item:
+      - minecraft:cooked_beef
+      - minecraft:cooked_porkchop
+      - minecraft:cooked_chicken
+      - minecraft:cooked_mutton
+      - minecraft:cooked_rabbit
+    category: food
+    reward: 1
+
+  # 派生キー: consume:minecraft:cake_slice (実際は block interact なのでこの entry は raw event 依存)
+  # ここでは cake の bite が PlayerItemConsumeEvent に来ない前提で、参考例として書く。
+
+variety_penalty:
+  enabled: true
+  window: 25
+  curve:
+    - { up_to: 0.50, multiplier: 1.00 }
+    - { up_to: 0.75, multiplier: 0.80 }
+    - { up_to: 1.01, multiplier: 0.55 }
+  disclosed_message: "同じ献立を作り続けると味が落ちる"
+  hide_numbers: false
+
+anti_automation:
+  # Smoker / Furnace の自動投入経路を封殺
+  auto_fed_processing:
+    operator_ttl_sec: 60

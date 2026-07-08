@@ -1,0 +1,172 @@
+# 牧畜職。
+# entity_bred (家畜 / ペット / 野生生物)、entity_tamed (ペット化)、entity_sheared (毛刈り)
+# を全域に扱う。breed_non_player_breeder=zero で Villager 交配経路は 0 になる。
+
+id: rancher
+display_name: "牧畜"
+description: "動物の繁殖・毛刈り・手懐けで稼ぐ。牧場と森と洞窟を歩き回る。"
+icon: minecraft:lead
+
+rewards:
+  # --- 交配: 家畜 ---
+  # 派生キー: breed:[minecraft:chicken|minecraft:cow|minecraft:pig|minecraft:sheep]
+  - on: entity_bred
+    entity: [minecraft:cow, minecraft:sheep, minecraft:pig, minecraft:chicken]
+    reward: 5
+
+  # 派生キー: breed:minecraft:rabbit
+  - on: entity_bred
+    entity: minecraft:rabbit
+    reward: 3
+
+  # 派生キー: breed:minecraft:mooshroom
+  - on: entity_bred
+    entity: minecraft:mooshroom
+    reward: 8
+
+  # --- 交配: 移動用 ---
+  # 派生キー: breed:[minecraft:donkey|minecraft:horse|minecraft:llama|minecraft:mule]
+  - on: entity_bred
+    entity:
+      - minecraft:horse
+      - minecraft:donkey
+      - minecraft:mule
+      - minecraft:llama
+    reward: 10
+
+  # 派生キー: breed:minecraft:camel
+  - on: entity_bred
+    entity: minecraft:camel
+    reward: 20
+
+  # --- 交配: 珍しい ---
+  # 派生キー: breed:minecraft:panda
+  - on: entity_bred
+    entity: minecraft:panda
+    reward: 25
+
+  # 派生キー: breed:minecraft:sniffer
+  - on: entity_bred
+    entity: minecraft:sniffer
+    reward: 30
+
+  # 派生キー: breed:minecraft:frog
+  - on: entity_bred
+    entity: minecraft:frog
+    reward: 10
+
+  # 派生キー: breed:minecraft:goat
+  - on: entity_bred
+    entity: minecraft:goat
+    reward: 8
+
+  # 派生キー: breed:minecraft:bee
+  - on: entity_bred
+    entity: minecraft:bee
+    reward: 6
+
+  # 派生キー: breed:minecraft:turtle
+  - on: entity_bred
+    entity: minecraft:turtle
+    reward: 12
+
+  # 派生キー: breed:minecraft:armadillo
+  - on: entity_bred
+    entity: minecraft:armadillo
+    reward: 15
+
+  # --- 交配: ペット系 ---
+  # 派生キー: breed:minecraft:wolf
+  - on: entity_bred
+    entity: minecraft:wolf
+    reward: 15
+
+  # 派生キー: breed:minecraft:cat
+  - on: entity_bred
+    entity: minecraft:cat
+    reward: 15
+
+  # 派生キー: breed:minecraft:fox
+  - on: entity_bred
+    entity: minecraft:fox
+    reward: 20
+
+  # 派生キー: breed:minecraft:axolotl
+  - on: entity_bred
+    entity: minecraft:axolotl
+    reward: 12
+    rare:
+      chance: 0.008
+      reward: 5000
+      announce: "<light_purple><player> がピンクの axolotl を得た！</light_purple>"
+
+  # 派生キー: breed:[minecraft:hoglin|minecraft:strider]
+  - on: entity_bred
+    entity: [minecraft:hoglin, minecraft:strider]
+    reward: 30
+
+  # --- 手懐け ---
+  # 派生キー: tame:minecraft:wolf
+  - on: entity_tamed
+    entity: minecraft:wolf
+    reward: 30
+
+  # 派生キー: tame:minecraft:cat
+  - on: entity_tamed
+    entity: minecraft:cat
+    reward: 30
+
+  # 派生キー: tame:minecraft:parrot
+  - on: entity_tamed
+    entity: minecraft:parrot
+    reward: 25
+
+  # 派生キー: tame:[minecraft:donkey|minecraft:horse|minecraft:llama|minecraft:mule]
+  - on: entity_tamed
+    entity:
+      - minecraft:horse
+      - minecraft:donkey
+      - minecraft:mule
+      - minecraft:llama
+    reward: 20
+
+  # 派生キー: tame:minecraft:camel
+  - on: entity_tamed
+    entity: minecraft:camel
+    reward: 40
+
+  # --- 毛刈り ---
+  # 派生キー: shear:minecraft:sheep
+  - on: entity_sheared
+    entity: minecraft:sheep
+    reward: 1
+
+  # 派生キー: shear:minecraft:mooshroom
+  - on: entity_sheared
+    entity: minecraft:mooshroom
+    reward: 20
+
+  # 派生キー: shear:minecraft:snow_golem
+  - on: entity_sheared
+    entity: minecraft:snow_golem
+    reward: 5
+
+  # 派生キー: shear:minecraft:bogged
+  - on: entity_sheared
+    entity: minecraft:bogged
+    reward: 3
+
+variety_penalty:
+  enabled: true
+  window: 30
+  curve:
+    - { up_to: 0.40, multiplier: 1.00 }
+    - { up_to: 0.60, multiplier: 0.85 }
+    - { up_to: 0.80, multiplier: 0.65 }
+    - { up_to: 1.01, multiplier: 0.40 }
+  disclosed_message: "同じ牧を回し続けると単調"
+  hide_numbers: false
+
+anti_automation:
+  # Villager 交配トロッコ経路を封殺
+  breed_non_player_breeder: zero

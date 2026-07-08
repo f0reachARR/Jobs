@@ -1,0 +1,164 @@
+# 建築職。
+# block_placed を主軸に、木材 / 石材 / 銅 / ガラス / 装飾ブロックを tag と OR list で扱う。
+# recently_placed_break を off にはしない (置いてすぐ壊す掘り直しは通常通り 0)。
+
+id: builder
+display_name: "建築"
+description: "多様な資材を組み合わせて景観を作る建築職人。装飾と加工建材が主戦場。"
+icon: minecraft:brick
+
+rewards:
+  # --- 高額装飾 ---
+  # 派生キー: place:minecraft:beacon
+  - on: block_placed
+    block: minecraft:beacon
+    reward: 500
+
+  # 派生キー: place:minecraft:conduit
+  - on: block_placed
+    block: minecraft:conduit
+    reward: 200
+
+  # 派生キー: place:[minecraft:jack_o_lantern|minecraft:sea_lantern|minecraft:shroomlight]
+  - on: block_placed
+    block:
+      - minecraft:sea_lantern
+      - minecraft:shroomlight
+      - minecraft:jack_o_lantern
+    reward: 5
+
+  # --- 銅ブロック家族 ---
+  # 派生キー: place:[minecraft:chiseled_copper|minecraft:copper_block|minecraft:copper_bulb|minecraft:cut_copper|minecraft:exposed_copper|minecraft:oxidized_copper|minecraft:weathered_copper]
+  - on: block_placed
+    block:
+      - minecraft:copper_block
+      - minecraft:exposed_copper
+      - minecraft:weathered_copper
+      - minecraft:oxidized_copper
+      - minecraft:cut_copper
+      - minecraft:chiseled_copper
+      - minecraft:copper_bulb
+    reward: 3
+
+  # --- Redstone / Utility ---
+  # 派生キー: place:minecraft:crafter
+  - on: block_placed
+    block: minecraft:crafter
+    reward: 20
+
+  # 派生キー: place:minecraft:decorated_pot
+  - on: block_placed
+    block: minecraft:decorated_pot
+    reward: 8
+
+  # --- 加工石材 (磨きブロック / チゼル) ---
+  # 派生キー: place:[minecraft:chiseled_deepslate|minecraft:chiseled_polished_blackstone|minecraft:chiseled_quartz_block|minecraft:chiseled_red_sandstone|minecraft:chiseled_sandstone|minecraft:chiseled_stone_bricks|minecraft:chiseled_tuff|minecraft:chiseled_tuff_bricks]
+  - on: block_placed
+    block:
+      - minecraft:chiseled_stone_bricks
+      - minecraft:chiseled_deepslate
+      - minecraft:chiseled_polished_blackstone
+      - minecraft:chiseled_quartz_block
+      - minecraft:chiseled_sandstone
+      - minecraft:chiseled_red_sandstone
+      - minecraft:chiseled_tuff
+      - minecraft:chiseled_tuff_bricks
+    reward: 3
+
+  # --- 磨き / 切り出しブロック (tag に無いので OR で) ---
+  # 派生キー: place:[minecraft:polished_andesite|minecraft:polished_blackstone|minecraft:polished_deepslate|minecraft:polished_diorite|minecraft:polished_granite|minecraft:polished_tuff]
+  - on: block_placed
+    block:
+      - minecraft:polished_granite
+      - minecraft:polished_diorite
+      - minecraft:polished_andesite
+      - minecraft:polished_deepslate
+      - minecraft:polished_blackstone
+      - minecraft:polished_tuff
+    reward: 2
+
+  # --- Terracotta / Concrete / Glass (tag なので 1 バケット) ---
+  # 派生キー: place:#minecraft:terracotta
+  - on: block_placed
+    block: "#minecraft:terracotta"
+    reward: 1
+
+  # 派生キー: place:#minecraft:concrete_powder
+  - on: block_placed
+    block: "#minecraft:concrete_powder"
+    reward: 1
+
+  # 派生キー: place:[minecraft:glass|minecraft:tinted_glass] + OR
+  # (色付きガラスは #minecraft:impermeable で拾えないので stained は個別に扱えない → 総称の OR)
+  - on: block_placed
+    block: [minecraft:glass, minecraft:tinted_glass, minecraft:glass_pane]
+    reward: 1
+
+  # --- 木材系: 板と log を分離 ---
+  # 派生キー: place:#minecraft:planks
+  - on: block_placed
+    block: "#minecraft:planks"
+    reward: 1
+
+  # 派生キー: place:#minecraft:logs
+  - on: block_placed
+    block: "#minecraft:logs"
+    reward: 1
+
+  # --- 階段 / ハーフブロック / フェンス系 tag ---
+  # 派生キー: place:#minecraft:wooden_stairs
+  - on: block_placed
+    block: "#minecraft:wooden_stairs"
+    reward: 1
+
+  # 派生キー: place:#minecraft:stone_stairs
+  - on: block_placed
+    block: "#minecraft:stone_stairs"
+    reward: 1
+
+  # 派生キー: place:#minecraft:wooden_slabs
+  - on: block_placed
+    block: "#minecraft:wooden_slabs"
+    reward: 1
+
+  # 派生キー: place:#minecraft:stone_slabs
+  - on: block_placed
+    block: "#minecraft:stone_slabs"
+    reward: 1
+
+  # 派生キー: place:#minecraft:fences
+  - on: block_placed
+    block: "#minecraft:fences"
+    reward: 1
+
+  # 派生キー: place:#minecraft:walls
+  - on: block_placed
+    block: "#minecraft:walls"
+    reward: 1
+
+  # --- 装飾 (絨毯 / 羊毛) ---
+  # 派生キー: place:#minecraft:wool
+  - on: block_placed
+    block: "#minecraft:wool"
+    reward: 1
+
+  # 派生キー: place:#minecraft:wool_carpets
+  - on: block_placed
+    block: "#minecraft:wool_carpets"
+    reward: 1
+
+variety_penalty:
+  enabled: true
+  window: 80
+  curve:
+    - { up_to: 0.60, multiplier: 1.00 }
+    - { up_to: 0.80, multiplier: 0.80 }
+    - { up_to: 0.95, multiplier: 0.60 }
+    - { up_to: 1.01, multiplier: 0.40 }
+  disclosed_message: "同じブロックだけを積み続けると図面が読めない"
+  hide_numbers: false
+
+anti_automation:
+  # 建築なので置いたばかりの block を壊すのは 0 (整地しなおしを弾く)
+  recently_placed_break:
+    window_sec: 3600

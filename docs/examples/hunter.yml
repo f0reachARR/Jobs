@@ -1,0 +1,175 @@
+# 上級討伐職。
+# 個別の高額 mob → dimension/type ごとの OR リスト → tag による広拾い、の順で並べ、
+# first match wins による影を避けている。boss / raid / nether / end 系まで網羅する。
+
+id: hunter
+display_name: "上級討伐"
+description: "強敵から雑魚まで、幅広い敵性 mob の討伐で稼ぐ。冒険 / 遠征と相性が良い。"
+icon: minecraft:netherite_sword
+
+rewards:
+  # --- Boss ---
+  # 派生キー: kill:minecraft:ender_dragon
+  - on: entity_killed
+    entity: minecraft:ender_dragon
+    reward: 50000
+    rare:
+      chance: 0.10
+      reward: 200000
+      announce: "<gold><bold><player></bold> がエンドラを討伐！ドラゴンの首を掲げる者よ！</gold>"
+
+  # 派生キー: kill:minecraft:wither
+  - on: entity_killed
+    entity: minecraft:wither
+    reward: 20000
+
+  # 派生キー: kill:minecraft:warden
+  - on: entity_killed
+    entity: minecraft:warden
+    reward: 30000
+    rare:
+      chance: 0.05
+      reward: 150000
+      announce: "<dark_purple><player> が Warden を沈黙させた…</dark_purple>"
+
+  # 派生キー: kill:minecraft:elder_guardian
+  - on: entity_killed
+    entity: minecraft:elder_guardian
+    reward: 5000
+
+  # --- Raid / Illager ---
+  # 派生キー: kill:minecraft:ravager
+  - on: entity_killed
+    entity: minecraft:ravager
+    reward: 300
+
+  # 派生キー: kill:[minecraft:evoker|minecraft:pillager|minecraft:vindicator]
+  - on: entity_killed
+    entity:
+      - minecraft:evoker
+      - minecraft:vindicator
+      - minecraft:pillager
+    reward: 100
+
+  # 派生キー: kill:[minecraft:illusioner|minecraft:vex]
+  - on: entity_killed
+    entity: [minecraft:vex, minecraft:illusioner]
+    reward: 60
+
+  # --- End 系 ---
+  # 派生キー: kill:minecraft:shulker
+  - on: entity_killed
+    entity: minecraft:shulker
+    reward: 80
+
+  # 派生キー: kill:minecraft:enderman
+  - on: entity_killed
+    entity: minecraft:enderman
+    reward: 25
+
+  # --- Nether 系高額 ---
+  # 派生キー: kill:minecraft:piglin_brute
+  - on: entity_killed
+    entity: minecraft:piglin_brute
+    reward: 150
+
+  # 派生キー: kill:minecraft:ghast
+  - on: entity_killed
+    entity: minecraft:ghast
+    reward: 60
+    rare:
+      chance: 0.01
+      reward: 5000
+      announce: "<yellow><player> が涙するガストを撃ち落とした</yellow>"
+
+  # 派生キー: kill:minecraft:wither_skeleton
+  - on: entity_killed
+    entity: minecraft:wither_skeleton
+    reward: 50
+
+  # 派生キー: kill:minecraft:blaze
+  - on: entity_killed
+    entity: minecraft:blaze
+    reward: 30
+
+  # 派生キー: kill:[minecraft:hoglin|minecraft:zoglin]
+  - on: entity_killed
+    entity: [minecraft:hoglin, minecraft:zoglin]
+    reward: 20
+
+  # 派生キー: kill:[minecraft:magma_cube|minecraft:piglin|minecraft:zombified_piglin]
+  - on: entity_killed
+    entity:
+      - minecraft:piglin
+      - minecraft:zombified_piglin
+      - minecraft:magma_cube
+    reward: 8
+
+  # --- Overworld 中量 ---
+  # 派生キー: kill:minecraft:creeper (レンジ乱数)
+  - on: entity_killed
+    entity: minecraft:creeper
+    reward: { min: 10, max: 20 }
+
+  # 派生キー: kill:minecraft:witch
+  - on: entity_killed
+    entity: minecraft:witch
+    reward: 25
+
+  # 派生キー: kill:minecraft:phantom
+  - on: entity_killed
+    entity: minecraft:phantom
+    reward: 20
+
+  # 派生キー: kill:[minecraft:breeze]
+  - on: entity_killed
+    entity: minecraft:breeze
+    reward: 80
+
+  # 派生キー: kill:minecraft:guardian
+  - on: entity_killed
+    entity: minecraft:guardian
+    reward: 15
+
+  # 派生キー: kill:[minecraft:cave_spider|minecraft:spider]
+  - on: entity_killed
+    entity: [minecraft:spider, minecraft:cave_spider]
+    reward: 6
+
+  # --- Skeleton 系 (tag より前に個別を置く) ---
+  # 派生キー: kill:[minecraft:bogged|minecraft:skeleton|minecraft:stray]
+  - on: entity_killed
+    entity: [minecraft:skeleton, minecraft:stray, minecraft:bogged]
+    reward: 6
+
+  # --- 低額 tag 拾い (最下段、shadow 覆いを避けるため個別を全て上に済ませている) ---
+  # 派生キー: kill:#minecraft:undead (zombie / husk / drowned / zombie_villager / skeleton_horse など)
+  - on: entity_killed
+    entity: "#minecraft:undead"
+    reward: 4
+
+  # 派生キー: kill:#minecraft:arthropod (silverfish / endermite / bee など)
+  - on: entity_killed
+    entity: "#minecraft:arthropod"
+    reward: 3
+
+  # 派生キー: kill:minecraft:slime
+  - on: entity_killed
+    entity: minecraft:slime
+    reward: 2
+
+variety_penalty:
+  enabled: true
+  window: 40
+  curve:
+    - { up_to: 0.35, multiplier: 1.00 }
+    - { up_to: 0.55, multiplier: 0.90 }
+    - { up_to: 0.75, multiplier: 0.75 }
+    - { up_to: 0.90, multiplier: 0.55 }
+    - { up_to: 1.01, multiplier: 0.30 }
+  disclosed_message: "同じ相手を追い続けると獲物への感覚が鈍る"
+  hide_numbers: true
+
+anti_automation:
+  # スポナー発の xp/drop 稼ぎは 0 にする
+  spawner_origin_kills: zero

@@ -1,0 +1,170 @@
+# 錬金術士。
+# item_brewed の per-slot dispatch と base potion type 別バケットを網羅的に扱う。
+# potion 未指定エントリはより特化した potion 指定 entry より下段に置き、shadow を回避する。
+
+id: alchemist
+display_name: "錬金術士"
+description: "醸造台の前でポーションを仕立てる職。強化 II や time-extend の作り分けが本領。"
+icon: minecraft:brewing_stand
+
+rewards:
+  # --- 強化 II 系 (最も難易度が高いので上に置く) ---
+  # 派生キー: brew:minecraft:potion+minecraft:strong_healing
+  - on: item_brewed
+    item: minecraft:potion
+    potion: minecraft:strong_healing
+    reward: 40
+
+  # 派生キー: brew:minecraft:potion+minecraft:strong_harming
+  - on: item_brewed
+    item: minecraft:potion
+    potion: minecraft:strong_harming
+    reward: 40
+
+  # 派生キー: brew:minecraft:potion+[minecraft:strong_leaping|minecraft:strong_regeneration|minecraft:strong_strength|minecraft:strong_swiftness]
+  - on: item_brewed
+    item: minecraft:potion
+    potion:
+      - minecraft:strong_regeneration
+      - minecraft:strong_strength
+      - minecraft:strong_swiftness
+      - minecraft:strong_leaping
+    reward: 25
+
+  # 派生キー: brew:minecraft:potion+[minecraft:strong_poison|minecraft:strong_slowness|minecraft:strong_turtle_master]
+  - on: item_brewed
+    item: minecraft:potion
+    potion:
+      - minecraft:strong_poison
+      - minecraft:strong_slowness
+      - minecraft:strong_turtle_master
+    reward: 25
+
+  # --- Time-extended (long_*) 系 ---
+  # 派生キー: brew:minecraft:potion+[minecraft:long_fire_resistance|minecraft:long_invisibility|minecraft:long_night_vision|minecraft:long_water_breathing]
+  - on: item_brewed
+    item: minecraft:potion
+    potion:
+      - minecraft:long_night_vision
+      - minecraft:long_invisibility
+      - minecraft:long_fire_resistance
+      - minecraft:long_water_breathing
+    reward: 20
+
+  # 派生キー: brew:minecraft:potion+[minecraft:long_leaping|minecraft:long_regeneration|minecraft:long_slow_falling|minecraft:long_strength|minecraft:long_swiftness]
+  - on: item_brewed
+    item: minecraft:potion
+    potion:
+      - minecraft:long_swiftness
+      - minecraft:long_strength
+      - minecraft:long_regeneration
+      - minecraft:long_slow_falling
+      - minecraft:long_leaping
+    reward: 15
+
+  # --- 1.21 系新規 base potion type ---
+  # 派生キー: brew:minecraft:potion+[minecraft:infested|minecraft:oozing|minecraft:weaving|minecraft:wind_charged]
+  - on: item_brewed
+    item: minecraft:potion
+    potion:
+      - minecraft:wind_charged
+      - minecraft:weaving
+      - minecraft:oozing
+      - minecraft:infested
+    reward: 30
+
+  # --- 基本ポジティブ効果 (I 相当) ---
+  # 派生キー: brew:minecraft:potion+[minecraft:fire_resistance|minecraft:invisibility|minecraft:night_vision|minecraft:water_breathing]
+  - on: item_brewed
+    item: minecraft:potion
+    potion:
+      - minecraft:night_vision
+      - minecraft:invisibility
+      - minecraft:fire_resistance
+      - minecraft:water_breathing
+    reward: 10
+
+  # 派生キー: brew:minecraft:potion+[minecraft:leaping|minecraft:regeneration|minecraft:slow_falling|minecraft:strength|minecraft:swiftness|minecraft:turtle_master]
+  - on: item_brewed
+    item: minecraft:potion
+    potion:
+      - minecraft:swiftness
+      - minecraft:strength
+      - minecraft:regeneration
+      - minecraft:slow_falling
+      - minecraft:leaping
+      - minecraft:turtle_master
+    reward: 8
+
+  # 派生キー: brew:minecraft:potion+[minecraft:harming|minecraft:healing]
+  - on: item_brewed
+    item: minecraft:potion
+    potion: [minecraft:healing, minecraft:harming]
+    reward: 8
+
+  # 派生キー: brew:minecraft:potion+minecraft:luck (Creative 由来なので通常不出)
+  - on: item_brewed
+    item: minecraft:potion
+    potion: minecraft:luck
+    reward: 100
+
+  # --- 中間素材 (Awkward / Thick / Mundane) は低額 ---
+  # 派生キー: brew:minecraft:potion+[minecraft:awkward|minecraft:mundane|minecraft:thick]
+  - on: item_brewed
+    item: minecraft:potion
+    potion: [minecraft:awkward, minecraft:mundane, minecraft:thick]
+    reward: 1
+
+  # --- 加工 (splash / lingering はそのまま 1 slot dispatch) ---
+  # potion を書けば base potion type ごとにバケット分割される。
+  # 派生キー: brew:minecraft:splash_potion+minecraft:strong_healing
+  - on: item_brewed
+    item: minecraft:splash_potion
+    potion: minecraft:strong_healing
+    reward: 30
+
+  # 派生キー: brew:minecraft:splash_potion+minecraft:strong_harming
+  - on: item_brewed
+    item: minecraft:splash_potion
+    potion: minecraft:strong_harming
+    reward: 30
+
+  # 上記より下段の広い受け皿 (splash 全種)。派生キー: brew:minecraft:splash_potion
+  # ※ potion を省略しても match するが、上段の specific なエントリが優先される (first match wins)。
+  - on: item_brewed
+    item: minecraft:splash_potion
+    reward: 12
+
+  # 派生キー: brew:minecraft:lingering_potion+minecraft:strong_regeneration
+  - on: item_brewed
+    item: minecraft:lingering_potion
+    potion: minecraft:strong_regeneration
+    reward: 50
+
+  # 派生キー: brew:minecraft:lingering_potion
+  - on: item_brewed
+    item: minecraft:lingering_potion
+    reward: 20
+
+  # --- 最下段: potion 未指定の非強化 potion 全般 ---
+  # ここまでで拾えなかった base type (通常 poison / weakness / slowness など)。
+  # 派生キー: brew:minecraft:potion
+  - on: item_brewed
+    item: minecraft:potion
+    reward: 3
+
+variety_penalty:
+  enabled: true
+  window: 20
+  curve:
+    - { up_to: 0.55, multiplier: 1.00 }
+    - { up_to: 0.75, multiplier: 0.80 }
+    - { up_to: 0.95, multiplier: 0.55 }
+    - { up_to: 1.01, multiplier: 0.35 }
+  disclosed_message: "同じ調合ばかりだと薬学が痩せる"
+  hide_numbers: true
+
+anti_automation:
+  # Brewing Stand の hopper 自動投入経路を封殺
+  auto_fed_processing:
+    operator_ttl_sec: 60

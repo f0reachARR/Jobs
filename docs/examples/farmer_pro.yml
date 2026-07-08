@@ -1,0 +1,151 @@
+# 上級農業職。
+# 完熟収穫 (crop_mature) と、非 Ageable 作物、多年生の切り出し (bamboo / sugar_cane / cactus)、
+# nether wart、洞窟系ベリーまで一通り扱う。
+# breeding も動物種別で個別バケット化する。
+
+id: farmer_pro
+display_name: "上級農業"
+description: "四大作物に加え、nether wart / 洞窟ベリー / 竹 / 砂糖黍 / サボテンまで扱う定住型農家。"
+icon: minecraft:golden_hoe
+
+rewards:
+  # --- Ageable 主要作物 (crop_mature 必須) ---
+  # 派生キー: break:minecraft:wheat
+  - on: block_broken
+    block: minecraft:wheat
+    crop_mature: true
+    reward: 3
+
+  # 派生キー: break:minecraft:carrots
+  - on: block_broken
+    block: minecraft:carrots
+    crop_mature: true
+    reward: 3
+
+  # 派生キー: break:minecraft:potatoes
+  - on: block_broken
+    block: minecraft:potatoes
+    crop_mature: true
+    reward: 3
+
+  # 派生キー: break:minecraft:beetroots
+  - on: block_broken
+    block: minecraft:beetroots
+    crop_mature: true
+    reward: 4
+
+  # 派生キー: break:minecraft:nether_wart
+  - on: block_broken
+    block: minecraft:nether_wart
+    crop_mature: true
+    reward: 5
+
+  # 派生キー: break:minecraft:cocoa
+  - on: block_broken
+    block: minecraft:cocoa
+    crop_mature: true
+    reward: 4
+
+  # 派生キー: break:minecraft:torchflower_crop
+  - on: block_broken
+    block: minecraft:torchflower_crop
+    crop_mature: true
+    reward: 15
+
+  # 派生キー: break:minecraft:pitcher_crop
+  - on: block_broken
+    block: minecraft:pitcher_crop
+    crop_mature: true
+    reward: 15
+
+  # --- 非 Ageable 単発収穫 (crop_mature を書かない) ---
+  # 派生キー: break:[minecraft:melon|minecraft:pumpkin]
+  - on: block_broken
+    block: [minecraft:pumpkin, minecraft:melon]
+    reward: 2
+
+  # 派生キー: break:minecraft:sugar_cane
+  - on: block_broken
+    block: minecraft:sugar_cane
+    reward: 1
+
+  # 派生キー: break:[minecraft:bamboo|minecraft:bamboo_sapling]
+  - on: block_broken
+    block: [minecraft:bamboo, minecraft:bamboo_sapling]
+    reward: 1
+
+  # 派生キー: break:[minecraft:cactus|minecraft:cactus_flower]
+  - on: block_broken
+    block: [minecraft:cactus, minecraft:cactus_flower]
+    reward: 1
+
+  # 派生キー: break:minecraft:sweet_berry_bush
+  # 花期のみ取れる仕様のためここでは常時。crop_mature を書かないことで随時収穫を許す。
+  - on: block_broken
+    block: minecraft:sweet_berry_bush
+    reward: 1
+
+  # 派生キー: break:minecraft:cave_vines_plant (glow berry の主茎)
+  - on: block_broken
+    block: minecraft:cave_vines_plant
+    reward: 1
+
+  # 派生キー: break:minecraft:cave_vines
+  - on: block_broken
+    block: minecraft:cave_vines
+    reward: 2
+
+  # --- 水生系 ---
+  # 派生キー: break:[minecraft:kelp|minecraft:kelp_plant]
+  - on: block_broken
+    block: [minecraft:kelp, minecraft:kelp_plant]
+    reward: 1
+
+  # --- 蜂・蜂蜜 ---
+  # 派生キー: break:minecraft:beehive
+  - on: block_broken
+    block: minecraft:beehive
+    reward: 30
+
+  # --- 交配 (家畜のみ、tag で拾って 1 バケットに集約) ---
+  # 派生キー: breed:[minecraft:chicken|minecraft:cow|minecraft:pig|minecraft:sheep]
+  - on: entity_bred
+    entity: [minecraft:cow, minecraft:sheep, minecraft:pig, minecraft:chicken]
+    reward: 5
+
+  # 派生キー: breed:minecraft:rabbit
+  - on: entity_bred
+    entity: minecraft:rabbit
+    reward: 3
+
+  # 派生キー: breed:[minecraft:bee]
+  - on: entity_bred
+    entity: minecraft:bee
+    reward: 6
+
+  # 派生キー: breed:minecraft:goat
+  - on: entity_bred
+    entity: minecraft:goat
+    reward: 8
+
+  # 派生キー: breed:minecraft:sniffer
+  - on: entity_bred
+    entity: minecraft:sniffer
+    reward: 30
+
+variety_penalty:
+  enabled: true
+  window: 40
+  curve:
+    - { up_to: 0.45, multiplier: 1.00 }
+    - { up_to: 0.65, multiplier: 0.85 }
+    - { up_to: 0.85, multiplier: 0.65 }
+    - { up_to: 1.01, multiplier: 0.40 }
+  disclosed_message: "同じ作物ばかり回すと連作障害"
+  hide_numbers: false
+
+anti_automation:
+  # 未植え作物 (wild pumpkin / wild sweet berry など) の収穫は 0
+  unplanted_crop_harvest: zero
+  # Villager 交配経由の稼ぎは 0
+  breed_non_player_breeder: zero

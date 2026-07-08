@@ -1,0 +1,206 @@
+# 鍛冶職。
+# item_crafted (装備クラフト) + item_enchanted (level_min で難易度別バケット) +
+# item_repaired (source=anvil / mending の別バケット化) を一通り扱う。
+
+id: smith
+display_name: "鍛冶"
+description: "武具の製作・付呪・修復で稼ぐ。設備投資が実る職人。"
+icon: minecraft:anvil
+
+rewards:
+  # --- Netherite 装備 (Smithing Table 由来。item_crafted で拾える) ---
+  # 派生キー: craft:[minecraft:netherite_boots|minecraft:netherite_chestplate|minecraft:netherite_helmet|minecraft:netherite_leggings]
+  - on: item_crafted
+    item:
+      - minecraft:netherite_helmet
+      - minecraft:netherite_chestplate
+      - minecraft:netherite_leggings
+      - minecraft:netherite_boots
+    reward: 200
+
+  # 派生キー: craft:[minecraft:netherite_axe|minecraft:netherite_hoe|minecraft:netherite_pickaxe|minecraft:netherite_shovel|minecraft:netherite_sword]
+  - on: item_crafted
+    item:
+      - minecraft:netherite_sword
+      - minecraft:netherite_pickaxe
+      - minecraft:netherite_axe
+      - minecraft:netherite_shovel
+      - minecraft:netherite_hoe
+    reward: 150
+
+  # --- Diamond 装備 ---
+  # 派生キー: craft:[minecraft:diamond_boots|minecraft:diamond_chestplate|minecraft:diamond_helmet|minecraft:diamond_leggings]
+  - on: item_crafted
+    item:
+      - minecraft:diamond_helmet
+      - minecraft:diamond_chestplate
+      - minecraft:diamond_leggings
+      - minecraft:diamond_boots
+    reward: 50
+
+  # 派生キー: craft:[minecraft:diamond_axe|minecraft:diamond_hoe|minecraft:diamond_pickaxe|minecraft:diamond_shovel|minecraft:diamond_sword]
+  - on: item_crafted
+    item:
+      - minecraft:diamond_sword
+      - minecraft:diamond_pickaxe
+      - minecraft:diamond_axe
+      - minecraft:diamond_shovel
+      - minecraft:diamond_hoe
+    reward: 30
+
+  # --- Iron / Gold 装備 ---
+  # tier ごとの item tag は Vanilla では用意されていないため OR list で束ねる。
+  # 派生キー: craft:[minecraft:iron_axe|minecraft:iron_hoe|minecraft:iron_pickaxe|minecraft:iron_shovel|minecraft:iron_sword]
+  - on: item_crafted
+    item:
+      - minecraft:iron_sword
+      - minecraft:iron_pickaxe
+      - minecraft:iron_axe
+      - minecraft:iron_shovel
+      - minecraft:iron_hoe
+    reward: 8
+
+  # 派生キー: craft:[minecraft:iron_boots|minecraft:iron_chestplate|minecraft:iron_helmet|minecraft:iron_leggings]
+  - on: item_crafted
+    item:
+      - minecraft:iron_helmet
+      - minecraft:iron_chestplate
+      - minecraft:iron_leggings
+      - minecraft:iron_boots
+    reward: 10
+
+  # --- 特殊武器 ---
+  # 派生キー: craft:minecraft:mace
+  - on: item_crafted
+    item: minecraft:mace
+    reward: 100
+
+  # 派生キー: craft:minecraft:shield
+  - on: item_crafted
+    item: minecraft:shield
+    reward: 10
+
+  # 派生キー: craft:[minecraft:bow|minecraft:crossbow|minecraft:trident]
+  - on: item_crafted
+    item: [minecraft:bow, minecraft:crossbow, minecraft:trident]
+    reward: 15
+
+  # --- 上位付呪 (level_min=4 以上のみ大金) ---
+  # 派生キー: enchant:#minecraft:swords+minecraft:sharpness (level_min は派生キーの一部にはならないが shadow 検査で区別される)
+  - on: item_enchanted
+    item: "#minecraft:swords"
+    enchantment: minecraft:sharpness
+    level_min: 5
+    reward: 200
+
+  # 派生キー: enchant:#minecraft:swords+minecraft:sharpness (level_min=3-4)
+  - on: item_enchanted
+    item: "#minecraft:swords"
+    enchantment: minecraft:sharpness
+    level_min: 3
+    reward: 50
+
+  # 派生キー: enchant:#minecraft:pickaxes+minecraft:efficiency
+  - on: item_enchanted
+    item: "#minecraft:pickaxes"
+    enchantment: minecraft:efficiency
+    level_min: 4
+    reward: 80
+
+  # 派生キー: enchant:#minecraft:pickaxes+minecraft:fortune
+  - on: item_enchanted
+    item: "#minecraft:pickaxes"
+    enchantment: minecraft:fortune
+    level_min: 3
+    reward: 120
+
+  # 派生キー: enchant:#minecraft:mining_enchantable+minecraft:silk_touch
+  - on: item_enchanted
+    item:
+      - minecraft:diamond_pickaxe
+      - minecraft:netherite_pickaxe
+      - minecraft:iron_pickaxe
+    enchantment: minecraft:silk_touch
+    reward: 100
+
+  # 派生キー: enchant:#minecraft:armor+minecraft:protection
+  - on: item_enchanted
+    item:
+      - minecraft:diamond_helmet
+      - minecraft:diamond_chestplate
+      - minecraft:diamond_leggings
+      - minecraft:diamond_boots
+      - minecraft:netherite_helmet
+      - minecraft:netherite_chestplate
+      - minecraft:netherite_leggings
+      - minecraft:netherite_boots
+    enchantment: minecraft:protection
+    level_min: 4
+    reward: 100
+
+  # Mending / Unbreaking は装備横断で拾う
+  # 派生キー: enchant:minecraft:elytra+minecraft:unbreaking
+  - on: item_enchanted
+    item: minecraft:elytra
+    enchantment: minecraft:unbreaking
+    level_min: 3
+    reward: 300
+
+  # 派生キー: enchant:[minecraft:bow|minecraft:crossbow]+minecraft:mending
+  - on: item_enchanted
+    item: [minecraft:bow, minecraft:crossbow]
+    enchantment: minecraft:mending
+    reward: 60
+
+  # --- 修復 (source 別バケット化) ---
+  # 派生キー: repair_anvil:#minecraft:swords
+  - on: item_repaired
+    item: "#minecraft:swords"
+    source: anvil
+    reward: 15
+
+  # 派生キー: repair_mending:#minecraft:swords
+  - on: item_repaired
+    item: "#minecraft:swords"
+    source: mending
+    reward: 5
+
+  # 派生キー: repair_anvil:#minecraft:pickaxes
+  - on: item_repaired
+    item: "#minecraft:pickaxes"
+    source: anvil
+    reward: 15
+
+  # 派生キー: repair_mending:#minecraft:pickaxes
+  - on: item_repaired
+    item: "#minecraft:pickaxes"
+    source: mending
+    reward: 5
+
+  # Elytra は特別扱い
+  # 派生キー: repair_anvil:minecraft:elytra
+  - on: item_repaired
+    item: minecraft:elytra
+    source: anvil
+    reward: 40
+
+  # 派生キー: repair_mending:minecraft:elytra
+  - on: item_repaired
+    item: minecraft:elytra
+    source: mending
+    reward: 20
+
+variety_penalty:
+  enabled: true
+  window: 25
+  curve:
+    - { up_to: 0.50, multiplier: 1.00 }
+    - { up_to: 0.75, multiplier: 0.80 }
+    - { up_to: 1.01, multiplier: 0.50 }
+  disclosed_message: "同じ物ばかり打つと腕が鈍る"
+  hide_numbers: false
+
+anti_automation:
+  # Furnace 系の自動投入対策 (Smoker/BlastFurnace は使わない鍛冶職でも default に沿う)
+  auto_fed_processing:
+    operator_ttl_sec: 60
