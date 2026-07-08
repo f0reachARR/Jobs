@@ -52,6 +52,7 @@ public final class JobsCommands {
     public LiteralCommandNode<CommandSourceStack> buildTree() {
         return Commands.literal("jobs")
                 .requires(s -> s.getSender().hasPermission(Permissions.COMMAND_USE))
+                .executes(this::executeRoot)
                 .then(Commands.literal("select")
                         .requires(s -> s.getSender().hasPermission(Permissions.COMMAND_SELECT))
                         .executes(this::executeSelect))
@@ -76,6 +77,14 @@ public final class JobsCommands {
 
     public void unbindServices() {
         this.services.set(null);
+    }
+
+    private int executeRoot(com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx) {
+        // 引数なしの /jobs は /jobs select と同じ挙動にする。ただし COMMAND_SELECT 権限は尊重する。
+        if (!ctx.getSource().getSender().hasPermission(Permissions.COMMAND_SELECT)) {
+            return Command.SINGLE_SUCCESS;
+        }
+        return executeSelect(ctx);
     }
 
     private int executeSelect(com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx) {
