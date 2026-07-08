@@ -52,8 +52,16 @@ public final class ShadowDetector {
     private boolean covers(MatchCriteria higher, MatchCriteria lower) {
         if (higher.getClass() != lower.getClass()) return false;
         return switch (higher) {
-            case MatchCriteria.EntityKilled h ->
-                    coversKey(h.entity(), ((MatchCriteria.EntityKilled) lower).entity(), TagResolver.Kind.ENTITY_TYPES);
+            case MatchCriteria.EntityKilled h -> {
+                MatchCriteria.EntityKilled l = (MatchCriteria.EntityKilled) lower;
+                // higher が dimension を絞っている場合、lower も同じかそれより狭い集合でないと覆えない。
+                // higher が empty (any) のとき、lower の dimension は無視して entity のみで判定する。
+                if (!h.dimensions().isEmpty()) {
+                    if (l.dimensions().isEmpty()) yield false;
+                    if (!h.dimensions().containsAll(l.dimensions())) yield false;
+                }
+                yield coversKey(h.entity(), l.entity(), TagResolver.Kind.ENTITY_TYPES);
+            }
             case MatchCriteria.BlockBroken h -> {
                 MatchCriteria.BlockBroken l = (MatchCriteria.BlockBroken) lower;
                 if (h.viaTnt() != l.viaTnt()) yield false;

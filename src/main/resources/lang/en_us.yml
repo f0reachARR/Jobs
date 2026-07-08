@@ -125,6 +125,10 @@ dialog:
       consume_food: " (food)"
       consume_drink: " (drink)"
       potion: " (potion: <potion>)"
+      dimension: " (dim: <dims>)"
+      dimension_overworld: "overworld"
+      dimension_nether: "nether"
+      dimension_end: "end"
     variety:
       none: "None"
       disclosed: "<yellow><disclosed></yellow>"

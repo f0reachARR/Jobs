@@ -1,6 +1,7 @@
 package me.f0reach.jobs.matcher;
 
 import me.f0reach.jobs.domain.job.ConsumeCategory;
+import me.f0reach.jobs.domain.job.Dimension;
 import me.f0reach.jobs.domain.job.RepairSource;
 import org.bukkit.NamespacedKey;
 
@@ -27,7 +28,8 @@ public record MatchContext(
         NamespacedKey advancementKey,
         UUID tntPrimer,
         boolean spawnerOrigin,
-        NamespacedKey potionType
+        NamespacedKey potionType,
+        Dimension dimension
 ) {
 
     public static Builder builder() {
@@ -49,6 +51,7 @@ public record MatchContext(
         private UUID tntPrimer;
         private boolean spawnerOrigin;
         private NamespacedKey potionType;
+        private Dimension dimension;
 
         public Builder entity(NamespacedKey v) { this.entity = v; return this; }
         public Builder block(NamespacedKey v) { this.block = v; return this; }
@@ -64,12 +67,13 @@ public record MatchContext(
         public Builder tntPrimer(UUID v) { this.tntPrimer = v; return this; }
         public Builder spawnerOrigin(boolean v) { this.spawnerOrigin = v; return this; }
         public Builder potionType(NamespacedKey v) { this.potionType = v; return this; }
+        public Builder dimension(Dimension v) { this.dimension = v; return this; }
 
         public MatchContext build() {
             return new MatchContext(
                     entity, block, item, cropMature, viaTnt, treasure, amount,
                     enchantments, repairSource, consumedCategory, advancementKey,
-                    tntPrimer, spawnerOrigin, potionType
+                    tntPrimer, spawnerOrigin, potionType, dimension
             );
         }
     }

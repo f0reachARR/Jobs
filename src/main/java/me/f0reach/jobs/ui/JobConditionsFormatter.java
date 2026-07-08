@@ -3,6 +3,7 @@ package me.f0reach.jobs.ui;
 import me.f0reach.jobs.domain.job.ActionType;
 import me.f0reach.jobs.domain.job.AntiAutomationConfig;
 import me.f0reach.jobs.domain.job.ConsumeCategory;
+import me.f0reach.jobs.domain.job.Dimension;
 import me.f0reach.jobs.domain.job.JobDefinition;
 import me.f0reach.jobs.domain.job.MatchCriteria;
 import me.f0reach.jobs.domain.job.RepairSource;
@@ -112,7 +113,10 @@ public final class JobConditionsFormatter {
 
     private Component formatCriteria(String locale, MatchCriteria criteria) {
         return switch (criteria) {
-            case MatchCriteria.EntityKilled c -> formatKeyMatcher(locale, c.entity());
+            case MatchCriteria.EntityKilled c -> concat(
+                    formatKeyMatcher(locale, c.entity()),
+                    formatDimensions(locale, c.dimensions())
+            );
             case MatchCriteria.BlockBroken c -> concat(
                     formatKeyMatcher(locale, c.block()),
                     c.cropMature() ? i18n.format(locale, DialogTexts.DIALOG_INFO_TARGET_CROP_MATURE) : null,
@@ -191,6 +195,31 @@ public final class JobConditionsFormatter {
         return switch (source) {
             case ANVIL -> i18n.format(locale, DialogTexts.DIALOG_INFO_TARGET_REPAIR_ANVIL);
             case MENDING -> i18n.format(locale, DialogTexts.DIALOG_INFO_TARGET_REPAIR_MENDING);
+        };
+    }
+
+    private Component formatDimensions(String locale, java.util.Set<Dimension> dimensions) {
+        if (dimensions == null || dimensions.isEmpty()) return null;
+        // enum の宣言順 (OVERWORLD → NETHER → END) で安定した表示にする。
+        List<Component> parts = new ArrayList<>();
+        for (Dimension d : Dimension.values()) {
+            if (dimensions.contains(d)) parts.add(i18n.format(locale, dimensionKey(d)));
+        }
+        String sep = i18n.registry().get(locale, DialogTexts.DIALOG_INFO_TARGET_LIST_SEPARATOR);
+        Component joined = Component.empty();
+        for (int i = 0; i < parts.size(); i++) {
+            if (i > 0) joined = joined.append(Component.text(sep));
+            joined = joined.append(parts.get(i));
+        }
+        return i18n.format(locale, DialogTexts.DIALOG_INFO_TARGET_DIMENSION,
+                Placeholder.component("dims", joined));
+    }
+
+    private static String dimensionKey(Dimension d) {
+        return switch (d) {
+            case OVERWORLD -> DialogTexts.DIALOG_INFO_TARGET_DIMENSION_OVERWORLD;
+            case NETHER -> DialogTexts.DIALOG_INFO_TARGET_DIMENSION_NETHER;
+            case END -> DialogTexts.DIALOG_INFO_TARGET_DIMENSION_END;
         };
     }
 

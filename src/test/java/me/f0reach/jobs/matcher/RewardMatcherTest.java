@@ -2,6 +2,7 @@ package me.f0reach.jobs.matcher;
 
 import me.f0reach.jobs.domain.job.ActionType;
 import me.f0reach.jobs.domain.job.AntiAutomationConfig;
+import me.f0reach.jobs.domain.job.Dimension;
 import me.f0reach.jobs.domain.job.JobDefinition;
 import me.f0reach.jobs.domain.job.JobId;
 import me.f0reach.jobs.domain.job.MatchCriteria;
@@ -200,6 +201,50 @@ class RewardMatcherTest {
         assertTrue(matcher.firstMatch(job(List.of(e)), ActionType.ITEM_BREWED, a).isPresent());
         assertTrue(matcher.firstMatch(job(List.of(e)), ActionType.ITEM_BREWED, b).isPresent());
         assertFalse(matcher.firstMatch(job(List.of(e)), ActionType.ITEM_BREWED, miss).isPresent());
+    }
+
+    @Test
+    void entityKilledWithDimensionMatchesOnlyListed() {
+        var e = entry(new MatchCriteria.EntityKilled(
+                new KeyMatcher.Single(NamespacedKey.minecraft("blaze")),
+                java.util.EnumSet.of(Dimension.NETHER)), 8);
+        MatchContext nether = MatchContext.builder()
+                .entity(NamespacedKey.minecraft("blaze")).dimension(Dimension.NETHER).build();
+        MatchContext overworld = MatchContext.builder()
+                .entity(NamespacedKey.minecraft("blaze")).dimension(Dimension.OVERWORLD).build();
+        MatchContext missingDim = MatchContext.builder()
+                .entity(NamespacedKey.minecraft("blaze")).build();
+        assertTrue(matcher.firstMatch(job(List.of(e)), ActionType.ENTITY_KILLED, nether).isPresent());
+        assertFalse(matcher.firstMatch(job(List.of(e)), ActionType.ENTITY_KILLED, overworld).isPresent());
+        assertFalse(matcher.firstMatch(job(List.of(e)), ActionType.ENTITY_KILLED, missingDim).isPresent());
+    }
+
+    @Test
+    void entityKilledDimensionListMatchesAnyElement() {
+        var e = entry(new MatchCriteria.EntityKilled(
+                new KeyMatcher.Single(NamespacedKey.minecraft("enderman")),
+                java.util.EnumSet.of(Dimension.NETHER, Dimension.END)), 8);
+        MatchContext end = MatchContext.builder()
+                .entity(NamespacedKey.minecraft("enderman")).dimension(Dimension.END).build();
+        MatchContext overworld = MatchContext.builder()
+                .entity(NamespacedKey.minecraft("enderman")).dimension(Dimension.OVERWORLD).build();
+        assertTrue(matcher.firstMatch(job(List.of(e)), ActionType.ENTITY_KILLED, end).isPresent());
+        assertFalse(matcher.firstMatch(job(List.of(e)), ActionType.ENTITY_KILLED, overworld).isPresent());
+    }
+
+    @Test
+    void entityKilledEmptyDimensionsMatchesAnywhere() {
+        var e = entry(new MatchCriteria.EntityKilled(
+                new KeyMatcher.Single(NamespacedKey.minecraft("zombie"))), 5);
+        MatchContext overworld = MatchContext.builder()
+                .entity(NamespacedKey.minecraft("zombie")).dimension(Dimension.OVERWORLD).build();
+        MatchContext nether = MatchContext.builder()
+                .entity(NamespacedKey.minecraft("zombie")).dimension(Dimension.NETHER).build();
+        MatchContext noDim = MatchContext.builder()
+                .entity(NamespacedKey.minecraft("zombie")).build();
+        assertTrue(matcher.firstMatch(job(List.of(e)), ActionType.ENTITY_KILLED, overworld).isPresent());
+        assertTrue(matcher.firstMatch(job(List.of(e)), ActionType.ENTITY_KILLED, nether).isPresent());
+        assertTrue(matcher.firstMatch(job(List.of(e)), ActionType.ENTITY_KILLED, noDim).isPresent());
     }
 
     @Test

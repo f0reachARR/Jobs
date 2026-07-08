@@ -4,6 +4,7 @@ import me.f0reach.jobs.detection.DetectionSubject;
 import me.f0reach.jobs.detection.EventDispatcher;
 import me.f0reach.jobs.detection.SourceFlags;
 import me.f0reach.jobs.domain.job.ActionType;
+import me.f0reach.jobs.domain.job.Dimension;
 import me.f0reach.jobs.matcher.MatchContext;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -30,6 +31,7 @@ public final class EntityKilledListener implements Listener {
         MatchContext ctx = MatchContext.builder()
                 .entity(event.getEntityType().getKey())
                 .amount(1)
+                .dimension(Dimension.fromEnvironment(event.getEntity().getWorld().getEnvironment()))
                 .build();
         DetectionSubject subject = DetectionSubject.builder()
                 .killedEntity(event.getEntity())

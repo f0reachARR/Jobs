@@ -4,6 +4,7 @@ import me.f0reach.jobs.domain.matcher.KeyMatcher;
 import org.bukkit.NamespacedKey;
 
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * rewards エントリの match 条件を表す sealed hierarchy。
@@ -16,9 +17,19 @@ public sealed interface MatchCriteria {
     /** 対応するアクション種別。 */
     ActionType actionType();
 
-    record EntityKilled(KeyMatcher entity) implements MatchCriteria {
+    /**
+     * {@code dimensions} は絞り込みたい dimension 集合。empty のとき全 dimension にマッチする。
+     * 単調性ペナルティの派生キー (ActionKey) には含めない設計で、{@link ActionKeyDeriver} は
+     * dimensions を無視する。
+     */
+    record EntityKilled(KeyMatcher entity, Set<Dimension> dimensions) implements MatchCriteria {
         public EntityKilled {
             Objects.requireNonNull(entity, "entity");
+            dimensions = dimensions == null ? Set.of() : Set.copyOf(dimensions);
+        }
+
+        public EntityKilled(KeyMatcher entity) {
+            this(entity, Set.of());
         }
 
         @Override

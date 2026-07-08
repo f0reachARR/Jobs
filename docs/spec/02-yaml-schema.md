@@ -101,6 +101,7 @@ rare がヒットしたとき、通常報酬は支払わず rare 報酬で置き
 `entity_killed` のとき。
 
 - `entity`：エンティティ種別。`minecraft:zombie` のような ID、ID のリスト、`#minecraft:undead` のような registry tag。
+- `dimension`：討伐が発生した dimension で絞り込み。`overworld` / `nether` / `end` の単一値または OR リスト。省略時は全 dimension にマッチ。CUSTOM 環境（datapack で追加した dimension）は非マッチ扱い。派生キー（単調性ペナルティのバケット）は entity のみで決まり、dimension は含めない。
 
 `block_broken` のとき。
 

@@ -116,6 +116,10 @@ public final class DialogTexts {
     public static final String DIALOG_INFO_TARGET_CONSUME_FOOD = "dialog.info.target.consume_food";
     public static final String DIALOG_INFO_TARGET_CONSUME_DRINK = "dialog.info.target.consume_drink";
     public static final String DIALOG_INFO_TARGET_POTION = "dialog.info.target.potion";
+    public static final String DIALOG_INFO_TARGET_DIMENSION = "dialog.info.target.dimension";
+    public static final String DIALOG_INFO_TARGET_DIMENSION_OVERWORLD = "dialog.info.target.dimension_overworld";
+    public static final String DIALOG_INFO_TARGET_DIMENSION_NETHER = "dialog.info.target.dimension_nether";
+    public static final String DIALOG_INFO_TARGET_DIMENSION_END = "dialog.info.target.dimension_end";
     public static final String DIALOG_INFO_VARIETY_NONE = "dialog.info.variety.none";
     public static final String DIALOG_INFO_VARIETY_DISCLOSED = "dialog.info.variety.disclosed";
     public static final String DIALOG_INFO_VARIETY_ACTIVE_NO_MESSAGE = "dialog.info.variety.active_no_message";

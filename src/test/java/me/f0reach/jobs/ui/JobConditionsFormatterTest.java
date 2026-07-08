@@ -3,6 +3,7 @@ package me.f0reach.jobs.ui;
 import me.f0reach.jobs.domain.job.ActionType;
 import me.f0reach.jobs.domain.job.AntiAutomationConfig;
 import me.f0reach.jobs.domain.job.ConsumeCategory;
+import me.f0reach.jobs.domain.job.Dimension;
 import me.f0reach.jobs.domain.job.JobDefinition;
 import me.f0reach.jobs.domain.job.JobId;
 import me.f0reach.jobs.domain.job.MatchCriteria;
@@ -75,6 +76,10 @@ class JobConditionsFormatterTest {
         keys.put("dialog.info.target.consume_food", " (food)");
         keys.put("dialog.info.target.consume_drink", " (drink)");
         keys.put("dialog.info.target.potion", " (ポーション: <potion>)");
+        keys.put("dialog.info.target.dimension", " (dim: <dims>)");
+        keys.put("dialog.info.target.dimension_overworld", "OW");
+        keys.put("dialog.info.target.dimension_nether", "N");
+        keys.put("dialog.info.target.dimension_end", "E");
         keys.put("dialog.info.reward.label.item_brewed", "醸造");
         // variety
         keys.put("dialog.info.variety.none", "なし");
@@ -255,6 +260,23 @@ class JobConditionsFormatterTest {
         assertFalse(body.contains("minecraft:potion (ポーション:"), () -> body);
         assertTrue(body.contains("醸造: minecraft:splash_potion (ポーション: minecraft:strong_healing)"),
                 () -> body);
+    }
+
+    @Test
+    void entityKilledWithDimensionAppendsSuffix() {
+        RewardEntry withDim = entry(
+                new MatchCriteria.EntityKilled(
+                        new KeyMatcher.Single(NamespacedKey.minecraft("blaze")),
+                        java.util.EnumSet.of(Dimension.NETHER, Dimension.END)),
+                new RewardAmount.Fixed(8), null);
+        JobDefinition job = new JobDefinition(
+                new JobId("combat"), "討伐職", null, NamespacedKey.minecraft("iron_sword"),
+                List.of(withDim),
+                VarietyPenaltyConfig.disabled(), AntiAutomationConfig.empty());
+
+        String body = plain(formatter().build(LOCALE, job, true));
+        // enum 宣言順 (NETHER → END) で連結される。
+        assertTrue(body.contains("minecraft:blaze (dim: N / E)"), () -> body);
     }
 
     @Test

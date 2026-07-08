@@ -1,5 +1,6 @@
 package me.f0reach.jobs.registry;
 
+import me.f0reach.jobs.domain.job.Dimension;
 import me.f0reach.jobs.domain.job.MatchCriteria;
 import me.f0reach.jobs.domain.job.RepairSource;
 import me.f0reach.jobs.domain.matcher.KeyMatcher;
@@ -31,6 +32,15 @@ class ActionKeyDeriverTest {
     void singleEntityKilled() {
         var criteria = new MatchCriteria.EntityKilled(new KeyMatcher.Single(NamespacedKey.minecraft("zombie")));
         assertEquals("kill:minecraft:zombie", deriver.derive(criteria).value());
+    }
+
+    @Test
+    void entityKilledIgnoresDimensionInDerivedKey() {
+        // 単調性ペナルティのバケットは entity のみで決まる。dimension は key に含めない。
+        var withDim = new MatchCriteria.EntityKilled(
+                new KeyMatcher.Single(NamespacedKey.minecraft("zombie")),
+                java.util.EnumSet.of(Dimension.NETHER));
+        assertEquals("kill:minecraft:zombie", deriver.derive(withDim).value());
     }
 
     @Test

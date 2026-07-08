@@ -1,6 +1,7 @@
 package me.f0reach.jobs.yaml;
 
 import me.f0reach.jobs.domain.job.ActionType;
+import me.f0reach.jobs.domain.job.Dimension;
 import me.f0reach.jobs.domain.job.JobDefinition;
 import me.f0reach.jobs.domain.job.MatchCriteria;
 import me.f0reach.jobs.domain.job.RewardAmount;
@@ -197,6 +198,65 @@ class JobYamlLoaderTest {
     JobYamlLoader.LoadResult result = newLoader().loadDirectory(dir.toFile());
     assertTrue(result.errors().hasErrors());
     // rewards entry がスキップされ、job だけ残る (rewards が空)
+    assertEquals(1, result.jobs().size());
+    assertTrue(result.jobs().get(0).rewards().isEmpty());
+  }
+
+  @Test
+  void parsesEntityKilledWithOptionalDimension(@TempDir Path dir) throws IOException {
+    Path yml = dir.resolve("combat_dim.yml");
+    Files.writeString(yml, """
+        id: combat_dim
+        display_name: "Combat"
+        icon: minecraft:iron_sword
+
+        rewards:
+          - on: entity_killed
+            entity: minecraft:zombie
+            reward: 5
+          - on: entity_killed
+            entity: minecraft:blaze
+            dimension: nether
+            reward: 8
+          - on: entity_killed
+            entity: minecraft:enderman
+            dimension: [nether, end]
+            reward: 12
+        """, StandardCharsets.UTF_8);
+
+    JobYamlLoader.LoadResult result = newLoader().loadDirectory(dir.toFile());
+    assertFalse(result.errors().hasErrors(), () -> "errors: " + result.errors().entries());
+    JobDefinition job = result.jobs().get(0);
+    assertEquals(3, job.rewards().size());
+
+    var none = (MatchCriteria.EntityKilled) job.rewards().get(0).criteria();
+    assertTrue(none.dimensions().isEmpty());
+
+    var single = (MatchCriteria.EntityKilled) job.rewards().get(1).criteria();
+    assertEquals(java.util.Set.of(Dimension.NETHER), single.dimensions());
+    // 単調性ペナルティの派生キーは entity のみで決まり、dimension を含まない。
+    assertEquals("kill:minecraft:blaze", job.rewards().get(1).derivedKey().value());
+
+    var list = (MatchCriteria.EntityKilled) job.rewards().get(2).criteria();
+    assertEquals(java.util.Set.of(Dimension.NETHER, Dimension.END), list.dimensions());
+  }
+
+  @Test
+  void rejectsUnknownDimensionValue(@TempDir Path dir) throws IOException {
+    Path yml = dir.resolve("bad_dim.yml");
+    Files.writeString(yml, """
+        id: bad_dim
+        display_name: "BadDim"
+        icon: minecraft:iron_sword
+
+        rewards:
+          - on: entity_killed
+            entity: minecraft:zombie
+            dimension: sky
+            reward: 5
+        """, StandardCharsets.UTF_8);
+    JobYamlLoader.LoadResult result = newLoader().loadDirectory(dir.toFile());
+    assertTrue(result.errors().hasErrors());
     assertEquals(1, result.jobs().size());
     assertTrue(result.jobs().get(0).rewards().isEmpty());
   }

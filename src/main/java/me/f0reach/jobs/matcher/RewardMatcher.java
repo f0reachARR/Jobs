@@ -36,8 +36,13 @@ public final class RewardMatcher {
     /** 主に unit test 用にパッケージ可視で公開する。 */
     boolean matches(MatchCriteria criteria, MatchContext ctx) {
         return switch (criteria) {
-            case MatchCriteria.EntityKilled c ->
-                    matchesKey(c.entity(), ctx.entity(), TagResolver.Kind.ENTITY_TYPES);
+            case MatchCriteria.EntityKilled c -> {
+                if (!c.dimensions().isEmpty()
+                        && (ctx.dimension() == null || !c.dimensions().contains(ctx.dimension()))) {
+                    yield false;
+                }
+                yield matchesKey(c.entity(), ctx.entity(), TagResolver.Kind.ENTITY_TYPES);
+            }
             case MatchCriteria.BlockBroken c -> {
                 // via_tnt: criteria.viaTnt == ctx.viaTnt。criteria.viaTnt=false のとき、ctx.viaTnt=true は弾く。
                 if (c.viaTnt() != ctx.viaTnt()) yield false;

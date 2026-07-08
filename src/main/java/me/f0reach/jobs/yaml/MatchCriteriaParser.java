@@ -2,13 +2,17 @@ package me.f0reach.jobs.yaml;
 
 import me.f0reach.jobs.domain.job.ActionType;
 import me.f0reach.jobs.domain.job.ConsumeCategory;
+import me.f0reach.jobs.domain.job.Dimension;
 import me.f0reach.jobs.domain.job.MatchCriteria;
 import me.f0reach.jobs.domain.job.RepairSource;
 import me.f0reach.jobs.domain.matcher.KeyMatcher;
 import org.bukkit.NamespacedKey;
 
+import java.util.EnumSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * `on:` フィールドと match フィールド (entity/block/item/...) を組み合わせて
@@ -20,7 +24,10 @@ public final class MatchCriteriaParser {
 
     public MatchCriteria parse(ActionType actionType, Map<?, ?> entry, String path) {
         return switch (actionType) {
-            case ENTITY_KILLED -> new MatchCriteria.EntityKilled(requireMatcher(entry, "entity", path));
+            case ENTITY_KILLED -> new MatchCriteria.EntityKilled(
+                    requireMatcher(entry, "entity", path),
+                    parseDimensions(entry.get("dimension"), path)
+            );
             case BLOCK_BROKEN -> new MatchCriteria.BlockBroken(
                     requireMatcher(entry, "block", path),
                     boolField(entry, "crop_mature"),
@@ -120,6 +127,24 @@ public final class MatchCriteriaParser {
             }
         }
         throw new YamlParseException(path + ".source: expected string");
+    }
+
+    private Set<Dimension> parseDimensions(Object raw, String path) {
+        if (raw == null) return Set.of();
+        List<?> items = raw instanceof List<?> l ? l : List.of(raw);
+        EnumSet<Dimension> result = EnumSet.noneOf(Dimension.class);
+        for (Object item : items) {
+            if (!(item instanceof String s)) {
+                throw new YamlParseException(path + ".dimension: expected string or list of strings");
+            }
+            try {
+                result.add(Dimension.valueOf(s.toUpperCase(Locale.ROOT)));
+            } catch (IllegalArgumentException e) {
+                throw new YamlParseException(
+                        path + ".dimension: unknown '" + s + "' (expected overworld / nether / end)", e);
+            }
+        }
+        return result;
     }
 
     private ConsumeCategory parseConsumeCategory(Object raw, String path) {

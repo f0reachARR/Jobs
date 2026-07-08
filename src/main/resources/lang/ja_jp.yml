@@ -127,6 +127,10 @@ dialog:
       consume_food: " (food)"
       consume_drink: " (drink)"
       potion: " (ポーション: <potion>)"
+      dimension: " (dim: <dims>)"
+      dimension_overworld: "オーバーワールド"
+      dimension_nether: "ネザー"
+      dimension_end: "エンド"
     variety:
       none: "なし"
       disclosed: "<yellow><disclosed></yellow>"
