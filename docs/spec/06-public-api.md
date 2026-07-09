@@ -219,6 +219,21 @@ unregister は `getId()` で行う。
 Job プラグイン内蔵ゲート（専業判定、自動化対策、日次キャップ、単調性ペナルティ、変更クールダウン）を無視するための `jobs.bypass.*` は Job プラグイン専用に閉じており、拡張プラグイン側が新設したり参照したりする対象ではない。
 詳細は [08-permissions.md](./08-permissions.md) を参照。
 
+## PlaceholderAPI 統合
+
+外部の PlaceholderAPI 拡張機構を用いて、`jobs` identifier の内蔵拡張を提供する。
+PlaceholderAPI が導入されている場合に限り、Job プラグインの `onEnable` で自動登録される。
+`persist=true` で登録するため `/papi reload` 後も生き残る。
+
+| Placeholder | 対応 API | 値 |
+|---|---|---|
+| `%jobs_current_id%` | `PlayerJobService#getCurrentJobId` | 現在の職業 id。空なら空文字。 |
+| `%jobs_current_name%` | `JobRegistry#get` の `displayName()` | 職業 YAML の `display_name`。解決不能なら空文字。 |
+| `%jobs_has_job%` | 上記 | 選択済み `true` / 未選択 `false` |
+
+いずれも `PlayerJobService#getCurrentJobId` のキャッシュ経由でオンライン中のプレイヤーのみ解決する。
+オフラインは常に未選択扱いになる（PlaceholderAPI が要求する同期返却と `fetchCurrentJobId` の async 契約が両立しないため）。
+
 ## 関連 ADR
 
 - [ADR-0007 Quest を別プラグインに分離する](./adr/0007-quest-as-separate-plugin.md)

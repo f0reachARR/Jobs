@@ -1,6 +1,7 @@
 package me.f0reach.jobs;
 
 import me.f0reach.jobs.command.JobsCommands;
+import me.f0reach.jobs.placeholder.JobsPlaceholderExpansion;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -28,6 +29,8 @@ public final class JobsPlugin extends JavaPlugin {
                     "JobsBootstrap was not invoked. Ensure paper-plugin.yml has bootstrapper set."
             );
         }
+
+        registerPlaceholderExpansion();
 
         // Registry.tags() は SERVER_LOAD 完了後に安定するため、1 tick 遅延で shadow detection を走らせる。
         Bukkit.getScheduler().runTask(this, () -> {
@@ -60,5 +63,26 @@ public final class JobsPlugin extends JavaPlugin {
 
     public JobsServices services() {
         return services;
+    }
+
+    /**
+     * PlaceholderAPI が導入されている場合のみ拡張を登録する。PAPI は optional 依存のため、
+     * クラス参照は本メソッド内に閉じ込め、未導入環境で NoClassDefFoundError を起こさないようにする。
+     * {@code persist()=true} で登録されるため、{@code /papi reload} 後も生き残る。
+     */
+    private void registerPlaceholderExpansion() {
+        if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") == null) {
+            return;
+        }
+        try {
+            new JobsPlaceholderExpansion(
+                    this,
+                    services.jobsApi().getPlayerJobService(),
+                    services.jobRegistry()
+            ).register();
+            getLogger().info("PlaceholderAPI expansion 'jobs' registered.");
+        } catch (RuntimeException e) {
+            getLogger().log(Level.WARNING, "Failed to register PlaceholderAPI expansion", e);
+        }
     }
 }

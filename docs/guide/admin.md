@@ -11,7 +11,7 @@ Jobs プラグインをサーバに導入・運用する管理者向けのガイ
 - **必須プラグイン**：
   - `Vault`（Economy 送金の窓口。Vault 対応 Economy プラグインが別途必要）
   - `BedrockDialog`（Java/Bedrock 両対応ダイアログ。Paper DialogAPI と Geyser フォームを自動で切り替える）
-- **任意プラグイン**：`PlaceholderAPI`
+- **任意プラグイン**：`PlaceholderAPI`（詳細は [PlaceholderAPI 連携](#placeholderapi-連携) 参照）
 - **RDBMS**：MySQL（現行 Phase 1 の唯一の永続化バックエンド。[../spec/adr/0009-mysql-persistence.md](../spec/adr/0009-mysql-persistence.md)）
 
 Vault 対応 Economy と MySQL は事前に用意しておく。
@@ -350,6 +350,20 @@ Jobs プラグインは他プラグインが差し込める拡張点を持つ（
 - **`ActionLogQueryService`**：行動ログの集計クエリ API。業績指標や達成条件の判定に使う。
 
 イベント固有のルール（21 日の経済設計、イベント固有の職業、期間ボーナス）は Jobs プラグイン本体には持たせず、拡張プラグイン側でこれらの拡張点を通じて差し込む方針。詳細は [../spec/01-overview.md](../spec/01-overview.md)。
+
+## PlaceholderAPI 連携
+
+`PlaceholderAPI` プラグインを導入している場合、Jobs は起動時に自動で `jobs` 拡張を登録する。他プラグインの MiniMessage / チャット / スコアボード表示などで、プレイヤーの現在の職業を差し込める。
+
+| Placeholder | 内容 | 未選択・オフライン時 |
+|---|---|---|
+| `%jobs_current_id%` | 現在の職業 ID（例: `combat`） | 空文字 |
+| `%jobs_current_name%` | 職業 YAML の `display_name`（MiniMessage 素の値） | 空文字 |
+| `%jobs_has_job%` | 選択済みなら `true`、未選択なら `false` | `false` |
+
+- オフラインプレイヤーはキャッシュに乗っていないため、常に「未選択」と同じ扱いになる（DB へは同期問い合わせしない）。オンラインのプレイヤー UI 用途を想定している。
+- 拡張はプラグイン内蔵型で、`/papi reload` 後も持続する。
+- PlaceholderAPI 未導入の環境では拡張登録をスキップするだけで、Jobs 本体の動作には影響しない。
 
 ## トラブルシュート
 
