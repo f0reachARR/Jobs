@@ -1,0 +1,59 @@
+# 釣り職。item_fished の treasure / normal と、
+# 漁師らしい item_consumed (焼き魚) と villager_traded を試すサンプル。
+# first match wins のため、treasure エントリを specific エントリより上に置くと影響することを確認できる。
+
+id: fishing
+display_name: "釣り"
+description: "釣り竿で魚や宝を引き上げて稼ぐ。焼き魚を食べたり漁師と取引したりでも稼げる。"
+icon: minecraft:fishing_rod
+
+rewards:
+  # --- 釣り: 宝物ループテーブル (fishing/treasure) 由来を高額に ---
+  # 派生キー: fish:treasure
+  - on: item_fished
+    treasure: true
+    reward: 100
+    rare:
+      chance: 0.02
+      reward: 2000
+      announce: "<aqua><player> が海底の秘宝を釣り上げた！</aqua>"
+
+  # --- 釣り: 通常魚 ---
+  # 派生キー: fish:[minecraft:cod|minecraft:pufferfish|minecraft:salmon|minecraft:tropical_fish]
+  - on: item_fished
+    item: [minecraft:cod, minecraft:salmon, minecraft:pufferfish, minecraft:tropical_fish]
+    reward: 3
+
+  # --- 漁師の食卓: 焼き魚 ---
+  # 派生キー: consume:[minecraft:cooked_cod|minecraft:cooked_salmon]
+  - on: item_consumed
+    item: [minecraft:cooked_cod, minecraft:cooked_salmon]
+    category: food
+    reward: 2
+
+  # --- 漁師の食卓: 生魚 ---
+  # 派生キー: consume:[minecraft:cod|minecraft:salmon|minecraft:tropical_fish]
+  - on: item_consumed
+    item: [minecraft:cod, minecraft:salmon, minecraft:tropical_fish]
+    category: food
+    reward: 1
+
+  # --- Villager 取引 (漁師に魚を売って emerald を受け取る想定) ---
+  # 派生キー: trade:minecraft:emerald
+  - on: villager_traded
+    item: minecraft:emerald
+    reward: 3
+
+variety_penalty:
+  enabled: true
+  window: 30
+  curve:
+    - { up_to: 0.60, multiplier: 1.00 }
+    - { up_to: 0.85, multiplier: 0.85 }
+    - { up_to: 1.01, multiplier: 0.70 }
+  disclosed_message: "同じ釣り場ばかりだと魚影が薄くなる"
+  hide_numbers: false
+
+anti_automation:
+  villager_repeat_trade:
+    cooldown_sec: 60

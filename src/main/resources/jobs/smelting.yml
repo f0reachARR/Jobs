@@ -1,11 +1,12 @@
-# 生産職。item_crafted (shift-click 対応)、item_smelted (amount × reward)、
+# 鍛冶職。item_crafted (シフトクリック対応)、item_smelted (amount × reward)、
 # item_enchanted (enchantment + level_min)、item_repaired (source)、item_brewed を試すサンプル。
 # Minecraft 1.21.11 までの主要な生産アイテムをおおよそ網羅する。
+# 「ポーションを飲む」報酬は mining / combat 側で扱い、ここでは製造側 (item_brewed) のみを拾う。
 
-id: crafter
-display_name: "生産"
+id: smelting
+display_name: "鍛冶"
 description: "アイテムを作る・精錬する・付呪する・修理することで稼ぐ。設備を活かした職人向け。"
-icon: minecraft:crafting_table
+icon: minecraft:anvil
 
 rewards:
   # --- クラフト (シフトクリック時は取り出し個数分 amount 倍) ---

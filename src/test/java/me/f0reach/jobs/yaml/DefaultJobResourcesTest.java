@@ -27,8 +27,8 @@ class DefaultJobResourcesTest {
             "jobs/combat.yml",
             "jobs/mining.yml",
             "jobs/farming.yml",
-            "jobs/crafter.yml",
-            "jobs/explorer.yml"
+            "jobs/smelting.yml",
+            "jobs/fishing.yml"
     );
 
     @BeforeAll

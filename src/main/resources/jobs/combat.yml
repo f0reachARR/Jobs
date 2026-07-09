@@ -1,11 +1,12 @@
-# 討伐職。entity_killed の single / list / tag / rare を試すサンプル。
+# 討伐職。entity_killed の single / list / tag / rare と
+# item_consumed (戦闘中に飲む・食べる) を試すサンプル。
 # Minecraft 1.21.11 までの敵性 mob をおおよそ網羅する。
 # 変更したくない場合はこのファイルを消して plugins/Jobs/jobs/ を空にし、
 # サーバ再起動で最新版が再配置される。
 
 id: combat
 display_name: "討伐"
-description: "敵性 mob を討伐して稼ぐ。冒険と戦闘が中心。"
+description: "敵性 mob を討伐して稼ぐ。戦闘中のポーションや金リンゴの消費でも稼げる。"
 icon: minecraft:iron_sword
 
 rewards:
@@ -189,6 +190,37 @@ rewards:
   - on: entity_killed
     entity: minecraft:slime
     reward: 2
+
+  # --- 戦闘中の消費 (ポーション・食料) ---
+  # 派生キー: consume:minecraft:enchanted_golden_apple (トーテム級)
+  - on: item_consumed
+    item: minecraft:enchanted_golden_apple
+    category: food
+    reward: 200
+
+  # 派生キー: consume:minecraft:golden_apple
+  - on: item_consumed
+    item: minecraft:golden_apple
+    category: food
+    reward: 20
+
+  # 派生キー: consume:minecraft:potion (healing / regeneration / strength / fire_resistance など)
+  - on: item_consumed
+    item: minecraft:potion
+    category: drink
+    reward: 5
+
+  # 派生キー: consume:minecraft:honey_bottle (毒解除)
+  - on: item_consumed
+    item: minecraft:honey_bottle
+    category: drink
+    reward: 3
+
+  # 派生キー: consume:minecraft:milk_bucket (弱体化・毒解除)
+  - on: item_consumed
+    item: minecraft:milk_bucket
+    category: drink
+    reward: 3
 
 variety_penalty:
   enabled: true

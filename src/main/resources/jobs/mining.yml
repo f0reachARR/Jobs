@@ -1,9 +1,10 @@
-# 採掘職。block_broken の single / list / tag / via_tnt / range を試すサンプル。
+# 採掘職。block_broken の single / list / tag / via_tnt / range と
+# item_consumed (採掘中に使う food / drink) を試すサンプル。
 # Minecraft 1.21.11 までの鉱石・鉱物・特殊採掘資源をおおよそ網羅する。
 
 id: mining
 display_name: "採掘"
-description: "ブロックを掘り、鉱石や資源を集めて稼ぐ。地下探索と資材確保が中心。"
+description: "ブロックを掘り、鉱石や資源を集めて稼ぐ。潜行時のポーションや食料の消費でも稼げる。"
 icon: minecraft:diamond_pickaxe
 
 rewards:
@@ -151,6 +152,37 @@ rewards:
       block: minecraft:netherrack
       via_tnt: true
       reward: 1
+
+    # --- 潜行のお供 (ポーション・食料) ---
+    # 派生キー: consume:minecraft:enchanted_golden_apple
+    - on: item_consumed
+      item: minecraft:enchanted_golden_apple
+      category: food
+      reward: 200
+
+    # 派生キー: consume:minecraft:golden_apple
+    - on: item_consumed
+      item: minecraft:golden_apple
+      category: food
+      reward: 20
+
+    # 派生キー: consume:minecraft:golden_carrot (夜視ポーション代替として重宝する)
+    - on: item_consumed
+      item: minecraft:golden_carrot
+      category: food
+      reward: 5
+
+    # 派生キー: consume:minecraft:potion (night_vision / haste / fire_resistance など坑内で飲む一杯)
+    - on: item_consumed
+      item: minecraft:potion
+      category: drink
+      reward: 5
+
+    # 派生キー: consume:minecraft:milk_bucket (毒・弱体化の解毒)
+    - on: item_consumed
+      item: minecraft:milk_bucket
+      category: drink
+      reward: 3
 
 anti_automation:
     # 既に置いた block を壊す "地形整地系" は 0 にする

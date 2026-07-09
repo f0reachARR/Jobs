@@ -21,7 +21,7 @@ Vault 対応 Economy と MySQL は事前に用意しておく。
 1. `Jobs.jar` を `plugins/` に置く。依存する `Vault`、`BedrockDialog`、Vault 対応 Economy プラグインも `plugins/` に揃える。
 2. サーバを起動する。初回起動時、以下が自動で生成される。
    - `plugins/Jobs/config.yml`（グローバル設定）
-   - `plugins/Jobs/jobs/`（同梱サンプル職業 5 種：`combat.yml` / `mining.yml` / `farming.yml` / `crafter.yml` / `explorer.yml`）
+   - `plugins/Jobs/jobs/`（同梱サンプル職業 5 種：`combat.yml` / `mining.yml` / `farming.yml` / `smelting.yml` / `fishing.yml`）
    - `plugins/Jobs/lang/`（`ja_jp.yml` と `en_us.yml`）
 3. サーバを停止し、`config.yml` の `persistence` 節に MySQL 接続情報を記入する（後述）。
 4. サーバを再起動する。テーブル作成マイグレーションが自動で走る。
