@@ -1,5 +1,6 @@
 # 探検職。item_fished の treasure、item_consumed の category、villager_traded を試すサンプル。
 # first match wins のため、treasure エントリを specific エントリより上に置くと影響することを確認できる。
+# Minecraft 1.21.11 までの食料・飲料・取引アイテムをおおよそ網羅する。
 
 id: explorer
 display_name: "探検"
@@ -7,43 +8,112 @@ description: "釣り・取引・食料や飲料の消費で稼ぐ。動き回っ
 icon: minecraft:filled_map
 
 rewards:
-  # 宝箱アイテム全般に高額報酬 (fishing/treasure loot table 相当)
+  # --- 釣り: 宝物ループテーブル (fishing/treasure) 由来を高額に ---
+  # 派生キー: fish:treasure
   - on: item_fished
     treasure: true
     reward: 100
 
-  # 通常魚
+  # --- 釣り: 通常魚 ---
+  # 派生キー: fish:[minecraft:cod|minecraft:pufferfish|minecraft:salmon|minecraft:tropical_fish]
   - on: item_fished
     item: [minecraft:cod, minecraft:salmon, minecraft:pufferfish, minecraft:tropical_fish]
     reward: 3
 
-  # 食事 (category: food のみに絞る例。ポーションなどは match 外)
-  - on: item_consumed
-    item: minecraft:golden_apple
-    category: food
-    reward: 20
+  # --- 食事: 高額系 (category: food のみに絞る例。ポーションなどは match 外) ---
+  # 派生キー: consume:minecraft:enchanted_golden_apple
   - on: item_consumed
     item: minecraft:enchanted_golden_apple
     category: food
     reward: 200
 
-  # 飲料 (category: drink)
+  # 派生キー: consume:minecraft:golden_apple
+  - on: item_consumed
+    item: minecraft:golden_apple
+    category: food
+    reward: 20
+
+  # 派生キー: consume:minecraft:golden_carrot
+  - on: item_consumed
+    item: minecraft:golden_carrot
+    category: food
+    reward: 5
+
+  # --- 食事: 焼き肉 (取り出し個数ではなく食べた 1 回で reward) ---
+  # 派生キー: consume:[minecraft:cooked_beef|minecraft:cooked_chicken|minecraft:cooked_cod|minecraft:cooked_mutton|minecraft:cooked_porkchop|minecraft:cooked_rabbit|minecraft:cooked_salmon]
+  - on: item_consumed
+    item:
+      - minecraft:cooked_beef
+      - minecraft:cooked_porkchop
+      - minecraft:cooked_chicken
+      - minecraft:cooked_mutton
+      - minecraft:cooked_rabbit
+      - minecraft:cooked_cod
+      - minecraft:cooked_salmon
+    category: food
+    reward: 1
+
+  # 派生キー: consume:[minecraft:cookie|minecraft:pumpkin_pie]
+  - on: item_consumed
+    item: [minecraft:cookie, minecraft:pumpkin_pie]
+    category: food
+    reward: 1
+
+  # 派生キー: consume:[minecraft:apple|minecraft:bread|minecraft:carrot|minecraft:glow_berries|minecraft:melon_slice|minecraft:potato|minecraft:sweet_berries]
+  - on: item_consumed
+    item:
+      - minecraft:bread
+      - minecraft:apple
+      - minecraft:carrot
+      - minecraft:potato
+      - minecraft:melon_slice
+      - minecraft:sweet_berries
+      - minecraft:glow_berries
+    category: food
+    reward: 1
+
+  # --- 飲料 (category: drink) ---
+  # 派生キー: consume:minecraft:ominous_bottle (1.21+)
+  - on: item_consumed
+    item: minecraft:ominous_bottle
+    category: drink
+    reward: 50
+
+  # 派生キー: consume:minecraft:potion
   - on: item_consumed
     item: minecraft:potion
     category: drink
     reward: 5
+
+  # 派生キー: consume:minecraft:honey_bottle
+  - on: item_consumed
+    item: minecraft:honey_bottle
+    category: drink
+    reward: 3
+
+  # 派生キー: consume:minecraft:milk_bucket
   - on: item_consumed
     item: minecraft:milk_bucket
     category: drink
     reward: 2
 
-  # Villager 取引 (取引個数 × reward)
-  - on: villager_traded
-    item: minecraft:emerald
-    reward: 3
+  # --- Villager 取引 (取引個数 × reward) ---
+  # 高額寄りの取引物は specific に別バケットで拾う
+  # 派生キー: trade:[minecraft:diamond|minecraft:enchanted_book|minecraft:name_tag]
   - on: villager_traded
     item: [minecraft:enchanted_book, minecraft:diamond, minecraft:name_tag]
     reward: 15
+
+  # 派生キー: trade:[minecraft:experience_bottle|minecraft:trident]
+  - on: villager_traded
+    item: [minecraft:experience_bottle, minecraft:trident]
+    reward: 30
+
+  # 通常の販売取引 (プレイヤーが emerald を受け取るケース)
+  # 派生キー: trade:minecraft:emerald
+  - on: villager_traded
+    item: minecraft:emerald
+    reward: 3
 
 anti_automation:
   villager_repeat_trade:

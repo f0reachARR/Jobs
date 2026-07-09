@@ -1,5 +1,6 @@
 # 生産職。item_crafted (shift-click 対応)、item_smelted (amount × reward)、
-# item_enchanted (enchantment + level_min)、item_repaired (source) を試すサンプル。
+# item_enchanted (enchantment + level_min)、item_repaired (source)、item_brewed を試すサンプル。
+# Minecraft 1.21.11 までの主要な生産アイテムをおおよそ網羅する。
 
 id: crafter
 display_name: "生産"
@@ -7,21 +8,59 @@ description: "アイテムを作る・精錬する・付呪する・修理する
 icon: minecraft:crafting_table
 
 rewards:
-  # クラフト (シフトクリック時は取り出し個数分 amount 倍される)
+  # --- クラフト (シフトクリック時は取り出し個数分 amount 倍) ---
+  # 派生キー: craft:minecraft:mace (Breeze rod + heavy core、1.21+)
   - on: item_crafted
-    item: minecraft:iron_pickaxe
+    item: minecraft:mace
+    reward: 200
+
+  # 派生キー: craft:#minecraft:spears (1.21.11+、spear カテゴリ全般)
+  - on: item_crafted
+    item: "#minecraft:spears"
+    reward: 60
+
+  # 派生キー: craft:[minecraft:anvil|minecraft:beacon]
+  - on: item_crafted
+    item: [minecraft:anvil, minecraft:beacon]
+    reward: 50
+
+  # 派生キー: craft:minecraft:enchanting_table
+  - on: item_crafted
+    item: minecraft:enchanting_table
+    reward: 30
+
+  # 派生キー: craft:[minecraft:diamond_axe|minecraft:diamond_hoe|minecraft:diamond_pickaxe|minecraft:diamond_shovel|minecraft:diamond_sword]
+  - on: item_crafted
+    item:
+      - minecraft:diamond_sword
+      - minecraft:diamond_pickaxe
+      - minecraft:diamond_axe
+      - minecraft:diamond_shovel
+      - minecraft:diamond_hoe
+    reward: 20
+
+  # 派生キー: craft:[minecraft:iron_axe|minecraft:iron_hoe|minecraft:iron_pickaxe|minecraft:iron_shovel|minecraft:iron_sword]
+  - on: item_crafted
+    item:
+      - minecraft:iron_sword
+      - minecraft:iron_pickaxe
+      - minecraft:iron_axe
+      - minecraft:iron_shovel
+      - minecraft:iron_hoe
     reward: 5
+
+  # 派生キー: craft:[minecraft:bow|minecraft:crossbow]
+  - on: item_crafted
+    item: [minecraft:bow, minecraft:crossbow]
+    reward: 3
+
+  # 派生キー: craft:[minecraft:bread|minecraft:cake|minecraft:cookie]
   - on: item_crafted
     item: [minecraft:bread, minecraft:cookie, minecraft:cake]
     reward: 1
 
-  # 精錬 (取り出した個数 × reward)
-  - on: item_smelted
-    item: minecraft:iron_ingot
-    reward: 3
-  - on: item_smelted
-    item: minecraft:gold_ingot
-    reward: 5
+  # --- 精錬 (取り出した個数 × reward) ---
+  # 派生キー: smelt:minecraft:netherite_scrap
   - on: item_smelted
     item: minecraft:netherite_scrap
     reward: 50
@@ -30,39 +69,113 @@ rewards:
       reward: 1000
       announce: "<yellow><player> が高純度ネザライトを精錬した！</yellow>"
 
-  # エンチャント (sharpness lv3 以上のみ報酬)
+  # 派生キー: smelt:minecraft:gold_ingot
+  - on: item_smelted
+    item: minecraft:gold_ingot
+    reward: 5
+
+  # 派生キー: smelt:minecraft:iron_ingot
+  - on: item_smelted
+    item: minecraft:iron_ingot
+    reward: 3
+
+  # 派生キー: smelt:minecraft:copper_ingot
+  - on: item_smelted
+    item: minecraft:copper_ingot
+    reward: 2
+
+  # 派生キー: smelt:[minecraft:cooked_beef|minecraft:cooked_chicken|minecraft:cooked_cod|minecraft:cooked_mutton|minecraft:cooked_porkchop|minecraft:cooked_rabbit|minecraft:cooked_salmon]
+  - on: item_smelted
+    item:
+      - minecraft:cooked_beef
+      - minecraft:cooked_porkchop
+      - minecraft:cooked_chicken
+      - minecraft:cooked_mutton
+      - minecraft:cooked_rabbit
+      - minecraft:cooked_cod
+      - minecraft:cooked_salmon
+    reward: 1
+
+  # 派生キー: smelt:[minecraft:brick|minecraft:nether_brick]
+  - on: item_smelted
+    item: [minecraft:brick, minecraft:nether_brick]
+    reward: 1
+
+  # --- エンチャント ---
+  # sharpness lv4 以上のみ報酬。派生キー: enchant:#minecraft:swords
   - on: item_enchanted
     item: "#minecraft:swords"
     enchantment: minecraft:sharpness
-    level_min: 3
-    reward: 50
+    level_min: 4
+    reward: 60
 
-  # エンチャント (レベル指定なし = どのレベルでもマッチ)
+  # fortune 3 の pickaxe。派生キー: enchant:#minecraft:pickaxes
+  - on: item_enchanted
+    item: "#minecraft:pickaxes"
+    enchantment: minecraft:fortune
+    level_min: 3
+    reward: 60
+
+  # silk touch は 1 段階しかないので level_min なし。派生キー: enchant:#minecraft:pickaxes
+  - on: item_enchanted
+    item: "#minecraft:pickaxes"
+    enchantment: minecraft:silk_touch
+    reward: 40
+
+  # 派生キー: enchant:minecraft:elytra
   - on: item_enchanted
     item: minecraft:elytra
     enchantment: minecraft:unbreaking
-    reward: 100
+    reward: 80
 
-  # 修復 (Anvil のみ / Mending のみを別バケットで記録)
+  # 派生キー: enchant:[minecraft:bow|minecraft:crossbow]
+  - on: item_enchanted
+    item: [minecraft:bow, minecraft:crossbow]
+    reward: 15
+
+  # --- 修復 (Anvil / Mending を別バケットで記録) ---
+  # 派生キー: repair_anvil:#minecraft:pickaxes
   - on: item_repaired
     item: "#minecraft:pickaxes"
     source: anvil
-    reward: 10
+    reward: 8
+
+  # 派生キー: repair_mending:#minecraft:pickaxes
   - on: item_repaired
     item: "#minecraft:pickaxes"
     source: mending
-    reward: 5
+    reward: 3
 
-  # 醸造 (出力 slot ごとに 1 event として dispatch される)
-  # potion 未指定は「どんなポーション種別でも通す」広い一致
-  - on: item_brewed
-    item: minecraft:potion
-    reward: 8
-  # potion を指定すると base potion type で filter でき、派生キーも別バケットになる
+  # 派生キー: repair_anvil:minecraft:elytra
+  - on: item_repaired
+    item: minecraft:elytra
+    source: anvil
+    reward: 30
+
+  # --- 醸造 (出力 slot ごとに 1 event として dispatch される) ---
+  # 派生キー: brew:minecraft:splash_potion+[minecraft:healing|minecraft:strong_healing]
   - on: item_brewed
     item: minecraft:splash_potion
     potion: [minecraft:healing, minecraft:strong_healing]
     reward: 20
+
+  # 派生キー: brew:minecraft:potion+[minecraft:long_night_vision|minecraft:night_vision]
+  - on: item_brewed
+    item: minecraft:potion
+    potion: [minecraft:night_vision, minecraft:long_night_vision]
+    reward: 8
+
+  # 派生キー: brew:[minecraft:lingering_potion|minecraft:splash_potion]
+  # 上の specific エントリで拾えなかった splash / lingering は 5 で拾う
+  - on: item_brewed
+    item: [minecraft:splash_potion, minecraft:lingering_potion]
+    reward: 5
+
+  # potion 未指定 = base potion 種別を問わず全ての通常ポーションを拾う
+  # 派生キー: brew:minecraft:potion
+  - on: item_brewed
+    item: minecraft:potion
+    reward: 3
 
 variety_penalty:
   enabled: true

@@ -1,4 +1,5 @@
 # 採掘職。block_broken の single / list / tag / via_tnt / range を試すサンプル。
+# Minecraft 1.21.11 までの鉱石・鉱物・特殊採掘資源をおおよそ網羅する。
 
 id: mining
 display_name: "採掘"
@@ -6,18 +7,8 @@ description: "ブロックを掘り、鉱石や資源を集めて稼ぐ。地下
 icon: minecraft:diamond_pickaxe
 
 rewards:
-    # 深層ダイヤ / エメラルド。派生キー: break:minecraft:deepslate_diamond_ore
-    - on: block_broken
-      block: minecraft:deepslate_diamond_ore
-      reward: 50
-    - on: block_broken
-      block: minecraft:diamond_ore
-      reward: 30
-    - on: block_broken
-      block: minecraft:emerald_ore
-      reward: 20
-
-    # ネザライトはレンジ乱数 + rare
+    # --- 最高額鉱石 ---
+    # 派生キー: break:minecraft:ancient_debris (レンジ + rare)
     - on: block_broken
       block: minecraft:ancient_debris
       reward: { min: 80, max: 200 }
@@ -26,22 +17,138 @@ rewards:
           reward: 500
           announce: "<gold><player> がネザライト鉱脈を掘り当てた！</gold>"
 
-    # OR リストで鉄系鉱石をまとめて。派生キー: break:[minecraft:copper_ore|minecraft:deepslate_iron_ore|minecraft:iron_ore]
+    # --- Diamond / Emerald (deepslate と非 deepslate で別バケット) ---
+    # 派生キー: break:minecraft:deepslate_diamond_ore
+    - on: block_broken
+      block: minecraft:deepslate_diamond_ore
+      reward: 50
+
+    # 派生キー: break:minecraft:diamond_ore
+    - on: block_broken
+      block: minecraft:diamond_ore
+      reward: 30
+
+    # 派生キー: break:minecraft:deepslate_emerald_ore
+    - on: block_broken
+      block: minecraft:deepslate_emerald_ore
+      reward: 30
+
+    # 派生キー: break:minecraft:emerald_ore
+    - on: block_broken
+      block: minecraft:emerald_ore
+      reward: 20
+
+    # --- Nether 由来 ---
+    # 派生キー: break:minecraft:nether_gold_ore
+    - on: block_broken
+      block: minecraft:nether_gold_ore
+      reward: 4
+
+    # 派生キー: break:minecraft:nether_quartz_ore
+    - on: block_broken
+      block: minecraft:nether_quartz_ore
+      reward: 3
+
+    # 派生キー: break:minecraft:glowstone
+    - on: block_broken
+      block: minecraft:glowstone
+      reward: 2
+
+    # --- Amethyst (成熟した cluster を高評価。若い bud は低め) ---
+    # 派生キー: break:minecraft:amethyst_cluster
+    - on: block_broken
+      block: minecraft:amethyst_cluster
+      reward: 6
+
+    # 派生キー: break:[minecraft:large_amethyst_bud|minecraft:medium_amethyst_bud|minecraft:small_amethyst_bud]
     - on: block_broken
       block:
-          - minecraft:iron_ore
-          - minecraft:deepslate_iron_ore
-          - minecraft:copper_ore
+          - minecraft:small_amethyst_bud
+          - minecraft:medium_amethyst_bud
+          - minecraft:large_amethyst_bud
+      reward: 2
+
+    # --- Sculk (Deep Dark) ---
+    # 派生キー: break:minecraft:sculk_sensor
+    - on: block_broken
+      block: minecraft:sculk_sensor
+      reward: 10
+
+    # 派生キー: break:[minecraft:sculk|minecraft:sculk_catalyst|minecraft:sculk_shrieker|minecraft:sculk_vein]
+    - on: block_broken
+      block:
+          - minecraft:sculk
+          - minecraft:sculk_vein
+          - minecraft:sculk_catalyst
+          - minecraft:sculk_shrieker
       reward: 5
 
-    # 石炭系はタグ (data pack で拡張された tag も透過的に拾える)。派生キー: break:#minecraft:coal_ores
+    # --- Trial Chamber 由来 (1.21+) ---
+    # 派生キー: break:[minecraft:copper_bulb|minecraft:exposed_copper_bulb|minecraft:oxidized_copper_bulb|minecraft:weathered_copper_bulb]
+    - on: block_broken
+      block:
+          - minecraft:copper_bulb
+          - minecraft:exposed_copper_bulb
+          - minecraft:weathered_copper_bulb
+          - minecraft:oxidized_copper_bulb
+      reward: 3
+
+    # --- Pale Garden (1.21.4+) ---
+    # 派生キー: break:minecraft:resin_clump
+    - on: block_broken
+      block: minecraft:resin_clump
+      reward: 4
+
+    # --- 金鉱 (deepslate 変種と統合) ---
+    # 派生キー: break:[minecraft:deepslate_gold_ore|minecraft:gold_ore]
+    - on: block_broken
+      block: [minecraft:gold_ore, minecraft:deepslate_gold_ore]
+      reward: 8
+
+    # --- 銅系 (deepslate と統合) ---
+    # 派生キー: break:[minecraft:copper_ore|minecraft:deepslate_copper_ore]
+    - on: block_broken
+      block: [minecraft:copper_ore, minecraft:deepslate_copper_ore]
+      reward: 3
+
+    # --- 鉄系は tag で拾う (data pack で拡張された tag も透過的に拾える) ---
+    # 派生キー: break:#minecraft:iron_ores
+    - on: block_broken
+      block: "#minecraft:iron_ores"
+      reward: 5
+
+    # --- Redstone / Lapis / Coal は tag で ---
+    # 派生キー: break:#minecraft:redstone_ores
+    - on: block_broken
+      block: "#minecraft:redstone_ores"
+      reward: 3
+
+    # 派生キー: break:#minecraft:lapis_ores
+    - on: block_broken
+      block: "#minecraft:lapis_ores"
+      reward: 3
+
+    # 派生キー: break:#minecraft:coal_ores
     - on: block_broken
       block: "#minecraft:coal_ores"
       reward: 2
 
-    # via_tnt=true 専用エントリ。TNT で壊した石だけ報酬が入る。派生キー: break_tnt:minecraft:stone
+    # --- End 石 ---
+    # 派生キー: break:minecraft:end_stone
     - on: block_broken
-      block: minecraft:stone
+      block: minecraft:end_stone
+      reward: 1
+
+    # --- 整地・採石は TNT 経由のみ報酬対象 ---
+    # 派生キー: break_tnt:#minecraft:base_stone_overworld (stone / granite / andesite / diorite / tuff / deepslate など)
+    - on: block_broken
+      block: "#minecraft:base_stone_overworld"
+      via_tnt: true
+      reward: 1
+
+    # 派生キー: break_tnt:minecraft:netherrack
+    - on: block_broken
+      block: minecraft:netherrack
       via_tnt: true
       reward: 1
 

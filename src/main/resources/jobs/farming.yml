@@ -1,4 +1,5 @@
 # 農業職。crop_mature、entity_bred、entity_sheared、entity_tamed を試すサンプル。
+# Minecraft 1.21.11 までの作物・家畜・毛刈り・手懐け対象をおおよそ網羅する。
 
 id: farming
 display_name: "農業"
@@ -6,46 +7,213 @@ description: "作物を育てて収穫し、動物を繁殖・毛刈り・手懐
 icon: minecraft:wheat
 
 rewards:
-  # 完熟作物のみ収穫報酬。派生キー: break:minecraft:wheat
+  # --- Ageable 主要作物 (完熟のみ) ---
+  # 派生キー: break:minecraft:wheat
   - on: block_broken
     block: minecraft:wheat
     crop_mature: true
     reward: 3
+  # 派生キー: break:minecraft:carrots
   - on: block_broken
     block: minecraft:carrots
     crop_mature: true
     reward: 3
+  # 派生キー: break:minecraft:potatoes
   - on: block_broken
     block: minecraft:potatoes
     crop_mature: true
     reward: 3
+  # 派生キー: break:minecraft:beetroots
   - on: block_broken
     block: minecraft:beetroots
     crop_mature: true
-    reward: 3
+    reward: 4
 
-  # かぼちゃ / スイカは crop_mature 不要 (Ageable ではない)
+  # 派生キー: break:minecraft:nether_wart
+  - on: block_broken
+    block: minecraft:nether_wart
+    crop_mature: true
+    reward: 5
+
+  # 派生キー: break:minecraft:cocoa
+  - on: block_broken
+    block: minecraft:cocoa
+    crop_mature: true
+    reward: 4
+
+  # --- Sniffer 発掘作物 (1.21+) ---
+  # 派生キー: break:minecraft:torchflower_crop
+  - on: block_broken
+    block: minecraft:torchflower_crop
+    crop_mature: true
+    reward: 15
+
+  # 派生キー: break:minecraft:pitcher_crop
+  - on: block_broken
+    block: minecraft:pitcher_crop
+    crop_mature: true
+    reward: 15
+
+  # --- 非 Ageable 単発収穫 (crop_mature を書かない) ---
+  # 派生キー: break:[minecraft:melon|minecraft:pumpkin]
   - on: block_broken
     block: [minecraft:pumpkin, minecraft:melon]
     reward: 2
 
-  # 交配 (Villager 交配は Phase 7 の breed_non_player_breeder で 0 になる想定)
+  # 派生キー: break:minecraft:sugar_cane
+  - on: block_broken
+    block: minecraft:sugar_cane
+    reward: 1
+
+  # 派生キー: break:[minecraft:bamboo|minecraft:bamboo_sapling]
+  - on: block_broken
+    block: [minecraft:bamboo, minecraft:bamboo_sapling]
+    reward: 1
+
+  # 派生キー: break:[minecraft:cactus|minecraft:cactus_flower] (cactus_flower は 1.21.5+)
+  - on: block_broken
+    block: [minecraft:cactus, minecraft:cactus_flower]
+    reward: 1
+
+  # 派生キー: break:minecraft:sweet_berry_bush
+  - on: block_broken
+    block: minecraft:sweet_berry_bush
+    reward: 1
+
+  # 派生キー: break:[minecraft:cave_vines|minecraft:cave_vines_plant]
+  - on: block_broken
+    block: [minecraft:cave_vines, minecraft:cave_vines_plant]
+    reward: 1
+
+  # --- 水生系 ---
+  # 派生キー: break:[minecraft:kelp|minecraft:kelp_plant]
+  - on: block_broken
+    block: [minecraft:kelp, minecraft:kelp_plant]
+    reward: 1
+
+  # --- 蜂・蜂蜜 ---
+  # 派生キー: break:minecraft:beehive
+  - on: block_broken
+    block: minecraft:beehive
+    reward: 30
+
+  # --- 交配 (家畜系はまとめて 1 バケット、それ以外は種別ごと) ---
+  # 派生キー: breed:[minecraft:chicken|minecraft:cow|minecraft:pig|minecraft:sheep]
   - on: entity_bred
     entity: [minecraft:cow, minecraft:sheep, minecraft:pig, minecraft:chicken]
     reward: 5
 
-  # 毛刈り
+  # 派生キー: breed:minecraft:rabbit
+  - on: entity_bred
+    entity: minecraft:rabbit
+    reward: 3
+
+  # 派生キー: breed:minecraft:goat
+  - on: entity_bred
+    entity: minecraft:goat
+    reward: 8
+
+  # 派生キー: breed:minecraft:bee
+  - on: entity_bred
+    entity: minecraft:bee
+    reward: 6
+
+  # 派生キー: breed:[minecraft:donkey|minecraft:horse]
+  - on: entity_bred
+    entity: [minecraft:horse, minecraft:donkey]
+    reward: 10
+
+  # 派生キー: breed:minecraft:llama
+  - on: entity_bred
+    entity: minecraft:llama
+    reward: 5
+
+  # 派生キー: breed:minecraft:camel
+  - on: entity_bred
+    entity: minecraft:camel
+    reward: 15
+
+  # 派生キー: breed:[minecraft:cat|minecraft:wolf]
+  - on: entity_bred
+    entity: [minecraft:cat, minecraft:wolf]
+    reward: 8
+
+  # 派生キー: breed:[minecraft:axolotl|minecraft:frog|minecraft:turtle]
+  - on: entity_bred
+    entity: [minecraft:axolotl, minecraft:frog, minecraft:turtle]
+    reward: 12
+
+  # 派生キー: breed:[minecraft:fox|minecraft:panda]
+  - on: entity_bred
+    entity: [minecraft:fox, minecraft:panda]
+    reward: 10
+
+  # 派生キー: breed:minecraft:armadillo (1.21+)
+  - on: entity_bred
+    entity: minecraft:armadillo
+    reward: 8
+
+  # 派生キー: breed:minecraft:sniffer (孵化まで手間がかかるので高額)
+  - on: entity_bred
+    entity: minecraft:sniffer
+    reward: 40
+
+  # 派生キー: breed:[minecraft:hoglin|minecraft:strider]
+  - on: entity_bred
+    entity: [minecraft:hoglin, minecraft:strider]
+    reward: 6
+
+  # 派生キー: breed:minecraft:happy_ghast (dried_ghast 経由の ghastling 誕生、1.21.6+)
+  - on: entity_bred
+    entity: minecraft:happy_ghast
+    reward: 30
+
+  # 派生キー: breed:minecraft:nautilus (1.21.11+)
+  - on: entity_bred
+    entity: minecraft:nautilus
+    reward: 20
+
+  # --- 毛刈り ---
+  # 派生キー: shear:minecraft:sheep
   - on: entity_sheared
     entity: minecraft:sheep
     reward: 1
 
-  # 手懐け
+  # 派生キー: shear:minecraft:mooshroom
+  - on: entity_sheared
+    entity: minecraft:mooshroom
+    reward: 5
+
+  # 派生キー: shear:[minecraft:bogged|minecraft:snow_golem]
+  - on: entity_sheared
+    entity: [minecraft:snow_golem, minecraft:bogged]
+    reward: 3
+
+  # --- 手懐け ---
+  # 派生キー: tame:[minecraft:cat|minecraft:wolf]
   - on: entity_tamed
-    entity: minecraft:wolf
+    entity: [minecraft:wolf, minecraft:cat]
     reward: 20
+
+  # 派生キー: tame:[minecraft:donkey|minecraft:horse|minecraft:mule]
   - on: entity_tamed
-    entity: minecraft:cat
-    reward: 20
+    entity: [minecraft:horse, minecraft:donkey, minecraft:mule]
+    reward: 30
+
+  # 派生キー: tame:[minecraft:llama|minecraft:trader_llama]
+  - on: entity_tamed
+    entity: [minecraft:llama, minecraft:trader_llama]
+    reward: 15
+
+  # 派生キー: tame:minecraft:parrot
+  - on: entity_tamed
+    entity: minecraft:parrot
+    reward: 25
+
+  # 派生キー: tame:minecraft:nautilus (1.21.11+、pufferfish で手懐け)
+  - on: entity_tamed
+    entity: minecraft:nautilus
+    reward: 50
 
 anti_automation:
   unplanted_crop_harvest: zero

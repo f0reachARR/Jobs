@@ -1,4 +1,5 @@
 # 討伐職。entity_killed の single / list / tag / rare を試すサンプル。
+# Minecraft 1.21.11 までの敵性 mob をおおよそ網羅する。
 # 変更したくない場合はこのファイルを消して plugins/Jobs/jobs/ を空にし、
 # サーバ再起動で最新版が再配置される。
 
@@ -8,35 +9,186 @@ description: "敵性 mob を討伐して稼ぐ。冒険と戦闘が中心。"
 icon: minecraft:iron_sword
 
 rewards:
-  # 単一 entity。派生キー: kill:minecraft:zombie
+  # --- Boss ---
+  # 派生キー: kill:minecraft:ender_dragon
   - on: entity_killed
-    entity: minecraft:zombie
-    reward: 5
-
-  # 難敵は高額固定 + rare。派生キー: kill:minecraft:skeleton
-  - on: entity_killed
-    entity: minecraft:skeleton
-    reward: 5
+    entity: minecraft:ender_dragon
+    reward: 50000
     rare:
-      chance: 0.001
+      chance: 0.05
+      reward: 200000
+      announce: "<gold><bold><player></bold> がエンドラを討伐した！</gold>"
+
+  # 派生キー: kill:minecraft:wither
+  - on: entity_killed
+    entity: minecraft:wither
+    reward: 20000
+
+  # 派生キー: kill:minecraft:warden
+  - on: entity_killed
+    entity: minecraft:warden
+    reward: 30000
+    rare:
+      chance: 0.02
+      reward: 150000
+      announce: "<dark_purple><player> が Warden を沈黙させた…</dark_purple>"
+
+  # --- Elite ---
+  # 派生キー: kill:minecraft:elder_guardian
+  - on: entity_killed
+    entity: minecraft:elder_guardian
+    reward: 5000
+
+  # 派生キー: kill:minecraft:ravager
+  - on: entity_killed
+    entity: minecraft:ravager
+    reward: 300
+
+  # 派生キー: kill:minecraft:piglin_brute
+  - on: entity_killed
+    entity: minecraft:piglin_brute
+    reward: 150
+
+  # 派生キー: kill:minecraft:evoker
+  - on: entity_killed
+    entity: minecraft:evoker
+    reward: 120
+
+  # --- Trial Chamber / Pale Garden 系 (1.21+) ---
+  # 派生キー: kill:minecraft:breeze
+  - on: entity_killed
+    entity: minecraft:breeze
+    reward: 80
+
+  # 派生キー: kill:minecraft:creaking (Pale Garden、1.21.4+)
+  - on: entity_killed
+    entity: minecraft:creaking
+    reward: 60
+
+  # --- 1.21.11 新規 mob ---
+  # 派生キー: kill:minecraft:camel_husk
+  - on: entity_killed
+    entity: minecraft:camel_husk
+    reward: 40
+
+  # 派生キー: kill:minecraft:zombie_nautilus
+  - on: entity_killed
+    entity: minecraft:zombie_nautilus
+    reward: 25
+
+  # --- Illager / Raid (evoker は個別に上へ済) ---
+  # 派生キー: kill:[minecraft:pillager|minecraft:vindicator]
+  - on: entity_killed
+    entity: [minecraft:vindicator, minecraft:pillager]
+    reward: 40
+
+  # 派生キー: kill:[minecraft:illusioner|minecraft:vex]
+  - on: entity_killed
+    entity: [minecraft:vex, minecraft:illusioner]
+    reward: 30
+
+  # 派生キー: kill:minecraft:witch
+  - on: entity_killed
+    entity: minecraft:witch
+    reward: 25
+
+  # --- Nether ---
+  # 派生キー: kill:minecraft:ghast (レアで大玉)
+  - on: entity_killed
+    entity: minecraft:ghast
+    reward: 50
+    rare:
+      chance: 0.005
+      reward: 5000
+      announce: "<yellow><player> が涙するガストを撃ち落とした</yellow>"
+
+  # 派生キー: kill:minecraft:wither_skeleton
+  - on: entity_killed
+    entity: minecraft:wither_skeleton
+    reward: 40
+
+  # 派生キー: kill:minecraft:blaze
+  - on: entity_killed
+    entity: minecraft:blaze
+    reward: 25
+
+  # 派生キー: kill:[minecraft:hoglin|minecraft:zoglin]
+  - on: entity_killed
+    entity: [minecraft:hoglin, minecraft:zoglin]
+    reward: 15
+
+  # 派生キー: kill:[minecraft:magma_cube|minecraft:piglin|minecraft:zombified_piglin]
+  - on: entity_killed
+    entity:
+      - minecraft:piglin
+      - minecraft:zombified_piglin
+      - minecraft:magma_cube
+    reward: 8
+
+  # --- End ---
+  # 派生キー: kill:minecraft:shulker
+  - on: entity_killed
+    entity: minecraft:shulker
+    reward: 80
+
+  # 派生キー: kill:minecraft:enderman
+  - on: entity_killed
+    entity: minecraft:enderman
+    reward: 20
+
+  # --- Overworld 中量 ---
+  # 派生キー: kill:minecraft:creeper (レンジ乱数)
+  - on: entity_killed
+    entity: minecraft:creeper
+    reward: { min: 8, max: 15 }
+
+  # 派生キー: kill:minecraft:phantom
+  - on: entity_killed
+    entity: minecraft:phantom
+    reward: 15
+
+  # 派生キー: kill:minecraft:guardian
+  - on: entity_killed
+    entity: minecraft:guardian
+    reward: 12
+
+  # --- 骨系 (parched は 1.21.11 の砂漠限定 skeleton 変種) ---
+  # tag より前に個別リストで束ねる。派生キー: kill:[minecraft:bogged|minecraft:parched|minecraft:skeleton|minecraft:stray]
+  - on: entity_killed
+    entity:
+      - minecraft:skeleton
+      - minecraft:stray
+      - minecraft:bogged
+      - minecraft:parched
+    reward: 6
+    rare:
+      chance: 0.0005
       reward: 100000
       announce: "<gold><player> が黄金スケルトンを討伐した！</gold>"
 
-  # OR リスト。派生キー: kill:[minecraft:blaze|minecraft:ghast|minecraft:wither_skeleton]
+  # --- 蜘蛛系 ---
+  # 派生キー: kill:[minecraft:cave_spider|minecraft:spider]
   - on: entity_killed
-    entity: [minecraft:wither_skeleton, minecraft:blaze, minecraft:ghast]
-    reward: 30
+    entity: [minecraft:spider, minecraft:cave_spider]
+    reward: 5
 
-  # 一様乱数の範囲。派生キー: kill:minecraft:creeper
-  - on: entity_killed
-    entity: minecraft:creeper
-    reward: { min: 10, max: 20 }
-
-  # タグでまとめて拾う。派生キー: kill:#minecraft:undead
-  # 上位で個別指定した zombie / skeleton は既に確定するのでこの位置なら覆わない (shadow なし)。
+  # --- 低額 tag 拾い (個別を上に済ませているので shadow なし) ---
+  # zombie / husk / drowned / zombie_villager / zombie_horse など undead 一括
+  # 派生キー: kill:#minecraft:undead
   - on: entity_killed
     entity: "#minecraft:undead"
+    reward: 4
+
+  # silverfish / endermite / bee など
+  # 派生キー: kill:#minecraft:arthropod
+  - on: entity_killed
+    entity: "#minecraft:arthropod"
     reward: 3
+
+  # 派生キー: kill:minecraft:slime
+  - on: entity_killed
+    entity: minecraft:slime
+    reward: 2
 
 variety_penalty:
   enabled: true
