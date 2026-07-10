@@ -10,7 +10,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -63,7 +62,7 @@ public final class MySqlPlayerJobRepository implements PlayerJobRepository {
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) return Optional.empty();
                 String jobId = rs.getString(1);
-                Instant cooldownBaseAt = rs.getTimestamp(2).toInstant();
+                Instant cooldownBaseAt = MySqlTimestamps.getInstant(rs, 2);
                 return Optional.of(new PlayerJobRow(player, jobId, cooldownBaseAt));
             }
         } catch (SQLException e) {
@@ -77,7 +76,7 @@ public final class MySqlPlayerJobRepository implements PlayerJobRepository {
              PreparedStatement ps = conn.prepareStatement(SQL_UPSERT)) {
             ps.setBytes(1, UuidBytes.toBytes(player));
             ps.setString(2, jobId);
-            ps.setTimestamp(3, Timestamp.from(cooldownBaseAt));
+            MySqlTimestamps.setColumnInstant(ps, 3, cooldownBaseAt);
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("upsert failed for " + player, e);
@@ -88,7 +87,7 @@ public final class MySqlPlayerJobRepository implements PlayerJobRepository {
     public void resetCooldownBase(UUID player) {
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(SQL_RESET_COOLDOWN)) {
-            ps.setTimestamp(1, Timestamp.from(Instant.EPOCH));
+            MySqlTimestamps.setColumnInstant(ps, 1, Instant.EPOCH);
             ps.setBytes(2, UuidBytes.toBytes(player));
             ps.executeUpdate();
         } catch (SQLException e) {
