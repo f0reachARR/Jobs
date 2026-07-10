@@ -104,6 +104,7 @@ public final class DialogTexts {
     public static final String DIALOG_INFO_REWARD_TRUNCATED = "dialog.info.reward.truncated";
     public static final String DIALOG_INFO_TARGET_LIST_SEPARATOR = "dialog.info.target.list_separator";
     public static final String DIALOG_INFO_TARGET_TAG_SUFFIX = "dialog.info.target.tag_suffix";
+    public static final String DIALOG_INFO_TARGET_TAG_REPRESENTATIVE = "dialog.info.target.tag_representative";
     public static final String DIALOG_INFO_TARGET_CROP_MATURE = "dialog.info.target.crop_mature";
     public static final String DIALOG_INFO_TARGET_VIA_TNT = "dialog.info.target.via_tnt";
     public static final String DIALOG_INFO_TARGET_FISH_TREASURE = "dialog.info.target.fish_treasure";

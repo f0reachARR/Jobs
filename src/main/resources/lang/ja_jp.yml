@@ -115,6 +115,7 @@ dialog:
     target:
       list_separator: " / "
       tag_suffix: " (タグ)"
+      tag_representative: "<items> など"
       crop_mature: " (完熟のみ)"
       via_tnt: " (TNT 由来)"
       fish_treasure: " (宝箱ループ)"

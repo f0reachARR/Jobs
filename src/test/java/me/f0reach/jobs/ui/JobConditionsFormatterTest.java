@@ -17,6 +17,7 @@ import me.f0reach.jobs.economy.AmountFormatter;
 import me.f0reach.jobs.i18n.I18n;
 import me.f0reach.jobs.i18n.LocaleRegistry;
 import me.f0reach.jobs.registry.ActionKeyDeriver;
+import me.f0reach.jobs.registry.TagResolver;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.NamespacedKey;
@@ -64,6 +65,7 @@ class JobConditionsFormatterTest {
         // target extras
         keys.put("dialog.info.target.list_separator", " / ");
         keys.put("dialog.info.target.tag_suffix", " (タグ)");
+        keys.put("dialog.info.target.tag_representative", "<items> など");
         keys.put("dialog.info.target.crop_mature", " (完熟)");
         keys.put("dialog.info.target.via_tnt", " (TNT)");
         keys.put("dialog.info.target.fish_treasure", " (宝箱)");
@@ -95,7 +97,7 @@ class JobConditionsFormatterTest {
         keys.put("dialog.info.anti_automation.breed_non_player_breeder", "非 Player 交配 0");
 
         LocaleRegistry reg = LocaleRegistry.forTesting(Map.of(LOCALE, keys));
-        return new JobConditionsFormatter(new I18n(reg), fakeAmountFormatter());
+        return new JobConditionsFormatter(new I18n(reg), fakeAmountFormatter(), new TagResolver());
     }
 
     /** テストでは Vault provider を持たないため、整数は "N coins"、小数は "N.NN coins"。 */
@@ -135,12 +137,15 @@ class JobConditionsFormatterTest {
                         AntiAutomationConfig.SpawnerOriginKills.ZERO,
                         null, null, null, null, null));
 
+        // Adventure の PlainTextComponentSerializer はグローバル翻訳を通すため、
+        // translatable な block/entity 名は英語表示 (JVM デフォルトロケール依存) で解決される。
+        // クライアントに送る Component 上では翻訳キーが載っているため、実運用では各言語で描画される。
         String body = plain(formatter().build(LOCALE, job, true));
-        assertTrue(body.contains("戦って稼ぐ"));
-        assertTrue(body.contains("討伐: minecraft:zombie → 5 coins"));
-        assertTrue(body.contains("採掘: minecraft:diamond_ore → 10 coins〜20 coins"));
-        assertTrue(body.contains("飽きた"));
-        assertTrue(body.contains("スポナー討伐 0"));
+        assertTrue(body.contains("戦って稼ぐ"), () -> body);
+        assertTrue(body.contains("討伐: Zombie → 5 coins"), () -> body);
+        assertTrue(body.contains("採掘: Diamond Ore → 10 coins〜20 coins"), () -> body);
+        assertTrue(body.contains("飽きた"), () -> body);
+        assertTrue(body.contains("スポナー討伐 0"), () -> body);
     }
 
     @Test
@@ -154,7 +159,7 @@ class JobConditionsFormatterTest {
                 VarietyPenaltyConfig.disabled(), AntiAutomationConfig.empty());
 
         String body = plain(formatter().build(LOCALE, job, false));
-        assertTrue(body.contains("討伐: minecraft:zombie"));
+        assertTrue(body.contains("討伐: Zombie"), () -> body);
         assertFalse(body.contains("→"), () -> "should not contain amount arrow; got:\n" + body);
         assertFalse(body.contains("coins"), () -> "should not contain amount unit; got:\n" + body);
     }
@@ -192,8 +197,11 @@ class JobConditionsFormatterTest {
                 VarietyPenaltyConfig.disabled(), AntiAutomationConfig.empty());
 
         String body = plain(formatter().build(LOCALE, job, true));
-        assertTrue(body.contains("minecraft:husk / minecraft:zombie"));
-        assertTrue(body.contains("#minecraft:undead (タグ)"));
+        // NamespacedKey 順で husk → zombie の順に translatable → プレーン化で英名になる。
+        assertTrue(body.contains("Husk / Zombie"), () -> body);
+        // #minecraft:undead は vanilla の entity_types tag として MockBukkit にも登録されており、
+        // NamespacedKey 順でソートした先頭 3 件 (bogged / drowned / husk) + " など" 表記になる。
+        assertTrue(body.contains("Bogged / Drowned / Husk など"), () -> body);
     }
 
     @Test
@@ -234,9 +242,9 @@ class JobConditionsFormatterTest {
                 VarietyPenaltyConfig.disabled(), AntiAutomationConfig.empty());
 
         String body = plain(formatter().build(LOCALE, job, true));
-        assertTrue(body.contains("(minecraft:sharpness Lv3+)"));
-        assertTrue(body.contains("(金床)"));
-        assertTrue(body.contains("(food)"));
+        assertTrue(body.contains("(Sharpness Lv3+)"), () -> body);
+        assertTrue(body.contains("(金床)"), () -> body);
+        assertTrue(body.contains("(food)"), () -> body);
     }
 
     @Test
@@ -256,9 +264,11 @@ class JobConditionsFormatterTest {
                 VarietyPenaltyConfig.disabled(), AntiAutomationConfig.empty());
 
         String body = plain(formatter().build(LOCALE, job, true));
-        assertTrue(body.contains("醸造: minecraft:potion"), () -> body);
-        assertFalse(body.contains("minecraft:potion (ポーション:"), () -> body);
-        assertTrue(body.contains("醸造: minecraft:splash_potion (ポーション: minecraft:strong_healing)"),
+        assertTrue(body.contains("醸造: Potion"), () -> body);
+        // 醸造: Potion (potion 指定なし) の行に " (ポーション:" は付かない。
+        assertFalse(body.contains("醸造: Potion (ポーション:"), () -> body);
+        // strong_healing の効果 (Instant Health) が potion.getEffectType() 経由で英名解決される。
+        assertTrue(body.contains("醸造: Splash Potion (ポーション: Instant Health)"),
                 () -> body);
     }
 
@@ -276,7 +286,7 @@ class JobConditionsFormatterTest {
 
         String body = plain(formatter().build(LOCALE, job, true));
         // enum 宣言順 (NETHER → END) で連結される。
-        assertTrue(body.contains("minecraft:blaze (dim: N / E)"), () -> body);
+        assertTrue(body.contains("Blaze (dim: N / E)"), () -> body);
     }
 
     @Test

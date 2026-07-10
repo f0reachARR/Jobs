@@ -284,7 +284,7 @@ public final class JobsServices {
 
     private void wireDialogs() {
         this.dialogService = new DialogService(asyncExecutor);
-        this.jobConditionsFormatter = new JobConditionsFormatter(i18n, amountFormatter);
+        this.jobConditionsFormatter = new JobConditionsFormatter(i18n, amountFormatter, tagResolver);
         this.jobConditionsDialog = new JobConditionsDialog(
                 i18n, jobRegistry, specialtyService, dialogService,
                 jobConditionsFormatter, config.specialtyMode());
