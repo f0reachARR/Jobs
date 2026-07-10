@@ -10,7 +10,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -60,7 +59,7 @@ public final class MySqlPlayerJobHistoryRepository implements PlayerJobHistoryRe
             ps.setString(2, jobId);
             if (previousJobId == null) ps.setNull(3, java.sql.Types.VARCHAR);
             else ps.setString(3, previousJobId);
-            ps.setTimestamp(4, Timestamp.from(changedAt));
+            MySqlTimestamps.setColumnInstant(ps, 4, changedAt);
             ps.setString(5, actor.dbValue());
             if (actorUuid == null) ps.setNull(6, java.sql.Types.BINARY);
             else ps.setBytes(6, UuidBytes.toBytes(actorUuid));
@@ -82,7 +81,7 @@ public final class MySqlPlayerJobHistoryRepository implements PlayerJobHistoryRe
                     long id = rs.getLong(1);
                     String jobId = rs.getString(2);
                     String previousJobId = rs.getString(3);
-                    Instant changedAt = rs.getTimestamp(4).toInstant();
+                    Instant changedAt = MySqlTimestamps.getInstant(rs, 4);
                     Actor actor = Actor.fromDb(rs.getString(5));
                     byte[] actorBytes = rs.getBytes(6);
                     UUID actorUuid = actorBytes == null ? null : UuidBytes.fromBytes(actorBytes);
@@ -104,8 +103,8 @@ public final class MySqlPlayerJobHistoryRepository implements PlayerJobHistoryRe
             ps.setBytes(1, UuidBytes.toBytes(player));
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) return Optional.empty();
-                Timestamp ts = rs.getTimestamp(1);
-                return ts == null ? Optional.empty() : Optional.of(ts.toInstant());
+                Instant ts = MySqlTimestamps.getInstant(rs, 1);
+                return ts == null ? Optional.empty() : Optional.of(ts);
             }
         } catch (SQLException e) {
             throw new RuntimeException("firstSelectedAt failed for " + player, e);

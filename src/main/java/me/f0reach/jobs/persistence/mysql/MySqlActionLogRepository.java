@@ -79,7 +79,7 @@ public final class MySqlActionLogRepository implements ActionLogRepository {
                 ps.setBigDecimal(5, java.math.BigDecimal.valueOf(row.finalReward()));
                 ps.setBoolean(6, row.rareHit());
                 ps.setInt(7, row.amount());
-                ps.setTimestamp(8, Timestamp.from(row.occurredAt()));
+                MySqlTimestamps.setColumnInstant(ps, 8, row.occurredAt());
                 ps.addBatch();
             }
             ps.executeBatch();
@@ -154,7 +154,7 @@ public final class MySqlActionLogRepository implements ActionLogRepository {
                 Instant prev = null;
                 long best = 0;
                 while (rs.next()) {
-                    Instant t = rs.getTimestamp(1).toInstant();
+                    Instant t = MySqlTimestamps.getInstant(rs, 1);
                     if (streakStart == null) {
                         streakStart = t;
                     } else if (prev != null && t.getEpochSecond() - prev.getEpochSecond() > gapSeconds) {
@@ -193,7 +193,7 @@ public final class MySqlActionLogRepository implements ActionLogRepository {
     public int deleteOlderThan(Instant cutoff) {
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(SQL_DELETE_OLDER_THAN)) {
-            ps.setTimestamp(1, Timestamp.from(cutoff));
+            MySqlTimestamps.setExclusiveBoundInstant(ps, 1, cutoff);
             return ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("deleteOlderThan failed", e);
@@ -205,8 +205,8 @@ public final class MySqlActionLogRepository implements ActionLogRepository {
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(SQL_SUM_BY_JOB)) {
             ps.setBytes(1, UuidBytes.toBytes(player));
-            ps.setTimestamp(2, Timestamp.from(range.from()));
-            ps.setTimestamp(3, Timestamp.from(range.to()));
+            MySqlTimestamps.setExclusiveBoundInstant(ps, 2, range.from());
+            MySqlTimestamps.setExclusiveBoundInstant(ps, 3, range.to());
             try (ResultSet rs = ps.executeQuery()) {
                 Map<String, Double> out = new HashMap<>();
                 while (rs.next()) {
@@ -224,8 +224,8 @@ public final class MySqlActionLogRepository implements ActionLogRepository {
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(SQL_RECENT)) {
             ps.setBytes(1, UuidBytes.toBytes(player));
-            ps.setTimestamp(2, Timestamp.from(range.from()));
-            ps.setTimestamp(3, Timestamp.from(range.to()));
+            MySqlTimestamps.setExclusiveBoundInstant(ps, 2, range.from());
+            MySqlTimestamps.setExclusiveBoundInstant(ps, 3, range.to());
             ps.setInt(4, limit);
             try (ResultSet rs = ps.executeQuery()) {
                 List<ActionLogRow> out = new ArrayList<>();
@@ -236,7 +236,7 @@ public final class MySqlActionLogRepository implements ActionLogRepository {
                     double finalReward = rs.getBigDecimal(4).doubleValue();
                     boolean rareHit = rs.getBoolean(5);
                     int amount = rs.getInt(6);
-                    Instant occurredAt = rs.getTimestamp(7).toInstant();
+                    Instant occurredAt = MySqlTimestamps.getInstant(rs, 7);
                     out.add(new ActionLogRow(
                             player, jobId, actionKey, baseReward, finalReward, rareHit, amount, occurredAt
                     ));
@@ -257,8 +257,8 @@ public final class MySqlActionLogRepository implements ActionLogRepository {
         if (jobId != null) sql.append(" AND job_id = ?");
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql.toString())) {
-            ps.setTimestamp(1, Timestamp.from(range.from()));
-            ps.setTimestamp(2, Timestamp.from(range.to()));
+            MySqlTimestamps.setExclusiveBoundInstant(ps, 1, range.from());
+            MySqlTimestamps.setExclusiveBoundInstant(ps, 2, range.to());
             if (jobId != null) ps.setString(3, jobId);
             try (ResultSet rs = ps.executeQuery()) {
                 rs.next();
@@ -299,7 +299,7 @@ public final class MySqlActionLogRepository implements ActionLogRepository {
             for (int i = 0; i < params.size(); i++) {
                 Object v = params.get(i);
                 if (v instanceof byte[] bytes) ps.setBytes(i + 1, bytes);
-                else if (v instanceof Timestamp ts) ps.setTimestamp(i + 1, ts);
+                else if (v instanceof Timestamp ts) MySqlTimestamps.setTimestamp(ps, i + 1, ts);
                 else if (v instanceof String s) ps.setString(i + 1, s);
                 else if (v instanceof Integer n) ps.setInt(i + 1, n);
                 else throw new SQLException("Unsupported bind type: " + v.getClass());
@@ -313,8 +313,8 @@ public final class MySqlActionLogRepository implements ActionLogRepository {
         sb.append("player_uuid = ?");
         params.add(UuidBytes.toBytes(player));
         sb.append(" AND occurred_at >= ? AND occurred_at < ?");
-        params.add(Timestamp.from(range.from()));
-        params.add(Timestamp.from(range.to()));
+        params.add(MySqlTimestamps.toExclusiveBoundTimestamp(range.from()));
+        params.add(MySqlTimestamps.toExclusiveBoundTimestamp(range.to()));
         if (filter != null) {
             if (filter.jobId() != null) {
                 sb.append(" AND job_id = ?");
