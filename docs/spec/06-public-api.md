@@ -62,6 +62,10 @@ public interface ActionLogQueryService {
   Set<String> distinctKeys(UUID player, ActionFilter filter, TimeRange range);
   int continuousStreakSec(UUID player, ActionFilter filter, TimeRange range);
   double maxUnitPrice(UUID player, ActionFilter filter, TimeRange range);
+
+  // filter/range に該当するアクションを行ったプレイヤー UUID の集合。
+  // ActionFilter#jobId を指定すれば「その職業として動いた」プレイヤーだけに絞れる。
+  Set<UUID> distinctActors(ActionFilter filter, TimeRange range);
 }
 
 public class ActionFilter {

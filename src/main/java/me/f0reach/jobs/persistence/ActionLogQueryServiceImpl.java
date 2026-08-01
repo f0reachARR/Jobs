@@ -50,4 +50,9 @@ public final class ActionLogQueryServiceImpl implements ActionLogQueryService {
     public CompletableFuture<Double> maxUnitPrice(UUID player, ActionFilter filter, TimeRange range) {
         return asyncExecutor.supplyAsync(() -> repository.maxUnitPrice(player, filter, range));
     }
+
+    @Override
+    public CompletableFuture<Set<UUID>> distinctActors(ActionFilter filter, TimeRange range) {
+        return asyncExecutor.supplyAsync(() -> repository.distinctActors(filter, range));
+    }
 }

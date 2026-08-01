@@ -30,6 +30,12 @@ public interface ActionLogRepository {
 
     double maxUnitPrice(UUID player, ActionFilter filter, TimeRange range);
 
+    /**
+     * filter/range に該当するアクションを行ったプレイヤー UUID の集合を返す。
+     * {@link ActionFilter#jobId()} を指定した場合、その職業として動いた player_uuid だけが返る。
+     */
+    Set<UUID> distinctActors(ActionFilter filter, TimeRange range);
+
     int deleteOlderThan(Instant cutoff);
 
     /** Phase 6 の VarietyRingBuffer 初期化で使う。直近 limit 件の action_key を新しい順に返す。 */

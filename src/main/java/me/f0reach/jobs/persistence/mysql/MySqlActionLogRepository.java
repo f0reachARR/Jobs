@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -190,6 +191,23 @@ public final class MySqlActionLogRepository implements ActionLogRepository {
     }
 
     @Override
+    public Set<UUID> distinctActors(ActionFilter filter, TimeRange range) {
+        FilterBuilder fb = filterClausesNoPlayer(filter, range);
+        String sql = "SELECT DISTINCT player_uuid FROM action_log WHERE " + fb.clause;
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            fb.bind(ps);
+            try (ResultSet rs = ps.executeQuery()) {
+                Set<UUID> out = new LinkedHashSet<>();
+                while (rs.next()) out.add(UuidBytes.fromBytes(rs.getBytes(1)));
+                return out;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("distinctActors failed", e);
+        }
+    }
+
+    @Override
     public int deleteOlderThan(Instant cutoff) {
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(SQL_DELETE_OLDER_THAN)) {
@@ -312,6 +330,18 @@ public final class MySqlActionLogRepository implements ActionLogRepository {
         StringBuilder sb = new StringBuilder();
         sb.append("player_uuid = ?");
         params.add(UuidBytes.toBytes(player));
+        appendCommonFilter(sb, params, filter, range);
+        return new FilterBuilder(sb.toString(), params);
+    }
+
+    private FilterBuilder filterClausesNoPlayer(ActionFilter filter, TimeRange range) {
+        List<Object> params = new ArrayList<>();
+        StringBuilder sb = new StringBuilder("1=1");
+        appendCommonFilter(sb, params, filter, range);
+        return new FilterBuilder(sb.toString(), params);
+    }
+
+    private static void appendCommonFilter(StringBuilder sb, List<Object> params, ActionFilter filter, TimeRange range) {
         sb.append(" AND occurred_at >= ? AND occurred_at < ?");
         params.add(MySqlTimestamps.toExclusiveBoundTimestamp(range.from()));
         params.add(MySqlTimestamps.toExclusiveBoundTimestamp(range.to()));
@@ -329,6 +359,5 @@ public final class MySqlActionLogRepository implements ActionLogRepository {
                 params.add(filter.actionKeyPrefix() + "%");
             }
         }
-        return new FilterBuilder(sb.toString(), params);
     }
 }

@@ -284,6 +284,7 @@ class BuiltinModifierStageTest {
         @Override public java.util.Set<String> distinctKeys(UUID p, me.f0reach.jobs.api.query.ActionFilter f, me.f0reach.jobs.api.query.TimeRange r) { return java.util.Set.of(); }
         @Override public int continuousStreakSec(UUID p, me.f0reach.jobs.api.query.ActionFilter f, me.f0reach.jobs.api.query.TimeRange r) { return 0; }
         @Override public double maxUnitPrice(UUID p, me.f0reach.jobs.api.query.ActionFilter f, me.f0reach.jobs.api.query.TimeRange r) { return 0; }
+        @Override public java.util.Set<UUID> distinctActors(me.f0reach.jobs.api.query.ActionFilter f, me.f0reach.jobs.api.query.TimeRange r) { return java.util.Set.of(); }
         @Override public int deleteOlderThan(Instant cutoff) { return 0; }
         @Override public List<String> recentKeys(UUID player, String jobId, int limit) { return List.of(); }
         @Override public Map<String, Double> sumRewardByJob(UUID p, me.f0reach.jobs.api.query.TimeRange r) { return Map.of(); }

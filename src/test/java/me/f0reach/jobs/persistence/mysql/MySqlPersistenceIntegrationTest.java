@@ -190,6 +190,32 @@ class MySqlPersistenceIntegrationTest {
     }
 
     @Test
+    void actionLogDistinctActorsFiltersByJobAndRange() {
+        UUID p1 = UUID.randomUUID();
+        UUID p2 = UUID.randomUUID();
+        UUID p3 = UUID.randomUUID();
+        Instant base = Instant.now().minusSeconds(30);
+
+        actionLogRepository.insertBatch(List.of(
+                new ActionLogRow(p1, "combat", "kill:minecraft:zombie", 1.0, 1.0, false, 1, base),
+                new ActionLogRow(p2, "combat", "kill:minecraft:zombie", 1.0, 1.0, false, 1, base.plusSeconds(1)),
+                new ActionLogRow(p2, "mining",  "break:minecraft:stone", 1.0, 1.0, false, 1, base.plusSeconds(2)),
+                new ActionLogRow(p3, "mining",  "break:minecraft:stone", 1.0, 1.0, false, 1, base.plusSeconds(3))
+        ));
+
+        TimeRange range = new TimeRange(base.minusSeconds(1), base.plusSeconds(60));
+        var combatActors = actionLogRepository.distinctActors(
+                new ActionFilter("combat", null, null), range);
+        assertEquals(2, combatActors.size());
+        assertTrue(combatActors.contains(p1));
+        assertTrue(combatActors.contains(p2));
+
+        // range 外はカウントされない
+        TimeRange futureRange = new TimeRange(base.plusSeconds(100), base.plusSeconds(200));
+        assertTrue(actionLogRepository.distinctActors(ActionFilter.none(), futureRange).isEmpty());
+    }
+
+    @Test
     void dailyRewardTotalUpsert() {
         UUID player = UUID.randomUUID();
         LocalDate today = LocalDate.now();

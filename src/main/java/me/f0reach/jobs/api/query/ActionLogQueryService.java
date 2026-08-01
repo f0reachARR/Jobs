@@ -22,4 +22,10 @@ public interface ActionLogQueryService {
     CompletableFuture<Integer> continuousStreakSec(UUID player, ActionFilter filter, TimeRange range);
 
     CompletableFuture<Double> maxUnitPrice(UUID player, ActionFilter filter, TimeRange range);
+
+    /**
+     * filter/range に該当するアクションを行ったプレイヤー UUID の集合を返す。
+     * {@link ActionFilter#jobId()} を指定すると「その職業として動いた」プレイヤーだけに絞り込める。
+     */
+    CompletableFuture<Set<UUID>> distinctActors(ActionFilter filter, TimeRange range);
 }
