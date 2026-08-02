@@ -66,6 +66,42 @@ command:
     flush:
       ok: "<green>Flushed action_log (<count> rows).</green>"
       error: "<red>Flush failed: <error></red>"
+    kvs:
+      unsupported: "<red>This KVS backend does not support admin operations.</red>"
+      error: "<red>KVS operation failed: <error></red>"
+      stats:
+        header: "<gold>== KVS status ==</gold>"
+        backend: "<gray>Backend:</gray> <white><backend></white>"
+        size: "<gray>Entries:</gray> <white><size></white><gray> / max <max></gray>"
+        kind_row: "<gray>- </gray><white><kind></white><gray>:</gray> <white><count></white>"
+      list:
+        header: "<gold>== KVS entries (<prefix>, up to <limit>) ==</gold>"
+        empty: "<gray>No matching entries.</gray>"
+        row: "<gray>- </gray><white><key></white> <gray>(<described>, <ttl> left)</gray>"
+        truncated: "<gray>...limit reached. Raise the limit or narrow the prefix.</gray>"
+      get:
+        header: "<gold>== <key> ==</gold>"
+        not_found: "<gray>No such entry (absent or expired).</gray>"
+        value: "<gray>Value:</gray> <white><described></white>"
+        ttl: "<gray>TTL left:</gray> <white><ttl></white>"
+        raw: "<gray>Raw:</gray> <white><raw></white>"
+      block:
+        header: "<gold>== Tracking data at <world> (<x>, <y>, <z>) ==</gold>"
+        empty: "<gray>No tracking data for this block.</gray>"
+        no_target: "<yellow>No block in sight. Specify coordinates instead.</yellow>"
+        console: "<red>Coordinates are required when running from the console.</red>"
+      remove:
+        ok: "<green>Removed entry: <key></green>"
+        not_found: "<yellow>No such entry: <key></yellow>"
+      clear:
+        ok: "<green>Removed <count> <kind> entries.</green>"
+        all_ok: "<green>Cleared the whole KVS (<count> entries).</green>"
+      value:
+        placed: "placed marker"
+        traded: "traded marker"
+        operator_player: "operator <value>"
+        operator_automation: "no operator (auto-fed)"
+        unknown: "unknown value <value>"
 
 dialog:
   select:

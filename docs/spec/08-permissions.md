@@ -40,6 +40,15 @@ Paper 標準の Bukkit パーミッションを使い、`paper-plugin.yml` の `
 | `jobs.admin.flush` | `/jobs admin flush` | `BatchFlushWorker` を即時 flush する。事前 restart や書き込み障害の切り分けに使う。 |
 | `jobs.admin.actions` | `/jobs admin actions <player> [--since=1h] [--limit=20]` | 対象プレイヤーの直近 `action_log` を chat に出力する。監査、「報酬が入っていない」問い合わせの一次切り分け。async で `ActionLogRepository` を叩く。 |
 | `jobs.admin.stats` | `/jobs admin stats [<job>]` | 職業別在籍数、当日総支払、rare 発火率などの集計を chat に出力する。async。 |
+| `jobs.admin.kvs` | 親ノード | `jobs.admin.kvs.inspect` と `jobs.admin.kvs.modify` をまとめて true にする。 |
+| `jobs.admin.kvs.inspect` | `/jobs admin kvs stats\|list\|get\|block` | 自動化対策の追跡データ（KVS）を閲覧する（[ADR-0020](./adr/0020-kvs-admin-interface.md)）。`block` は視線の先または指定座標の `place:` / `op:*` を一覧し、「壊したのに報酬が入らない」の一次切り分けに使う。 |
+| `jobs.admin.kvs.modify` | `/jobs admin kvs remove\|clear` | 追跡データを削除する。`remove <key>` で 1 件、`clear <place\|op\|trade>` で種別ごと、`clear all confirm` で全件。誤検知の即時解除に使う。実行内容は sender 名つきでサーバログに残す。 |
+
+KVS の閲覧と削除を別ノードにしているのは、`clear all` が全追跡データを落とし、一時的に自動化検知が抜けるため。
+閲覧だけを下位ランクに委譲できるようにしてある。
+
+任意の値を書き込むサブコマンドは用意しない。
+追跡データの捏造は「本来払うべき報酬を 0 にする」方向にも使えてしまい、運用上のメリットに見合わない。
 
 管理系サブコマンドを追加する場合は、`Permissions.java` に定数を足し、`jobs.admin` の `children:` にも並べる。追加した永続化 API（例：`PlayerJobRepository#resetCooldownBase`）は [05-persistence.md](./05-persistence.md) 側にも反映する。
 
@@ -93,6 +102,7 @@ permissions:
             jobs.admin.flush: true
             jobs.admin.actions: true
             jobs.admin.stats: true
+            jobs.admin.kvs: true
     jobs.admin.reload:
         description: /jobs reload の実行を許可
         default: op
@@ -122,6 +132,18 @@ permissions:
         default: op
     jobs.admin.stats:
         description: /jobs admin stats の実行を許可
+        default: op
+    jobs.admin.kvs:
+        description: /jobs admin kvs の閲覧・変更をすべて許可
+        default: op
+        children:
+            jobs.admin.kvs.inspect: true
+            jobs.admin.kvs.modify: true
+    jobs.admin.kvs.inspect:
+        description: /jobs admin kvs の閲覧系 (stats / list / get / block) を許可
+        default: op
+    jobs.admin.kvs.modify:
+        description: /jobs admin kvs の削除系 (remove / clear) を許可
         default: op
 
     jobs.bypass.specialty:

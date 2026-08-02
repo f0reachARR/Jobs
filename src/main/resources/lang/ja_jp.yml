@@ -68,6 +68,42 @@ command:
     flush:
       ok: "<green>action_log を flush しました (<count> 件)。</green>"
       error: "<red>flush に失敗しました: <error></red>"
+    kvs:
+      unsupported: "<red>この KVS backend は管理操作に対応していません。</red>"
+      error: "<red>KVS 操作に失敗しました: <error></red>"
+      stats:
+        header: "<gold>== KVS ステータス ==</gold>"
+        backend: "<gray>backend:</gray> <white><backend></white>"
+        size: "<gray>エントリ数:</gray> <white><size></white><gray> / 上限 <max></gray>"
+        kind_row: "<gray>- </gray><white><kind></white><gray>:</gray> <white><count></white><gray> 件</gray>"
+      list:
+        header: "<gold>== KVS エントリ (<prefix>, 最大 <limit> 件) ==</gold>"
+        empty: "<gray>該当するエントリはありません。</gray>"
+        row: "<gray>- </gray><white><key></white> <gray>(<described>, 残り <ttl>)</gray>"
+        truncated: "<gray>...上限に達しました。limit を増やすか prefix を絞ってください。</gray>"
+      get:
+        header: "<gold>== <key> ==</gold>"
+        not_found: "<gray>該当するエントリはありません (未登録または期限切れ)。</gray>"
+        value: "<gray>内容:</gray> <white><described></white>"
+        ttl: "<gray>残り TTL:</gray> <white><ttl></white>"
+        raw: "<gray>raw:</gray> <white><raw></white>"
+      block:
+        header: "<gold>== <world> (<x>, <y>, <z>) の追跡データ ==</gold>"
+        empty: "<gray>このブロックの追跡データはありません。</gray>"
+        no_target: "<yellow>視線の先にブロックがありません。座標を指定してください。</yellow>"
+        console: "<red>コンソールからは座標の指定が必要です。</red>"
+      remove:
+        ok: "<green>エントリを削除しました: <key></green>"
+        not_found: "<yellow>該当するエントリはありません: <key></yellow>"
+      clear:
+        ok: "<green><kind> のエントリを <count> 件削除しました。</green>"
+        all_ok: "<green>KVS を全削除しました (<count> 件)。</green>"
+      value:
+        placed: "設置済みマーカー"
+        traded: "取引済みマーカー"
+        operator_player: "投入者 <value>"
+        operator_automation: "投入者なし (自動投入)"
+        unknown: "不明な値 <value>"
 
 dialog:
   select:

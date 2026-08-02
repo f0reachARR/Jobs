@@ -16,4 +16,12 @@ public interface JobsKVStore {
     Optional<byte[]> get(String key);
 
     void remove(String key);
+
+    /**
+     * 管理コマンド用の列挙・一括削除の口。提供できる実装のみ override する。
+     * 詳細は {@link JobsKVStoreAdmin} と spec/adr/0020-kvs-admin-interface.md を参照。
+     */
+    default Optional<JobsKVStoreAdmin> admin() {
+        return Optional.empty();
+    }
 }

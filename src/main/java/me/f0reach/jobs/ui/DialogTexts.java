@@ -69,6 +69,34 @@ public final class DialogTexts {
     public static final String COMMAND_ADMIN_RESET_VARIETY_OFFLINE = "command.admin.reset_variety.offline";
     public static final String COMMAND_ADMIN_FLUSH_OK = "command.admin.flush.ok";
     public static final String COMMAND_ADMIN_FLUSH_ERROR = "command.admin.flush.error";
+    public static final String COMMAND_ADMIN_KVS_UNSUPPORTED = "command.admin.kvs.unsupported";
+    public static final String COMMAND_ADMIN_KVS_ERROR = "command.admin.kvs.error";
+    public static final String COMMAND_ADMIN_KVS_STATS_HEADER = "command.admin.kvs.stats.header";
+    public static final String COMMAND_ADMIN_KVS_STATS_BACKEND = "command.admin.kvs.stats.backend";
+    public static final String COMMAND_ADMIN_KVS_STATS_SIZE = "command.admin.kvs.stats.size";
+    public static final String COMMAND_ADMIN_KVS_STATS_KIND_ROW = "command.admin.kvs.stats.kind_row";
+    public static final String COMMAND_ADMIN_KVS_LIST_HEADER = "command.admin.kvs.list.header";
+    public static final String COMMAND_ADMIN_KVS_LIST_EMPTY = "command.admin.kvs.list.empty";
+    public static final String COMMAND_ADMIN_KVS_LIST_ROW = "command.admin.kvs.list.row";
+    public static final String COMMAND_ADMIN_KVS_LIST_TRUNCATED = "command.admin.kvs.list.truncated";
+    public static final String COMMAND_ADMIN_KVS_GET_HEADER = "command.admin.kvs.get.header";
+    public static final String COMMAND_ADMIN_KVS_GET_NOT_FOUND = "command.admin.kvs.get.not_found";
+    public static final String COMMAND_ADMIN_KVS_GET_VALUE = "command.admin.kvs.get.value";
+    public static final String COMMAND_ADMIN_KVS_GET_TTL = "command.admin.kvs.get.ttl";
+    public static final String COMMAND_ADMIN_KVS_GET_RAW = "command.admin.kvs.get.raw";
+    public static final String COMMAND_ADMIN_KVS_BLOCK_HEADER = "command.admin.kvs.block.header";
+    public static final String COMMAND_ADMIN_KVS_BLOCK_EMPTY = "command.admin.kvs.block.empty";
+    public static final String COMMAND_ADMIN_KVS_BLOCK_NO_TARGET = "command.admin.kvs.block.no_target";
+    public static final String COMMAND_ADMIN_KVS_BLOCK_CONSOLE = "command.admin.kvs.block.console";
+    public static final String COMMAND_ADMIN_KVS_REMOVE_OK = "command.admin.kvs.remove.ok";
+    public static final String COMMAND_ADMIN_KVS_REMOVE_NOT_FOUND = "command.admin.kvs.remove.not_found";
+    public static final String COMMAND_ADMIN_KVS_CLEAR_OK = "command.admin.kvs.clear.ok";
+    public static final String COMMAND_ADMIN_KVS_CLEAR_ALL_OK = "command.admin.kvs.clear.all_ok";
+    public static final String COMMAND_ADMIN_KVS_VALUE_PLACED = "command.admin.kvs.value.placed";
+    public static final String COMMAND_ADMIN_KVS_VALUE_TRADED = "command.admin.kvs.value.traded";
+    public static final String COMMAND_ADMIN_KVS_VALUE_OPERATOR_PLAYER = "command.admin.kvs.value.operator_player";
+    public static final String COMMAND_ADMIN_KVS_VALUE_OPERATOR_AUTOMATION = "command.admin.kvs.value.operator_automation";
+    public static final String COMMAND_ADMIN_KVS_VALUE_UNKNOWN = "command.admin.kvs.value.unknown";
 
     // Dialog: select
     public static final String DIALOG_SELECT_TITLE = "dialog.select.title";

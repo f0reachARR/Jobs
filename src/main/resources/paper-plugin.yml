@@ -46,6 +46,7 @@ permissions:
             jobs.admin.reset-daily-cap: true
             jobs.admin.reset-variety: true
             jobs.admin.flush: true
+            jobs.admin.kvs: true
     jobs.admin.reload:
         description: /jobs reload の実行を許可
         default: op
@@ -75,6 +76,18 @@ permissions:
         default: op
     jobs.admin.flush:
         description: /jobs admin flush の実行を許可
+        default: op
+    jobs.admin.kvs:
+        description: /jobs admin kvs の閲覧・変更をすべて許可
+        default: op
+        children:
+            jobs.admin.kvs.inspect: true
+            jobs.admin.kvs.modify: true
+    jobs.admin.kvs.inspect:
+        description: /jobs admin kvs の閲覧系 (stats / list / get / block) を許可
+        default: op
+    jobs.admin.kvs.modify:
+        description: /jobs admin kvs の削除系 (remove / clear) を許可
         default: op
 
     jobs.bypass.specialty:

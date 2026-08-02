@@ -266,23 +266,54 @@ public interface JobsKVStore {
   void put(String key, byte[] value, Duration ttl);
   Optional<byte[]> get(String key);
   void remove(String key);
+
+  default Optional<JobsKVStoreAdmin> admin() { return Optional.empty(); }
 }
 ```
 
 呼び出し側は `byte[]` の直列化を各自で担う。
-現時点で保存対象は次の 3 種類のみで、いずれも数値かエンティティ ID の組で表現できる。
+key の組み立ては `KvsKeys` に閉じ、呼び出し側では文字列連結しない。
 
-- `place:<world-uuid>:<x>:<y>:<z>` → `placed_at`（8 バイト、epoch millis）
-- `op:<container-kind>:<world-uuid>:<x>:<y>:<z>` → `{ operator_uuid: 16 バイト or null, updated_at: 8 バイト }`
-- `trade:<villager-uuid>:<recipe-index>` → `last_traded_at`（8 バイト）
+保存対象は次の 3 種類のみである。
+「いつ」の情報は TTL が持つため、値そのものは存在確認かエンティティ ID だけで足りる。
+
+| key | 値 | 用途 |
+|---|---|---|
+| `place:<world-uuid>:<x>:<y>:<z>` | 1 バイトのマーカー | `recently_placed_break`。存在すれば「窓の内側」 |
+| `op:<container-kind>:<world-uuid>:<x>:<y>:<z>` | `0x00`（投入者なし）または `0x01` + UUID 16 バイト | `auto_fed_processing`。投入者が Player かどうか |
+| `trade:<villager-uuid>:<recipe-index>` | 1 バイトのマーカー | `villager_repeat_trade`。存在すれば cooldown 中 |
+
+`op:` の `0x00` は hopper / dispenser 由来の投入を表し、「未登録」とは意味が異なる。
+未登録は「そもそも誰も投入していない」で、どちらも `auto_fed_processing` は 0 と判定するが、切り分けのうえでは区別する必要がある。
+
+### 管理操作
+
+列挙・件数取得・prefix 一括削除は `JobsKVStoreAdmin` に分ける（[ADR-0020](./adr/0020-kvs-admin-interface.md)）。
+
+```java
+public interface JobsKVStoreAdmin {
+  record Entry(String key, byte[] value, Duration remainingTtl) {}
+
+  String backendName();
+  long size();
+  long maxEntries();
+  List<Entry> scan(String keyPrefix, int limit);
+  long count(String keyPrefix);
+  Optional<Entry> inspect(String key);
+  int removeByPrefix(String keyPrefix);
+}
+```
+
+`JobsKVStore#admin()` が empty を返す backend では、`/jobs admin kvs` が「未対応」を返して何もしない。
+追跡そのものは動く。
 
 ### in-memory 実装（Phase 1）
 
-デフォルトの `InMemoryKVStore` は Caffeine ベースで実装する。
-`expireAfterWrite(ttl)` で TTL、`maximumSize` で上限を管理する。
+デフォルトの `InMemoryKVStore` は JDK 標準の `ConcurrentHashMap` ベースで、`expireAfterWrite` 相当の TTL 判定を自前で持つ。
+ADR-0015 では Caffeine を想定していたが、Paper の compile classpath に Caffeine が露出しないため標準ライブラリで実装している。挙動は同等である。
 
-- `maximumSize`：`config.yml` の `kvs.memory.max_entries`（デフォルト 500,000）。
-- Caffeine は Paper に shaded で含まれるため、新規依存は増えない。
+- 上限：`config.yml` の `kvs.memory.max_entries`（デフォルト 500,000）。
+- 上限を超えた書き込みで、期限切れエントリを回収する。それでも溢れる場合は任意の 1 件を落とす（用途上、厳密な LRU は不要）。
 
 サーバ再起動でエントリはロストする。
 `recently_placed_break` の窓が 1 時間程度であれば、再起動直後の一時的な取りこぼしは実害が小さい。

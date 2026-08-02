@@ -47,9 +47,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * /jobs admin サブコマンドのツリー構築と実行 handler。
  *
  * spec/08-permissions.md 「管理系」の Tier 1 + Tier 2 に対応する。
- * Phase 13-A では inspect / stats / actions の 3 コマンドを実装する。
- * 残る set / reset-cooldown / pay / reset-daily-cap / reset-variety / flush は
- * Phase 13-B 以降で追加する。
+ * inspect / stats / actions / set / reset-cooldown / pay / reset-daily-cap /
+ * reset-variety / flush をこの class が持ち、kvs は {@link KvsCommands} に分ける。
  */
 public final class AdminCommands {
 
@@ -60,9 +59,11 @@ public final class AdminCommands {
     private static final int DEFAULT_ACTIONS_SINCE_HOURS = 1;
 
     private final AtomicReference<JobsServices> services;
+    private final KvsCommands kvsCommands;
 
     public AdminCommands(AtomicReference<JobsServices> services) {
         this.services = services;
+        this.kvsCommands = new KvsCommands(services);
     }
 
     /** /jobs admin の subtree を返す。JobsCommands から .then(build()) で組み込む。 */
@@ -76,7 +77,8 @@ public final class AdminCommands {
                 .then(buildPay())
                 .then(buildResetDailyCap())
                 .then(buildResetVariety())
-                .then(buildFlush());
+                .then(buildFlush())
+                .then(kvsCommands.build());
     }
 
     private LiteralArgumentBuilder<CommandSourceStack> buildInspect() {

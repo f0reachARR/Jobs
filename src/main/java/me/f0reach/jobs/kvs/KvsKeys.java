@@ -10,26 +10,33 @@ import java.util.UUID;
  */
 public final class KvsKeys {
 
+    /** recently_placed_break の key prefix。 */
+    public static final String PREFIX_PLACE = "place:";
+    /** auto_fed_processing の key prefix。 */
+    public static final String PREFIX_OP = "op:";
+    /** villager_repeat_trade の key prefix。 */
+    public static final String PREFIX_TRADE = "trade:";
+
     private KvsKeys() {}
 
     /**
      * recently_placed_break 用。ブロック 1 個ごとにキー。
      */
     public static String place(UUID worldUuid, int x, int y, int z) {
-        return "place:" + worldUuid + ":" + x + ":" + y + ":" + z;
+        return PREFIX_PLACE + worldUuid + ":" + x + ":" + y + ":" + z;
     }
 
     /**
      * auto_fed_processing 用。容器 1 個ごとにキー。
      */
     public static String op(String containerKind, UUID worldUuid, int x, int y, int z) {
-        return "op:" + containerKind + ":" + worldUuid + ":" + x + ":" + y + ":" + z;
+        return PREFIX_OP + containerKind + ":" + worldUuid + ":" + x + ":" + y + ":" + z;
     }
 
     /**
      * villager_repeat_trade 用。同 villager × 同 recipe ごとにキー。
      */
     public static String trade(UUID villagerUuid, int recipeIndex) {
-        return "trade:" + villagerUuid + ":" + recipeIndex;
+        return PREFIX_TRADE + villagerUuid + ":" + recipeIndex;
     }
 }

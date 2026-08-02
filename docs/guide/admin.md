@@ -272,6 +272,30 @@ YAML の構文エラーがあれば失敗メッセージが返り、旧設定の
 
 サーバ再起動前や、書き込み障害の切り分け（キューに残っていないか）に使う。書き込み件数がチャットに返る。
 
+### `/jobs admin kvs ...`
+
+自動化対策の追跡データ（KVS）を覗く・掃除する。追跡データはメモリ上の短寿命データで、`recently_placed_break`・`auto_fed_processing`・`villager_repeat_trade` の 3 種類が入っている（[../spec/05-persistence.md](../spec/05-persistence.md) の「追跡ストレージ（KVS）」）。
+
+| サブコマンド | 動作 |
+|---|---|
+| `kvs block [<x> <y> <z>]` | 視線の先、または指定座標のブロックの追跡データを一覧する。座標を省略した場合はコンソールから実行できない |
+| `kvs stats` | backend 名、エントリ総数と上限、種別ごとの件数 |
+| `kvs list [place\|op\|trade] [<limit>]` | エントリを列挙する。limit のデフォルトは 20、上限 100 |
+| `kvs get <key>` | 1 件の内容と残り TTL、raw バイト列 |
+| `kvs remove <key>` | 1 件削除する |
+| `kvs clear <place\|op\|trade>` | 種別ごとに一括削除する |
+| `kvs clear all confirm` | 全削除する。`confirm` は省略できない |
+
+普段使うのは `kvs block` で、誤検知の切り分けはこの流れになる。
+
+1. 対象のブロックを見ながら `/jobs admin kvs block` を実行する。
+2. `place:` のエントリが出れば `recently_placed_break` の窓の内側にいる（= その報酬は 0 になる）。`op:` のエントリで「投入者なし」が出ていれば `auto_fed_processing` が効いている。
+3. 誤検知と判断したら `/jobs admin kvs remove <key>` で消す。TTL 切れを待つ必要はない。
+
+`kvs clear all` は全追跡データを落とすため、実行直後は自動化検知が一時的に抜ける。窓が切れるまでの間、置いた直後のブロックを壊しても報酬が出る点に注意する。削除系の実行はいずれも sender 名つきでサーバログに残る。
+
+任意の値を書き込むサブコマンドは用意していない。
+
 ## パーミッション
 
 `paper-plugin.yml` で全ノードを宣言している。詳細と適用箇所は [../spec/08-permissions.md](../spec/08-permissions.md)。
@@ -291,7 +315,9 @@ YAML の構文エラーがあれば失敗メッセージが返り、旧設定の
 
 親ノード `jobs.admin` に `children:` として全管理コマンドを束ねてある。上位ランクへの一括付与に使える。個別にも切り分けできる。
 
-`jobs.admin.reload` / `jobs.admin.inspect` / `jobs.admin.stats` / `jobs.admin.actions` / `jobs.admin.set` / `jobs.admin.reset-cooldown` / `jobs.admin.pay` / `jobs.admin.reset-daily-cap` / `jobs.admin.reset-variety` / `jobs.admin.flush`
+`jobs.admin.reload` / `jobs.admin.inspect` / `jobs.admin.stats` / `jobs.admin.actions` / `jobs.admin.set` / `jobs.admin.reset-cooldown` / `jobs.admin.pay` / `jobs.admin.reset-daily-cap` / `jobs.admin.reset-variety` / `jobs.admin.flush` / `jobs.admin.kvs`
+
+`jobs.admin.kvs` だけは配下が 2 つに分かれている。`jobs.admin.kvs.inspect` が閲覧（`stats` / `list` / `get` / `block`）、`jobs.admin.kvs.modify` が削除（`remove` / `clear`）で、閲覧だけを下位ランクに委譲できる。
 
 ### バイパス系（default: false）
 
@@ -371,7 +397,7 @@ Jobs プラグインは他プラグインが差し込める拡張点を持つ（
 
 1. `/jobs admin inspect <player>` で専業と当日累計を確認。
 2. `/jobs admin actions <player> 24 50` で直近 24h のアクションログを見る。
-3. ログに行が残っているのに `reward` が 0 なら自動化対策発動（アクションバー通知が出ているはず）。
+3. ログに行が残っているのに `reward` が 0 なら自動化対策発動（アクションバー通知が出ているはず）。対象のブロックを見ながら `/jobs admin kvs block` を実行すると、どの追跡データが効いているかが分かる。誤検知なら `/jobs admin kvs remove <key>` で解除できる。
 4. ログに行が無いなら専業判定ではじかれている（違う職業のアクションを試みた）か、マッチ条件に該当していない。ジョブ YAML の `rewards` 一覧を確認する。
 
 ### 「起動時に shadow の警告が出る」
