@@ -2,6 +2,7 @@ package me.f0reach.jobs.modifier.dailycap;
 
 import me.f0reach.jobs.config.PluginConfig;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
@@ -35,19 +36,20 @@ public final class DailyCapEvaluator {
      * 現在の累計と提示された報酬から、実際に支払う額を返す。
      *
      * @param playerUuid    プレイヤー UUID
+     * @param date          計上先の日付。アクションの発生時刻から求める（処理時刻ではない）
      * @param jobId         ジョブ ID (scope=PER_JOB 時のみ利用)
      * @param proposed      これから支払おうとしている報酬 (variety_penalty 適用済み)
      * @return {@link Result} 支払額と削減量、上限到達フラグ
      */
-    public Result evaluate(UUID playerUuid, String jobId, double proposed) {
+    public Result evaluate(UUID playerUuid, LocalDate date, String jobId, double proposed) {
         double cap = config.amount();
         if (cap <= 0) {
             // amount<=0 は「無効化」相当として扱う（YAML 側の意図を尊重）。
             return new Result(proposed, 0.0, false, 0.0, cap);
         }
         double already = switch (config.scope()) {
-            case TOTAL -> cache.todayTotal(playerUuid);
-            case PER_JOB -> cache.todayForJob(playerUuid, jobId);
+            case TOTAL -> cache.totalOn(playerUuid, date);
+            case PER_JOB -> cache.forJobOn(playerUuid, date, jobId);
         };
         if (already >= cap) {
             return new Result(0.0, proposed, true, already, cap);
@@ -62,8 +64,8 @@ public final class DailyCapEvaluator {
     }
 
     /** 支払確定後、cache を increment する（副作用）。 */
-    public void recordPaid(UUID playerUuid, String jobId, double paid) {
-        cache.add(playerUuid, jobId, paid);
+    public void recordPaid(UUID playerUuid, LocalDate date, String jobId, double paid) {
+        cache.add(playerUuid, date, jobId, paid);
     }
 
     /**

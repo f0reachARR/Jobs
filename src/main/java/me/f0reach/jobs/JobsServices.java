@@ -68,6 +68,12 @@ import me.f0reach.jobs.persistence.mysql.MySqlPlayerJobRepository;
 import me.f0reach.jobs.persistence.mysql.SchemaInitializer;
 import me.f0reach.jobs.pipeline.RewardPipeline;
 import me.f0reach.jobs.pipeline.Stage;
+import me.f0reach.jobs.pipeline.async.MainThreadRewardDispatcher;
+import me.f0reach.jobs.pipeline.async.MainWorkQueue;
+import me.f0reach.jobs.pipeline.async.RewardDispatcher;
+import me.f0reach.jobs.pipeline.async.RewardWorkQueue;
+import me.f0reach.jobs.pipeline.async.RewardWorker;
+import me.f0reach.jobs.pipeline.async.WorkerRewardDispatcher;
 import me.f0reach.jobs.pipeline.stage.ActionLogStage;
 import me.f0reach.jobs.pipeline.stage.AdvancementRevokeStage;
 import me.f0reach.jobs.pipeline.stage.AntiAutomationStage;
@@ -97,6 +103,7 @@ import me.f0reach.jobs.yaml.JobYamlLoader;
 import me.f0reach.jobs.yaml.YamlErrors;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.PluginManager;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.io.File;
 import java.io.IOException;
@@ -150,6 +157,12 @@ public final class JobsServices {
     private RewardPipeline rewardPipeline;
     private EventDispatcher eventDispatcher;
 
+    private RewardWorkQueue rewardWorkQueue;
+    private RewardWorker rewardWorker;
+    private MainWorkQueue mainWorkQueue;
+    private RewardDispatcher rewardDispatcher;
+    private BukkitTask mainWorkDrainTask;
+
     private VarietyPenaltyEvaluator varietyPenaltyEvaluator;
     private DailyTotalCache dailyTotalCache;
     private DailyCapEvaluator dailyCapEvaluator;
@@ -187,6 +200,7 @@ public final class JobsServices {
         wireEconomy();
         wireSpecialty();
         wireDialogs();
+        wireRewardAsync();
         wireBuiltinModifiers();
         wireAntiAutomation();
         wireExtensions();
@@ -238,13 +252,38 @@ public final class JobsServices {
                 i18n, config.antiAutomation().notifyActionBar());
     }
 
+    /**
+     * 報酬パイプラインの非同期実行基盤を組む。
+     *
+     * <p>{@code DailyTotalCache} と {@code VarietyPenaltyEvaluator} が
+     * {@link RewardDispatcher} を要求するので、{@link #wireBuiltinModifiers()} より先に呼ぶ。
+     * docs/plan/async-reward-pipeline.md を参照。
+     */
+    private void wireRewardAsync() {
+        PluginConfig.AsyncConfig async = config.reward().async();
+        this.mainWorkQueue = new MainWorkQueue(plugin.getLogger(), async.mainWorkPerTick());
+        if (!async.enabled()) {
+            // 全段階を main thread で同期実行する（非同期化前の挙動）。
+            this.rewardDispatcher = new MainThreadRewardDispatcher(asyncExecutor);
+            plugin.getLogger().info("reward.async.enabled=false: running the whole pipeline on the main thread");
+            return;
+        }
+        this.rewardWorkQueue = new RewardWorkQueue(
+                plugin.getLogger(), async.queueCapacity(), async.backlogWarnRatios());
+        this.rewardWorker = new RewardWorker(plugin.getLogger(), rewardWorkQueue);
+        this.rewardWorker.start();
+        this.rewardDispatcher = new WorkerRewardDispatcher(rewardWorkQueue);
+    }
+
     private void wireBuiltinModifiers() {
-        this.varietyPenaltyEvaluator = new VarietyPenaltyEvaluator(plugin, actionLogRepository, asyncExecutor);
+        this.varietyPenaltyEvaluator = new VarietyPenaltyEvaluator(
+                plugin, actionLogRepository, asyncExecutor, rewardDispatcher);
         this.dailyTotalCache = new DailyTotalCache(
                 plugin,
                 dailyRewardTotalRepository,
                 actionLogRepository,
                 asyncExecutor,
+                rewardDispatcher,
                 java.time.Clock.systemUTC(),
                 ZoneId.systemDefault(),
                 config.dailyCap().scope()
@@ -306,22 +345,32 @@ public final class JobsServices {
 
         RandomGenerator rng = new SplittableRandom();
         this.rewardMatcher = new RewardMatcher(tagResolver);
+        PluginConfig.AsyncConfig async = config.reward().async();
+        // 段階 12 (revokeCriteria) は prologue の末尾に置く。ワーカー経由にすると
+        // advancement の再発火が遅れ、その間のイベントを取りこぼす
+        // (docs/plan/async-reward-pipeline.md 「段階 12 の前倒し」)。
         List<Stage> stages = List.of(
                 new MatcherStage(),
                 new SpecialtyStage(specialtyService),
                 new AntiAutomationStage(antiAutomationCoordinator, antiAutomationNotifier),
+                new AdvancementRevokeStage(plugin),
                 new BaseRewardStage(rng),
-                new RareRollStage(rng),
-                new BuiltinModifierStage(varietyPenaltyEvaluator, dailyCapEvaluator),
+                new RareRollStage(rng, asyncExecutor),
+                new BuiltinModifierStage(varietyPenaltyEvaluator, dailyCapEvaluator, ZoneId.systemDefault()),
                 new ExtensionModifierStage(extensionModifierChain),
                 new SplitterStage(splitterChain),
                 new RewardRoundingStage(plugin, config.reward()),
-                new EconomyTransferStage(plugin, economy),
-                new ActionLogStage(plugin, actionLogQueue, batchFlushWorker, asyncExecutor),
-                new AdvancementRevokeStage(plugin)
+                new EconomyTransferStage(plugin, economy, mainWorkQueue, async.economyOnMain()),
+                new ActionLogStage(plugin, actionLogQueue, batchFlushWorker, asyncExecutor)
         );
-        this.rewardPipeline = new RewardPipeline(plugin, jobRegistry, stages);
+        this.rewardPipeline = new RewardPipeline(plugin, jobRegistry, rewardDispatcher, stages);
         this.eventDispatcher = new EventDispatcher(specialtyService, jobRegistry, rewardMatcher, rewardPipeline);
+
+        // economy_on_main のときだけ main thread 側のドレイナが要る。
+        if (async.enabled() && async.economyOnMain()) {
+            this.mainWorkDrainTask = plugin.getServer().getScheduler()
+                    .runTaskTimer(plugin, mainWorkQueue::drainTick, 1L, 1L);
+        }
     }
 
     private void registerListeners() {
@@ -454,6 +503,25 @@ public final class JobsServices {
 
     public void shutdown() {
         // 停止順は threading.md 「停止時 (onDisable)」に従う。
+        // 報酬ワーカーを先に drain する。行動ログの enqueue は段階 11 で行われるので、
+        // BatchFlushWorker より後に止めるとログが落ちる。
+        if (mainWorkDrainTask != null) {
+            mainWorkDrainTask.cancel();
+            mainWorkDrainTask = null;
+        }
+        if (rewardWorker != null) {
+            rewardWorker.drainAndStop(config.reward().async().drainTimeoutMs());
+            rewardWorker = null;
+        }
+        // onDisable は main thread なので、ドレイナが止まっていてもここで直接空にすれば
+        // 送金は正しいスレッドで完了する (docs/plan/async-reward-pipeline.md 「停止時の順序」)。
+        if (mainWorkQueue != null) {
+            int drained = mainWorkQueue.drainAllInline();
+            if (drained > 0) {
+                plugin.getLogger().info("drained " + drained + " pending main-thread reward task(s)");
+            }
+            mainWorkQueue = null;
+        }
         if (batchFlushWorker != null) {
             batchFlushWorker.drainAndStop(BATCH_DRAIN_TIMEOUT_MS);
             batchFlushWorker = null;
@@ -559,6 +627,21 @@ public final class JobsServices {
 
     public RewardMatcher rewardMatcher() {
         return rewardMatcher;
+    }
+
+    /** {@code /jobs admin queue} 用。async 無効時は null。 */
+    public RewardWorkQueue rewardWorkQueue() {
+        return rewardWorkQueue;
+    }
+
+    /** {@code /jobs admin queue} 用。async 無効時は null。 */
+    public RewardWorker rewardWorker() {
+        return rewardWorker;
+    }
+
+    /** {@code /jobs admin queue} 用。 */
+    public MainWorkQueue mainWorkQueue() {
+        return mainWorkQueue;
     }
 
     public RewardPipeline rewardPipeline() {

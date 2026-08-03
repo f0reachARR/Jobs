@@ -20,6 +20,9 @@ public final class SplitterStage implements Stage {
     }
 
     @Override
+    public Affinity affinity() { return Affinity.WORKER; }
+
+    @Override
     public Result execute(PipelineContext ctx) {
         if (ctx.zeroLocked()) {
             ctx.setNetPaid(0.0);

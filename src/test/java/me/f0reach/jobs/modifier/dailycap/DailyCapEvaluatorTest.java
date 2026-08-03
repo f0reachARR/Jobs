@@ -3,6 +3,7 @@ package me.f0reach.jobs.modifier.dailycap;
 import me.f0reach.jobs.config.PluginConfig;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -14,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class DailyCapEvaluatorTest {
 
     private final UUID player = UUID.randomUUID();
+    private final LocalDate today = LocalDate.of(2026, 8, 3);
 
     @Test
     void withinCapPassesThrough() {
@@ -21,7 +23,7 @@ class DailyCapEvaluatorTest {
         DailyCapEvaluator eval = new DailyCapEvaluator(
                 cache, new PluginConfig.DailyCapConfig(1000, "00:00", PluginConfig.DailyCapConfig.Scope.TOTAL)
         );
-        DailyCapEvaluator.Result r = eval.evaluate(player, "combat", 200);
+        DailyCapEvaluator.Result r = eval.evaluate(player, today, "combat", 200);
         assertEquals(200, r.paidReward());
         assertEquals(0, r.trimmed());
         assertFalse(r.capHit());
@@ -33,7 +35,7 @@ class DailyCapEvaluatorTest {
         DailyCapEvaluator eval = new DailyCapEvaluator(
                 cache, new PluginConfig.DailyCapConfig(1000, "00:00", PluginConfig.DailyCapConfig.Scope.TOTAL)
         );
-        DailyCapEvaluator.Result r = eval.evaluate(player, "combat", 300);
+        DailyCapEvaluator.Result r = eval.evaluate(player, today, "combat", 300);
         // remaining = 100, so paid = 100, trimmed = 200
         assertEquals(100, r.paidReward());
         assertEquals(200, r.trimmed());
@@ -47,7 +49,7 @@ class DailyCapEvaluatorTest {
         DailyCapEvaluator eval = new DailyCapEvaluator(
                 cache, new PluginConfig.DailyCapConfig(1000, "00:00", PluginConfig.DailyCapConfig.Scope.TOTAL)
         );
-        DailyCapEvaluator.Result r = eval.evaluate(player, "combat", 500);
+        DailyCapEvaluator.Result r = eval.evaluate(player, today, "combat", 500);
         assertEquals(0, r.paidReward());
         assertEquals(500, r.trimmed());
         assertTrue(r.capHit());
@@ -59,7 +61,7 @@ class DailyCapEvaluatorTest {
         DailyCapEvaluator eval = new DailyCapEvaluator(
                 cache, new PluginConfig.DailyCapConfig(0, "00:00", PluginConfig.DailyCapConfig.Scope.TOTAL)
         );
-        DailyCapEvaluator.Result r = eval.evaluate(player, "combat", 300);
+        DailyCapEvaluator.Result r = eval.evaluate(player, today, "combat", 300);
         assertEquals(300, r.paidReward());
         assertEquals(0, r.trimmed());
     }
@@ -71,7 +73,7 @@ class DailyCapEvaluatorTest {
         DailyCapEvaluator eval = new DailyCapEvaluator(
                 cache, new PluginConfig.DailyCapConfig(1000, "00:00", PluginConfig.DailyCapConfig.Scope.PER_JOB)
         );
-        DailyCapEvaluator.Result r = eval.evaluate(player, "combat", 300);
+        DailyCapEvaluator.Result r = eval.evaluate(player, today, "combat", 300);
         // remaining = 200, so paid = 200
         assertEquals(200, r.paidReward());
         assertEquals(100, r.trimmed());
@@ -83,8 +85,8 @@ class DailyCapEvaluatorTest {
         DailyCapEvaluator eval = new DailyCapEvaluator(
                 cache, new PluginConfig.DailyCapConfig(1000, "00:00", PluginConfig.DailyCapConfig.Scope.TOTAL)
         );
-        eval.recordPaid(player, "combat", 200);
-        assertEquals(200, cache.todayTotal(player));
+        eval.recordPaid(player, today, "combat", 200);
+        assertEquals(200, cache.totalOn(player, today));
     }
 
     /** テスト用に total / per-job を明示的に注入できる stub。 */
@@ -101,17 +103,17 @@ class DailyCapEvaluatorTest {
         }
 
         @Override
-        public double todayTotal(UUID playerUuid) {
+        public double totalOn(UUID playerUuid, LocalDate date) {
             return total;
         }
 
         @Override
-        public double todayForJob(UUID playerUuid, String jobId) {
+        public double forJobOn(UUID playerUuid, LocalDate date, String jobId) {
             return perJob.getOrDefault(jobId, 0.0);
         }
 
         @Override
-        public void add(UUID playerUuid, String jobId, double amount) {
+        public void add(UUID playerUuid, LocalDate date, String jobId, double amount) {
             total += amount;
             perJob.merge(jobId, amount, Double::sum);
         }

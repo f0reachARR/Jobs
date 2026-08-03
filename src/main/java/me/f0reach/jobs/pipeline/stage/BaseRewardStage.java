@@ -21,6 +21,9 @@ public final class BaseRewardStage implements Stage {
     }
 
     @Override
+    public Affinity affinity() { return Affinity.WORKER; }
+
+    @Override
     public Result execute(PipelineContext ctx) {
         if (ctx.zeroLocked()) return Result.CONTINUE;
         RewardAmount amount = ctx.matchedEntry().rewardAmount();

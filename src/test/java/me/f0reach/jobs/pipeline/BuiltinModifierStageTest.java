@@ -86,13 +86,14 @@ class BuiltinModifierStageTest {
         Player player = server.addPlayer();
 
         VarietyPenaltyEvaluator varietyEval = new VarietyPenaltyEvaluator(
-                plugin, new StubActionLogRepo(), new me.f0reach.jobs.util.AsyncExecutor(plugin)
+                plugin, new StubActionLogRepo(), new me.f0reach.jobs.util.AsyncExecutor(plugin),
+                new me.f0reach.jobs.testsupport.InlineRewardDispatcher()
         );
         DailyCapEvaluator capEval = new DailyCapEvaluator(
                 new NoopDailyTotal(),
                 new PluginConfig.DailyCapConfig(0, "00:00", PluginConfig.DailyCapConfig.Scope.TOTAL)
         );
-        BuiltinModifierStage stage = new BuiltinModifierStage(varietyEval, capEval);
+        BuiltinModifierStage stage = new BuiltinModifierStage(varietyEval, capEval, java.time.ZoneId.systemDefault());
 
         // 1〜5 回目: buffer が window(=5) 件に満たないため penalty は発動しない。
         // 記録は進み、5 回目終了時点で buffer は満杯。
@@ -123,13 +124,14 @@ class BuiltinModifierStageTest {
         Player player = server.addPlayer();
 
         VarietyPenaltyEvaluator varietyEval = new VarietyPenaltyEvaluator(
-                plugin, new StubActionLogRepo(), new me.f0reach.jobs.util.AsyncExecutor(plugin)
+                plugin, new StubActionLogRepo(), new me.f0reach.jobs.util.AsyncExecutor(plugin),
+                new me.f0reach.jobs.testsupport.InlineRewardDispatcher()
         );
         DailyCapEvaluator capEval = new DailyCapEvaluator(
                 new NoopDailyTotal(),
                 new PluginConfig.DailyCapConfig(0, "00:00", PluginConfig.DailyCapConfig.Scope.TOTAL)
         );
-        BuiltinModifierStage stage = new BuiltinModifierStage(varietyEval, capEval);
+        BuiltinModifierStage stage = new BuiltinModifierStage(varietyEval, capEval, java.time.ZoneId.systemDefault());
 
         // window=3。 buffer 充填までの 3 回はすべて素通し。
         for (int i = 0; i < 3; i++) {
@@ -150,13 +152,14 @@ class BuiltinModifierStageTest {
         Player player = server.addPlayer();
 
         VarietyPenaltyEvaluator varietyEval = new VarietyPenaltyEvaluator(
-                plugin, new StubActionLogRepo(), new me.f0reach.jobs.util.AsyncExecutor(plugin)
+                plugin, new StubActionLogRepo(), new me.f0reach.jobs.util.AsyncExecutor(plugin),
+                new me.f0reach.jobs.testsupport.InlineRewardDispatcher()
         );
         DailyCapEvaluator capEval = new DailyCapEvaluator(
                 new PresetDailyTotal(1000.0),
                 new PluginConfig.DailyCapConfig(1000, "00:00", PluginConfig.DailyCapConfig.Scope.TOTAL)
         );
-        BuiltinModifierStage stage = new BuiltinModifierStage(varietyEval, capEval);
+        BuiltinModifierStage stage = new BuiltinModifierStage(varietyEval, capEval, java.time.ZoneId.systemDefault());
 
         PipelineContext c = ctx(player, job, 10.0);
         stage.execute(c);
@@ -170,21 +173,22 @@ class BuiltinModifierStageTest {
         Player player = server.addPlayer();
 
         VarietyPenaltyEvaluator varietyEval = new VarietyPenaltyEvaluator(
-                plugin, new StubActionLogRepo(), new me.f0reach.jobs.util.AsyncExecutor(plugin)
+                plugin, new StubActionLogRepo(), new me.f0reach.jobs.util.AsyncExecutor(plugin),
+                new me.f0reach.jobs.testsupport.InlineRewardDispatcher()
         );
         PresetDailyTotal total = new PresetDailyTotal(950.0);
         DailyCapEvaluator capEval = new DailyCapEvaluator(
                 total,
                 new PluginConfig.DailyCapConfig(1000, "00:00", PluginConfig.DailyCapConfig.Scope.TOTAL)
         );
-        BuiltinModifierStage stage = new BuiltinModifierStage(varietyEval, capEval);
+        BuiltinModifierStage stage = new BuiltinModifierStage(varietyEval, capEval, java.time.ZoneId.systemDefault());
 
         PipelineContext c = ctx(player, job, 100.0);
         stage.execute(c);
         // 950 + 100 → 50 だけ支払われる。
         assertEquals(50.0, c.finalReward(), 1e-9);
         // 支払確定後、累計に足された結果として 1000 になる。
-        assertEquals(1000.0, total.todayTotal(player.getUniqueId()));
+        assertEquals(1000.0, total.totalOn(player.getUniqueId(), java.time.LocalDate.now()));
     }
 
     @Test
@@ -201,13 +205,14 @@ class BuiltinModifierStageTest {
         player.addAttachment(plugin, Permissions.BYPASS_VARIETY_PENALTY, true);
 
         VarietyPenaltyEvaluator varietyEval = new VarietyPenaltyEvaluator(
-                plugin, new StubActionLogRepo(), new me.f0reach.jobs.util.AsyncExecutor(plugin)
+                plugin, new StubActionLogRepo(), new me.f0reach.jobs.util.AsyncExecutor(plugin),
+                new me.f0reach.jobs.testsupport.InlineRewardDispatcher()
         );
         DailyCapEvaluator capEval = new DailyCapEvaluator(
                 new NoopDailyTotal(),
                 new PluginConfig.DailyCapConfig(0, "00:00", PluginConfig.DailyCapConfig.Scope.TOTAL)
         );
-        BuiltinModifierStage stage = new BuiltinModifierStage(varietyEval, capEval);
+        BuiltinModifierStage stage = new BuiltinModifierStage(varietyEval, capEval, java.time.ZoneId.systemDefault());
 
         // window=3 を超えて連打しても reward が削られない。
         // 通常なら 4 回目以降 curve が働き 1.0 まで落ちるはず。
@@ -227,21 +232,22 @@ class BuiltinModifierStageTest {
         player.addAttachment(plugin, Permissions.BYPASS_DAILY_CAP, true);
 
         VarietyPenaltyEvaluator varietyEval = new VarietyPenaltyEvaluator(
-                plugin, new StubActionLogRepo(), new me.f0reach.jobs.util.AsyncExecutor(plugin)
+                plugin, new StubActionLogRepo(), new me.f0reach.jobs.util.AsyncExecutor(plugin),
+                new me.f0reach.jobs.testsupport.InlineRewardDispatcher()
         );
         PresetDailyTotal total = new PresetDailyTotal(950.0);
         DailyCapEvaluator capEval = new DailyCapEvaluator(
                 total,
                 new PluginConfig.DailyCapConfig(1000, "00:00", PluginConfig.DailyCapConfig.Scope.TOTAL)
         );
-        BuiltinModifierStage stage = new BuiltinModifierStage(varietyEval, capEval);
+        BuiltinModifierStage stage = new BuiltinModifierStage(varietyEval, capEval, java.time.ZoneId.systemDefault());
 
         PipelineContext c = ctx(player, job, 100.0);
         stage.execute(c);
         // 通常なら 50 に削られるが、bypass で 100 そのまま。
         assertEquals(100.0, c.finalReward(), 1e-9);
         // 累計にも足されない (950 のまま)。
-        assertEquals(950.0, total.todayTotal(player.getUniqueId()));
+        assertEquals(950.0, total.totalOn(player.getUniqueId(), java.time.LocalDate.now()));
         assertTrue(!c.zeroReasons().contains("daily_cap_hit"));
     }
 
@@ -256,21 +262,22 @@ class BuiltinModifierStageTest {
         Player player = server.addPlayer();
 
         VarietyPenaltyEvaluator varietyEval = new VarietyPenaltyEvaluator(
-                plugin, new StubActionLogRepo(), new me.f0reach.jobs.util.AsyncExecutor(plugin)
+                plugin, new StubActionLogRepo(), new me.f0reach.jobs.util.AsyncExecutor(plugin),
+                new me.f0reach.jobs.testsupport.InlineRewardDispatcher()
         );
         PresetDailyTotal total = new PresetDailyTotal(0.0);
         DailyCapEvaluator capEval = new DailyCapEvaluator(
                 total,
                 new PluginConfig.DailyCapConfig(1000, "00:00", PluginConfig.DailyCapConfig.Scope.TOTAL)
         );
-        BuiltinModifierStage stage = new BuiltinModifierStage(varietyEval, capEval);
+        BuiltinModifierStage stage = new BuiltinModifierStage(varietyEval, capEval, java.time.ZoneId.systemDefault());
 
         PipelineContext c = ctx(player, job, 10.0);
         c.lockZero("anti_automation");
         stage.execute(c);
         assertEquals(0.0, c.finalReward());
         // cache には触っていない (0 のまま)
-        assertEquals(0.0, total.todayTotal(player.getUniqueId()));
+        assertEquals(0.0, total.totalOn(player.getUniqueId(), java.time.LocalDate.now()));
         assertTrue(c.zeroReasons().contains("anti_automation"));
     }
 
@@ -293,18 +300,18 @@ class BuiltinModifierStageTest {
     }
 
     private static final class NoopDailyTotal implements DailyTotalView {
-        @Override public double todayTotal(UUID p) { return 0; }
-        @Override public double todayForJob(UUID p, String j) { return 0; }
-        @Override public void add(UUID p, String j, double a) {}
+        @Override public double totalOn(UUID p, java.time.LocalDate d) { return 0; }
+        @Override public double forJobOn(UUID p, java.time.LocalDate d, String j) { return 0; }
+        @Override public void add(UUID p, java.time.LocalDate d, String j, double a) {}
     }
 
     private static final class PresetDailyTotal implements DailyTotalView {
         private final Map<UUID, Double> totals = new HashMap<>();
         private final double initial;
         PresetDailyTotal(double initial) { this.initial = initial; }
-        @Override public double todayTotal(UUID p) { return totals.getOrDefault(p, initial); }
-        @Override public double todayForJob(UUID p, String j) { return totals.getOrDefault(p, initial); }
-        @Override public void add(UUID p, String j, double a) {
+        @Override public double totalOn(UUID p, java.time.LocalDate d) { return totals.getOrDefault(p, initial); }
+        @Override public double forJobOn(UUID p, java.time.LocalDate d, String j) { return totals.getOrDefault(p, initial); }
+        @Override public void add(UUID p, java.time.LocalDate d, String j, double a) {
             double cur = totals.getOrDefault(p, initial);
             totals.put(p, cur + a);
         }

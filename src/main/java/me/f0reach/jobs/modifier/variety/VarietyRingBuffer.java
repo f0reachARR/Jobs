@@ -10,10 +10,15 @@ import java.util.Objects;
 
 /**
  * (playerUuid, jobId) ごとに直近 {@code capacity} 件のアクションキーを保持する ring buffer。
- * スレッドセーフではない前提で、パイプラインの main thread からのみ操作する。
  *
  * <p>docs/plan/class-structure.md 「modifier.variety」の VarietyRingBuffer を参照。
  * 具体的な用途は spec/04-reward-pipeline.md 「variety_penalty」段階。
+ *
+ * <p>書き込みは {@code RewardDispatcher} が保証する単一スレッドから、
+ * 読み出しは {@code /jobs status} と Dialog UI から main thread で起きる。
+ * 内部の {@link HashMap} は「単一書き手 + 別スレッドからの読み」でも安全でない
+ * （resize の途中を読むと null や無限ループになる）ため、全メソッドを synchronized にする。
+ * 臨界区間は異なるキー数だけのループで、UI からの読み出しも稀なので競合はほぼ起きない。
  */
 public final class VarietyRingBuffer {
 
@@ -28,7 +33,7 @@ public final class VarietyRingBuffer {
     }
 
     /** 初期化用。呼び出し前に record された履歴は破棄される。newestFirst の順で受け取る。 */
-    public void initFromRecent(List<String> newestFirst) {
+    public synchronized void initFromRecent(List<String> newestFirst) {
         clear();
         // ring buffer の意味的には「古い → 新しい」の順で入れる。
         // recentKeys は新しい順で返ってくるので、逆順に record する。
@@ -41,7 +46,7 @@ public final class VarietyRingBuffer {
     }
 
     /** 新しいアクションキーを 1 件追加。容量超過時は最古を捨てる。 */
-    public void record(String key) {
+    public synchronized void record(String key) {
         Objects.requireNonNull(key, "key");
         if (keys.size() == capacity) {
             String oldest = keys.pollFirst();
@@ -52,7 +57,7 @@ public final class VarietyRingBuffer {
     }
 
     /** 現時点で buffer に入っている件数。 */
-    public int size() {
+    public synchronized int size() {
         return keys.size();
     }
 
@@ -60,12 +65,12 @@ public final class VarietyRingBuffer {
         return capacity;
     }
 
-    public boolean isEmpty() {
+    public synchronized boolean isEmpty() {
         return keys.isEmpty();
     }
 
     /** 最多キーの占有比率。buffer が空なら 0.0 を返す。 */
-    public double topRatio() {
+    public synchronized double topRatio() {
         if (keys.isEmpty()) return 0.0;
         int max = 0;
         for (int c : counts.values()) if (c > max) max = c;
@@ -73,8 +78,31 @@ public final class VarietyRingBuffer {
     }
 
     /** 最多キー。buffer が空なら null。 */
-    public String topKey() {
+    public synchronized String topKey() {
         if (keys.isEmpty()) return null;
+        return topKeyLocked();
+    }
+
+    /**
+     * 件数と最多キーをまとめて 1 回のロックで返す。
+     * 個別 getter を並べて呼ぶと、その合間に record が挟まって値がずれる。
+     */
+    public synchronized Snapshot snapshot() {
+        if (keys.isEmpty()) {
+            return new Snapshot(0, capacity, 0.0, null);
+        }
+        int max = 0;
+        for (int c : counts.values()) if (c > max) max = c;
+        return new Snapshot(
+                keys.size(), capacity, (double) max / (double) keys.size(), topKeyLocked());
+    }
+
+    public synchronized void clear() {
+        keys.clear();
+        counts.clear();
+    }
+
+    private String topKeyLocked() {
         String top = null;
         int max = -1;
         for (Map.Entry<String, Integer> e : counts.entrySet()) {
@@ -86,15 +114,13 @@ public final class VarietyRingBuffer {
         return top;
     }
 
-    public void clear() {
-        keys.clear();
-        counts.clear();
-    }
-
     private void decrement(String key) {
         Integer c = counts.get(key);
         if (c == null) return;
         if (c <= 1) counts.remove(key);
         else counts.put(key, c - 1);
     }
+
+    /** 整合した観測値の組。 */
+    public record Snapshot(int size, int capacity, double topRatio, String topKey) {}
 }

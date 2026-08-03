@@ -25,6 +25,9 @@ public final class RewardWorkQueue {
     /** 水位警告と drop 警告を出す最短間隔。同じ水位で出し続けないよう絞る。 */
     private static final long WARN_INTERVAL_NANOS = 30L * 1_000_000_000L;
 
+    /** 制御タスクを入れるために待つ上限。満杯は既に非常事態なので短く抑える。 */
+    private static final long CONTROL_OFFER_TIMEOUT_MS = 100;
+
     private final Logger logger;
     private final BlockingQueue<Runnable> queue;
     private final int capacity;
@@ -59,10 +62,10 @@ public final class RewardWorkQueue {
     }
 
     /**
-     * タスクを積む。呼び出し側（main thread）は待たない。
+     * 報酬タスクを積む。呼び出し側（main thread）は待たない。
      * 容量超過なら false を返し、drop を計上する。
      */
-    public boolean offer(Runnable task) {
+    public boolean offerReward(Runnable task) {
         if (!queue.offer(task)) {
             droppedTotal.incrementAndGet();
             warnDropped();
@@ -70,6 +73,30 @@ public final class RewardWorkQueue {
         }
         warnBacklog(queue.size());
         return true;
+    }
+
+    /**
+     * 制御タスクを積む。報酬タスクと同じ順序で処理される。
+     *
+     * <p>捨てると cache の warmup 反映や unload が失われるため、
+     * 容量超過でも {@link #CONTROL_OFFER_TIMEOUT_MS} まで待って入れようとする。
+     * それでも入らなければ SEVERE を出す。
+     *
+     * @return 受け付けたら true
+     */
+    public boolean offerControl(Runnable task) {
+        try {
+            if (queue.offer(task, CONTROL_OFFER_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+                return true;
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        logger.severe(
+                "reward queue full (" + capacity + "): dropped a control task;"
+                        + " daily_cap / variety cache state may be stale"
+        );
+        return false;
     }
 
     /**

@@ -46,7 +46,7 @@ class RewardWorkQueueTest {
         List<Integer> seen = new ArrayList<>();
         for (int i = 0; i < 3; i++) {
             int n = i;
-            assertTrue(q.offer(() -> seen.add(n)));
+            assertTrue(q.offerReward(() -> seen.add(n)));
         }
         for (int i = 0; i < 3; i++) {
             q.poll(50, TimeUnit.MILLISECONDS).run();
@@ -65,10 +65,10 @@ class RewardWorkQueueTest {
     void offerBeyondCapacityDropsAndCounts() {
         Capture capture = new Capture();
         RewardWorkQueue q = new RewardWorkQueue(logger(capture), 2, List.of());
-        assertTrue(q.offer(() -> {}));
-        assertTrue(q.offer(() -> {}));
-        assertFalse(q.offer(() -> {}));
-        assertFalse(q.offer(() -> {}));
+        assertTrue(q.offerReward(() -> {}));
+        assertTrue(q.offerReward(() -> {}));
+        assertFalse(q.offerReward(() -> {}));
+        assertFalse(q.offerReward(() -> {}));
         assertEquals(2, q.droppedTotal());
         assertEquals(2, q.size());
     }
@@ -78,18 +78,18 @@ class RewardWorkQueueTest {
         Capture capture = new Capture();
         AtomicLong now = new AtomicLong(1L);
         RewardWorkQueue q = new RewardWorkQueue(logger(capture), 1, List.of(), now::get);
-        assertTrue(q.offer(() -> {}));
+        assertTrue(q.offerReward(() -> {}));
 
         // 同一時刻の 3 件連続 drop は 1 回しか警告しない。
-        q.offer(() -> {});
-        q.offer(() -> {});
-        q.offer(() -> {});
+        q.offerReward(() -> {});
+        q.offerReward(() -> {});
+        q.offerReward(() -> {});
         assertEquals(1, capture.warnings.size());
         assertTrue(capture.warnings.get(0).contains("dropped 1 task(s)"));
 
         // 30 秒経過後は再び警告し、前回報告以降の件数を出す。
         now.set(1L + 31L * 1_000_000_000L);
-        q.offer(() -> {});
+        q.offerReward(() -> {});
         assertEquals(2, capture.warnings.size());
         assertTrue(capture.warnings.get(1).contains("dropped 3 task(s)"));
         assertEquals(4, q.droppedTotal());
@@ -101,16 +101,16 @@ class RewardWorkQueueTest {
         AtomicLong now = new AtomicLong(1L);
         RewardWorkQueue q = new RewardWorkQueue(logger(capture), 10, List.of(0.5, 0.8), now::get);
 
-        for (int i = 0; i < 5; i++) q.offer(() -> {});
+        for (int i = 0; i < 5; i++) q.offerReward(() -> {});
         assertEquals(1, capture.warnings.size());
         assertTrue(capture.warnings.get(0).contains("threshold 50%"));
 
         // 80% を超えても、30 秒経つまでは出さない。
-        for (int i = 0; i < 4; i++) q.offer(() -> {});
+        for (int i = 0; i < 4; i++) q.offerReward(() -> {});
         assertEquals(1, capture.warnings.size());
 
         now.set(1L + 31L * 1_000_000_000L);
-        q.offer(() -> {});
+        q.offerReward(() -> {});
         assertEquals(2, capture.warnings.size());
         assertTrue(capture.warnings.get(1).contains("threshold 80%"));
     }
@@ -119,7 +119,7 @@ class RewardWorkQueueTest {
     void noBacklogWarningBelowLowestThreshold() {
         Capture capture = new Capture();
         RewardWorkQueue q = new RewardWorkQueue(logger(capture), 10, List.of(0.5, 0.8));
-        for (int i = 0; i < 4; i++) q.offer(() -> {});
+        for (int i = 0; i < 4; i++) q.offerReward(() -> {});
         assertTrue(capture.warnings.isEmpty());
     }
 
@@ -127,8 +127,8 @@ class RewardWorkQueueTest {
     void drainAllEmptiesQueue() {
         Capture capture = new Capture();
         RewardWorkQueue q = new RewardWorkQueue(logger(capture), 10, List.of());
-        q.offer(() -> {});
-        q.offer(() -> {});
+        q.offerReward(() -> {});
+        q.offerReward(() -> {});
         assertEquals(2, q.drainAll().size());
         assertTrue(q.isEmpty());
     }

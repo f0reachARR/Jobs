@@ -21,8 +21,8 @@ public final class SpecialtyStage implements Stage {
 
     @Override
     public Result execute(PipelineContext ctx) {
-        if (ctx.player().hasPermission(Permissions.BYPASS_SPECIALTY)) return Result.CONTINUE;
-        var current = specialtyService.currentJob(ctx.player().getUniqueId());
+        if (ctx.bypassSpecialty()) return Result.CONTINUE;
+        var current = specialtyService.currentJob(ctx.playerUuid());
         if (current.isEmpty()) return Result.HALT;
         if (!current.get().equals(ctx.jobId())) return Result.HALT;
         return Result.CONTINUE;

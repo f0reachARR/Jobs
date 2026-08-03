@@ -107,7 +107,7 @@ class EventDispatcherTest {
 
     private EventDispatcher build(JobRegistry registry, SpecialtyService specialty, List<Stage> stages) {
         RewardMatcher matcher = new RewardMatcher(new TagResolver());
-        RewardPipeline pipeline = new RewardPipeline(plugin, registry, stages);
+        RewardPipeline pipeline = new RewardPipeline(plugin, registry, new me.f0reach.jobs.testsupport.InlineRewardDispatcher(), stages);
         return new EventDispatcher(specialty, registry, matcher, pipeline);
     }
 

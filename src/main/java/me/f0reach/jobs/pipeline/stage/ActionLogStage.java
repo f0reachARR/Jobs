@@ -36,9 +36,12 @@ public final class ActionLogStage implements Stage {
     }
 
     @Override
+    public Affinity affinity() { return Affinity.WORKER; }
+
+    @Override
     public Result execute(PipelineContext ctx) {
         ActionLogRow row = new ActionLogRow(
-                ctx.player().getUniqueId(),
+                ctx.playerUuid(),
                 ctx.jobId().value(),
                 ctx.derivedKey().value(),
                 ctx.baseReward(),
@@ -50,32 +53,44 @@ public final class ActionLogStage implements Stage {
 
         if (worker.isBackpressure()) {
             plugin.getLogger().warning(
-                    "action_log backpressure: dropping row for " + ctx.player().getName()
+                    "action_log backpressure: dropping row for " + ctx.playerName()
                             + " key=" + ctx.derivedKey().value()
             );
         } else if (!queue.offer(row)) {
             plugin.getLogger().warning(
-                    "action_log queue full: dropping row for " + ctx.player().getName()
+                    "action_log queue full: dropping row for " + ctx.playerName()
                             + " key=" + ctx.derivedKey().value()
             );
         }
 
         // async event。net_paid が 0 でも購読者が居るので発火する（Quest 側の 0 円ログにも使う余地）。
-        asyncExecutor.runAsync(() -> {
-            JobActionPaidEvent event = new JobActionPaidEvent(
-                    ctx.player(),
-                    ctx.jobId().value(),
-                    ctx.derivedKey().value(),
-                    ctx.baseReward(),
-                    ctx.finalReward(),
-                    ctx.netPaid(),
-                    ctx.rareHit(),
-                    ctx.amount(),
-                    ctx.occurredAt()
-            );
-            Bukkit.getPluginManager().callEvent(event);
-        });
+        // この Stage 自体が main thread 外で走るため、AsyncExecutor へ投げ直さず直接発火する。
+        JobActionPaidEvent event = new JobActionPaidEvent(
+                ctx.player(),
+                ctx.jobId().value(),
+                ctx.derivedKey().value(),
+                ctx.baseReward(),
+                ctx.finalReward(),
+                ctx.netPaid(),
+                ctx.rareHit(),
+                ctx.amount(),
+                ctx.occurredAt()
+        );
+        fireAsync(event);
 
         return Result.CONTINUE;
+    }
+
+    /**
+     * {@link JobActionPaidEvent} は async event なので main thread からは発火できない。
+     * {@code reward.async.enabled: false} のときはこの Stage も main thread で走るため、
+     * その場合だけ {@link AsyncExecutor} へ逃がす。
+     */
+    private void fireAsync(JobActionPaidEvent event) {
+        if (Bukkit.isPrimaryThread()) {
+            asyncExecutor.runAsync(() -> Bukkit.getPluginManager().callEvent(event));
+            return;
+        }
+        Bukkit.getPluginManager().callEvent(event);
     }
 }

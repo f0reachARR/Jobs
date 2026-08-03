@@ -34,9 +34,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class BaseRewardStageTest {
 
     private ServerMock server;
+    private org.bukkit.plugin.Plugin plugin;
 
     @BeforeEach
-    void setUp() { server = MockBukkit.mock(); }
+    void setUp() {
+        server = MockBukkit.mock();
+        plugin = MockBukkit.createMockPlugin();
+    }
 
     @AfterEach
     void tearDown() { MockBukkit.unmock(); }
@@ -115,7 +119,7 @@ class BaseRewardStageTest {
         PipelineContext c = ctx(entry, 1);
         new BaseRewardStage(rng()).execute(c);
         assertEquals(5.0, c.finalReward());
-        new RareRollStage(rng()).execute(c);
+        new RareRollStage(rng(), new me.f0reach.jobs.util.AsyncExecutor(plugin)).execute(c);
         assertTrue(c.rareHit());
         assertEquals(100000.0, c.finalReward());
     }
@@ -130,7 +134,7 @@ class BaseRewardStageTest {
                 new RewardAmount.Fixed(5.0), rare, new ActionKey("kill:minecraft:skeleton"));
         PipelineContext c = ctx(entry, 1);
         new BaseRewardStage(rng()).execute(c);
-        new RareRollStage(rng()).execute(c);
+        new RareRollStage(rng(), new me.f0reach.jobs.util.AsyncExecutor(plugin)).execute(c);
         assertFalse(c.rareHit());
         assertEquals(5.0, c.finalReward());
     }

@@ -200,10 +200,12 @@ public final class JobsCommands {
     private void sendDailyStatus(Player player, JobsServices bound) {
         PluginConfig.DailyCapConfig cfg = bound.config().dailyCap();
         if (cfg.amount() <= 0) return;
+        java.time.LocalDate today = bound.dailyTotalCache().today();
         double total = switch (cfg.scope()) {
-            case TOTAL -> bound.dailyTotalCache().todayTotal(player.getUniqueId());
-            case PER_JOB -> bound.dailyTotalCache().todayForJob(
+            case TOTAL -> bound.dailyTotalCache().totalOn(player.getUniqueId(), today);
+            case PER_JOB -> bound.dailyTotalCache().forJobOn(
                     player.getUniqueId(),
+                    today,
                     bound.specialtyService().currentJob(player.getUniqueId())
                             .map(JobId::value).orElse(""));
         };

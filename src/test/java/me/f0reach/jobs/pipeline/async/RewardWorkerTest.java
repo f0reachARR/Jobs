@@ -31,7 +31,7 @@ class RewardWorkerTest {
         try {
             for (int i = 0; i < 50; i++) {
                 int n = i;
-                queue.offer(() -> {
+                queue.offerReward(() -> {
                     seen.add(n);
                     done.countDown();
                 });
@@ -56,8 +56,8 @@ class RewardWorkerTest {
 
         worker.start();
         try {
-            queue.offer(() -> { throw new IllegalStateException("boom"); });
-            queue.offer(after::countDown);
+            queue.offerReward(() -> { throw new IllegalStateException("boom"); });
+            queue.offerReward(after::countDown);
             assertTrue(after.await(5, TimeUnit.SECONDS));
         } finally {
             worker.drainAndStop(1_000);
@@ -75,7 +75,7 @@ class RewardWorkerTest {
         // 起動前に積んでおく。停止要求後もキューを空にしてから抜けることを確認する。
         for (int i = 0; i < 200; i++) {
             int n = i;
-            queue.offer(() -> seen.add(n));
+            queue.offerReward(() -> seen.add(n));
         }
         worker.start();
         worker.drainAndStop(5_000);
@@ -95,7 +95,7 @@ class RewardWorkerTest {
 
         worker.start();
         try {
-            queue.offer(() -> {
+            queue.offerReward(() -> {
                 started.countDown();
                 try {
                     release.await(5, TimeUnit.SECONDS);
@@ -103,7 +103,7 @@ class RewardWorkerTest {
                     Thread.currentThread().interrupt();
                 }
             });
-            queue.offer(() -> {});
+            queue.offerReward(() -> {});
             assertTrue(started.await(5, TimeUnit.SECONDS));
 
             // 先頭タスクが握ったままなので、短い timeout では終わらない。

@@ -27,6 +27,9 @@ public final class RewardRoundingStage implements Stage {
     }
 
     @Override
+    public Affinity affinity() { return Affinity.WORKER; }
+
+    @Override
     public Result execute(PipelineContext ctx) {
         try {
             ctx.setBaseReward(round(ctx.baseReward()));

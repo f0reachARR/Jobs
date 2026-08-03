@@ -17,6 +17,9 @@ public final class ExtensionModifierStage implements Stage {
     }
 
     @Override
+    public Affinity affinity() { return Affinity.WORKER; }
+
+    @Override
     public Result execute(PipelineContext ctx) {
         if (ctx.zeroLocked()) return Result.CONTINUE;
         double reward = chain.apply(ctx);
