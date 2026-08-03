@@ -25,10 +25,16 @@ import java.util.logging.Level;
 public final class ExtensionModifierChain implements JobsApi.ExtensionRegistry<JobRewardModifier> {
 
     private final Plugin plugin;
+    private final SlowExtensionReporter slowReporter;
     private final Map<String, JobRewardModifier> byId = new ConcurrentHashMap<>();
 
     public ExtensionModifierChain(Plugin plugin) {
+        this(plugin, SlowExtensionReporter.disabled());
+    }
+
+    public ExtensionModifierChain(Plugin plugin, SlowExtensionReporter slowReporter) {
         this.plugin = plugin;
+        this.slowReporter = slowReporter;
     }
 
     @Override
@@ -53,12 +59,15 @@ public final class ExtensionModifierChain implements JobsApi.ExtensionRegistry<J
                 .toList();
         for (JobRewardModifier mod : ordered) {
             JobRewardContext modCtx = new PipelineJobRewardContext(ctx, reward);
+            long startedAt = slowReporter.now();
             try {
                 ModifiedReward result = mod.modify(modCtx);
                 if (result != null) reward = result.reward();
             } catch (RuntimeException e) {
                 plugin.getLogger().log(Level.WARNING,
                         "JobRewardModifier '" + mod.getId() + "' threw; skipping", e);
+            } finally {
+                slowReporter.reportIfSlow("JobRewardModifier", mod.getId(), startedAt);
             }
         }
         return reward;

@@ -34,6 +34,12 @@ public final class PipelineJobRewardContext implements JobRewardSplitContext {
     public Player getPlayer() { return inner.player(); }
 
     @Override
+    public java.util.UUID getPlayerUuid() { return inner.playerUuid(); }
+
+    @Override
+    public String getPlayerName() { return inner.playerName(); }
+
+    @Override
     public String getJobId() { return inner.jobId().value(); }
 
     @Override

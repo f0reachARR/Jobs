@@ -131,6 +131,62 @@ class BuiltinModifierWorkerTest {
     }
 
     @Test
+    void varietyPenaltyThroughTheWorkerMatchesSynchronousExecution() throws Exception {
+        VarietyPenaltyConfig variety = new VarietyPenaltyConfig(
+                true, 5, List.of(
+                        new VarietyPenaltyConfig.CurvePoint(0.5, 1.0),
+                        new VarietyPenaltyConfig.CurvePoint(1.01, 0.2)
+                ),
+                "monotonous work reduces rewards", false
+        );
+        MatchCriteria c = new MatchCriteria.EntityKilled(
+                new KeyMatcher.Single(NamespacedKey.minecraft("zombie")));
+        RewardEntry entry = new RewardEntry(
+                ActionType.ENTITY_KILLED, c, new RewardAmount.Fixed(10.0), null,
+                new ActionKey("kill:minecraft:zombie"));
+        JobDefinition job = new JobDefinition(
+                new JobId("combat"), "Combat", null, NamespacedKey.minecraft("iron_sword"),
+                List.of(entry), variety, AntiAutomationConfig.empty());
+
+        Instant at = Instant.parse("2026-08-03T03:00:00Z");
+        int actions = 12;
+
+        // 同期実行の期待値を先に取る。
+        Player syncPlayer = server.addPlayer();
+        BuiltinModifierStage syncStage = stage(new DateKeyedTotals(), 0);
+        List<Double> expected = new java.util.ArrayList<>();
+        for (int i = 0; i < actions; i++) {
+            PipelineContext ctx = ctx(syncPlayer, job, at, 10.0);
+            syncStage.execute(ctx);
+            expected.add(ctx.finalReward());
+        }
+
+        // 同じ列をワーカー経由で流す。
+        Player workerPlayer = server.addPlayer();
+        BuiltinModifierStage workerStage = stage(new DateKeyedTotals(), 0);
+        Logger logger = silentLogger();
+        RewardWorkQueue queue = new RewardWorkQueue(logger, 1_000, List.of());
+        RewardWorker worker = new RewardWorker(logger, queue);
+        WorkerRewardDispatcher dispatcher = new WorkerRewardDispatcher(queue);
+        List<PipelineContext> contexts = new java.util.ArrayList<>();
+        for (int i = 0; i < actions; i++) {
+            PipelineContext ctx = ctx(workerPlayer, job, at, 10.0);
+            contexts.add(ctx);
+            dispatcher.dispatchReward(() -> workerStage.execute(ctx));
+        }
+        worker.start();
+        worker.drainAndStop(10_000);
+
+        for (int i = 0; i < actions; i++) {
+            assertEquals(expected.get(i), contexts.get(i).finalReward(), 1e-9,
+                    "action " + i + " の倍率がワーカー経由でも一致する");
+        }
+        // window=5 が埋まった 6 件目以降はペナルティが乗る。
+        assertEquals(10.0, expected.get(4), 1e-9);
+        assertEquals(2.0, expected.get(5), 1e-9);
+    }
+
+    @Test
     void dailyCapUsesTheOccurrenceDateNotTheProcessingDate() {
         JobDefinition job = job();
         Player player = server.addPlayer();

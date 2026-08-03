@@ -4,34 +4,62 @@
 
 ## スレッドの分類
 
-Job プラグインが扱うスレッドは 4 種類。
+Job プラグインが扱うスレッドは 5 種類。
 
 - **Bukkit main thread**：全 Bukkit イベント、コマンド executor、`Player` などの状態変更、`AdvancementProgress#revokeCriteria`。
+- **プラグイン所有の報酬ワーカ**（`pipeline.async.RewardWorker`、単一 daemon スレッド）：報酬パイプラインの段階 4 から 11。
 - **プラグイン所有の書き込みワーカ**（`persistence.async.BatchFlushWorker`、単一 daemon スレッド）：`action_log` と `daily_reward_total` のバッチ INSERT。
-- **プラグイン所有の非同期実行プール**（`util.AsyncExecutor` が保持する `ExecutorService`）：`ActionLogQueryService` の読み込みクエリ、その他明示的 async 化。
+- **プラグイン所有の非同期実行プール**（`util.AsyncExecutor` が保持する `ExecutorService`）：`ActionLogQueryService` の読み込みクエリ、cache warmup の JDBC 読み出し、その他明示的 async 化。
 - **BedrockDialog のコールバックスレッド**：Java Edition はメインスレッド保証寄り、Bedrock Edition はネットワークスレッドから呼ばれる可能性がある。
 
 ## パイプラインの実行スレッド
 
-`pipeline.RewardPipeline` の段階 1〜10 は main thread で同期実行する。
+`pipeline.Stage` の `affinity()` が実行スレッドを宣言し、`pipeline.RewardPipeline` が wiring 時に prologue（`MAIN`）と worker（`WORKER`）の 2 ブロックへ分割する。
+詳細は [async-reward-pipeline.md](./async-reward-pipeline.md) と [ADR-0021](../spec/adr/0021-async-reward-pipeline.md) を参照。
+
+prologue は listener の呼び出しスレッド（main thread）でそのまま実行する。
+スケジューラを介さないのは、`Block` と `Entity` 参照を同 tick 内で使い切る必要があるためである。
 
 - 段階 1（Matcher）：main thread。listener の中で走る。
 - 段階 2（専業判定）：main thread。
 - 段階 3（自動化対策）：main thread。`Entity#getEntitySpawnReason`, `PDC` 読み書き、KVS の `get` はいずれも main thread から。
-- 段階 4〜7：main thread。
-- 段階 8（Splitter）：main thread。ただし Splitter 実装内で Vault の同期送金を叩くため、実質的に Vault の契約に従う。
-- 段階 9（丸め）：main thread。`BigDecimal#setScale` のみで I/O 無し。
-- 段階 10（Economy 送金）：main thread。Vault は同期前提。
-- 段階 11（行動ログ書き込み）：main thread から `ActionLogWriteQueue#enqueue` を呼ぶ。実 INSERT は `BatchFlushWorker` に載せる。`JobActionPaidEvent` の発火は async event としてこの直後に行う。
-- 段階 12（`revokeCriteria`）：main thread。
+- 段階 12（`revokeCriteria`）：main thread。ワーカー経由にすると advancement の再発火が遅れるため、末尾ではなく prologue の末尾に置く。
 
-Stage の interface は「main thread 前提」で書く。async に載せたい処理は Stage の中で `AsyncExecutor` に投げる、または Stage 自体を「async 化する Stage」として分けて書く（現時点では ActionLogStage のみ）。
+worker ブロックは `RewardWorker` の単一 daemon スレッドで走る。
+prologue が HALT を返さなければ、`RewardWorkQueue` へ積んで listener は即座に戻る。
+
+- 段階 4（基礎報酬）〜段階 9（丸め）：ワーカー。Bukkit API を直接叩かない。
+- 段階 5（rare）の announce だけ `AsyncExecutor#runOnMain` へ投げ返す。
+- 段階 10（Economy 送金）：ワーカー。`reward.async.economy_on_main` が true のときは `MainWorkQueue` に積み、`runTaskTimer` のドレイナが毎 tick `main_work_per_tick` 件まで処理する。
+- 段階 11（行動ログ書き込み）：ワーカーから `ActionLogWriteQueue#offer` を呼ぶ。実 INSERT は `BatchFlushWorker` に載せる。`JobActionPaidEvent` はワーカー上で直接発火する。
+
+ワーカーは main thread の完了を待たない。
+`Bukkit.getScheduler().runTask` は呼び出し側をブロックしないので、投げてから次のタスクへ進む。
+
+`reward.async.enabled: false` のときは分割せず、全段階を main thread で同期実行する。
+このとき `JobActionPaidEvent` は `AsyncExecutor` へ逃がす（async event は main thread から発火できない）。
+
+## 報酬ワーカと可変状態
+
+ワーカーを 1 本に絞ることで、段階 4 から 11 が触る可変状態の書き手が 1 スレッドだけになる。
+`modifier.variety.VarietyRingBuffer` の比率計算と `modifier.dailycap.DailyTotalCache` の累計 read-modify-write は、これで直列化される。
+
+読み手は main thread にも居る（`/jobs status`、Dialog UI、PlaceholderAPI）。
+`HashMap` は単一書き手でも別スレッドからの読みで壊れるため、次の形で守る。
+
+- **`DailyTotalCache`**：`ConcurrentHashMap` + `volatile double`。ロックも per-action の割り当ても要らない。
+- **`VarietyRingBuffer`**：全メソッド `synchronized`。整合した観測値を返すには複数フィールドをまとめて読む必要がある。
+
+cache の warmup 反映と `unload` と `reset` は `pipeline.async.RewardDispatcher#dispatchControl` 経由で同じキューへ流す。
+報酬タスクと同じ順序で処理されるので、`unload` が先回りして「キューに残っている同プレイヤーの報酬処理が cache を作り直す」事故が起きない。
+
+warmup の JDBC 読み出しは `AsyncExecutor` のプールで行い、ワーカーを I/O で止めない。
 
 ## リポジトリ読み書きのスレッド
 
 `ActionLogRepository`, `PlayerJobRepository`, `PlayerJobHistoryRepository`, `DailyRewardTotalRepository` の呼び出し規約は次のとおり。
 
-- **書き込み**：`BatchFlushWorker` から `insertBatch`, `addBatch` を呼ぶ。バッチ間隔 1 秒 / バッチサイズ 1000 件。プラグイン停止時に `drain(timeout)` を呼ぶ。
+- **書き込み**：`BatchFlushWorker` から `insertBatch`, `addBatch` を呼ぶ。バッチ間隔 1 秒 / バッチサイズ 1000 件。プラグイン停止時に `drain(timeout)` を呼ぶ。`ActionLogWriteQueue#offer` の呼び出し元は報酬ワーカである。
 - **読み込み**：`ActionLogQueryService` の各メソッドは `CompletableFuture` を返す形で外部プラグインに露出する。実際の JDBC 呼び出しは `AsyncExecutor` のプール上で走る。Bukkit main thread からの同期呼び出しは想定しない。
 - **プラグイン内部での読み込み**（`VarietyRingBuffer` のログイン時初期化、`DailyTotalCache` の初期化）：`PlayerJoinEvent` を main thread で受けたら、そこから `AsyncExecutor.supplyAsync(...)` に投げて結果を main thread に戻して cache に格納する。ログイン直後の 1 秒未満はキャッシュが空扱いになる（過去 window 件は 0 として扱う）許容範囲とする。
 
@@ -74,22 +102,29 @@ UnifiedDialog dialog = MultiButtonDialog.builder()
 7. `TagResolver` を `LifecycleEvents.SERVER_LOAD` フックで初期化（サーバ起動完了後にタグが揃うため）。
 8. `ShadowDetector` を走らせて警告出力。
 9. `VaultEconomyAdapter` を起動、Vault が無ければ致命エラー。
-10. `AntiAutomationCoordinator`, `ExtensionModifierChain`, `SplitterChain`, `SpecialtyService`, `DialogService` を wire。
-11. `ActionLogWriteQueue`, `BatchFlushWorker` を起動。
-12. 全 listener を register。
-13. `JOB_PLUGIN_READY` ライフサイクルイベントを発火（拡張プラグインが Modifier / Splitter を register する契機）。
+10. `SpecialtyService`, `DialogService` を wire。
+11. `RewardWorkQueue`, `RewardWorker`, `MainWorkQueue` を起動。内蔵 Modifier より前に置く（`DailyTotalCache` と `VarietyPenaltyEvaluator` が `RewardDispatcher` を要求する）。
+12. `VarietyPenaltyEvaluator`, `DailyTotalCache`, `DailyCapEvaluator` を wire。
+13. `AntiAutomationCoordinator`, `ExtensionModifierChain`, `SplitterChain` を wire。
+14. `ActionLogWriteQueue`, `BatchFlushWorker` を起動。
+15. `RewardPipeline` を組む。`economy_on_main` が true なら `MainWorkQueue` の tick ドレイナを登録。
+16. 全 listener を register。
+17. `JOB_PLUGIN_READY` ライフサイクルイベントを発火（拡張プラグインが Modifier / Splitter を register する契機）。
 
 ### 停止時（`onDisable`）
 
 順序が重要。
 
 1. 全 listener を unregister（新規イベントを受け付けない）。
-2. `ActionLogWriteQueue.drain(30s)`：キュー内エントリの INSERT を待つ。
-3. `BatchFlushWorker` を join。
-4. `AsyncExecutor` の shutdown、`awaitTermination`。
-5. `MySqlDataSource` を close（HikariCP）。
-6. `InMemoryKVStore` を破棄。
-7. `LocaleRegistry`, `JobRegistry` の解放は GC 任せ。
+2. `MainWorkQueue` の tick ドレイナを cancel。
+3. `RewardWorker.drainAndStop(drain_timeout_ms)`：段階 4 以降の未処理分を走り切らせる。drain はワーカースレッド自身が行う（呼び出し元でインライン実行すると可変状態の書き手が 2 本になる）。タイムアウトしたら未処理件数を WARNING に出す。
+4. `MainWorkQueue.drainAllInline()`：`onDisable` は main thread なので、ドレイナが止まっていてもここで直接空にすれば送金は正しいスレッドで完了する。
+5. `ActionLogWriteQueue.drain(30s)`：キュー内エントリの INSERT を待つ。段階 11 の enqueue は 3 で終わっているので、この順序でログが落ちない。
+6. `BatchFlushWorker` を join。
+7. `AsyncExecutor` の shutdown、`awaitTermination`。
+8. `MySqlDataSource` を close（HikariCP）。
+9. `InMemoryKVStore` を破棄。
+10. `LocaleRegistry`, `JobRegistry` の解放は GC 任せ。
 
 ### /jobs reload
 
@@ -109,12 +144,17 @@ reload 中のパイプライン実行を止めるため、`JobRegistry#swap(newS
 - Listener の中で例外が起きた場合：Bukkit の event bus が catch する。プラグイン側で catch する必要はないが、pipeline 呼び出しは try-catch で包み Listener 全体を落とさない。
 - Stage の中で例外が起きた場合：`RewardPipeline` は各 Stage を try-catch する。段階に応じた振る舞い（[spec/04-reward-pipeline.md](../spec/04-reward-pipeline.md) の「エラーハンドリング」節）を守る。
 - BatchFlushWorker の中で例外：INSERT 失敗は `Logger.severe`、リトライ。連続 5 回失敗でキューへの enqueue にバックプレッシャを掛ける（`enqueue` は失敗を返し、`ActionLogStage` は「ログ落とし」として `Logger.warning` を残す）。
+- RewardWorker のタスクの中で例外：`Logger.severe` を出してワーカーは次のタスクへ進む。1 件の失敗でワーカーを落とさない。
+- RewardWorkQueue の容量超過：報酬タスクは捨て、drop 件数をまとめて 30 秒に 1 回 WARNING に出す。制御タスクは捨てず 100 ミリ秒待って入れようとし、それでも入らなければ `Logger.severe`。
 - BedrockDialog callback の中で例外：`ui.DialogService` の `runOnMain` の内側で try-catch し、`Logger.warning` を出す（Dialog callback の failure はユーザ体験に直結するため）。
 
 ## タイムゾーンと日付
 
 `daily_reward_total` の `reset_at`（config で `"00:00"` などを指定）はサーバのシステムタイムゾーンで解釈する（`ZoneId.systemDefault()`）。
 `daily_reward_total.reward_date` は同じタイムゾーンで `LocalDate` に丸める。
+
+`daily_cap` の計上先の日付は、処理時刻ではなくアクションの発生時刻（`PipelineContext#occurredAt`）から求める。
+報酬ワーカのキューが深いと、23:59 のアクションが日付をまたいだあとに処理され、翌日の枠へ計上されてしまう。
 日跨ぎ時にキャッシュを新しい日付にリセットする scheduler は Bukkit の `runTaskTimer` で「起動時 + 1 分」ごとに現在時刻を見て切り替える（分単位の遅延は許容範囲）。
 
 ## 関連文書

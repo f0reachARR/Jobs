@@ -28,6 +28,7 @@ public final class Permissions {
     public static final String ADMIN_RESET_DAILY_CAP = "jobs.admin.reset-daily-cap";
     public static final String ADMIN_RESET_VARIETY = "jobs.admin.reset-variety";
     public static final String ADMIN_FLUSH = "jobs.admin.flush";
+    public static final String ADMIN_QUEUE = "jobs.admin.queue";
     public static final String ADMIN_KVS = "jobs.admin.kvs";
     public static final String ADMIN_KVS_INSPECT = "jobs.admin.kvs.inspect";
     public static final String ADMIN_KVS_MODIFY = "jobs.admin.kvs.modify";

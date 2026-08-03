@@ -60,10 +60,34 @@ specialty_mode:
 reward:
   decimals: 0
   rounding_mode: HALF_UP
+  async:
+    enabled: true
+    queue_capacity: 100000
+    backlog_warn_ratio: [0.5, 0.8]
+    economy_on_main: false
+    main_work_per_tick: 200
+    slow_extension_threshold_ms: 50
+    drain_timeout_ms: 5000
 ```
 
 - **`decimals`**：小数点以下の桁数。`0` で整数のみ。上限 `6`。
 - **`rounding_mode`**：`java.math.RoundingMode` の名称。`HALF_UP` / `HALF_EVEN` / `DOWN` など。
+
+#### `reward.async`
+
+報酬パイプラインの段階 4 以降を専用ワーカースレッドで回す設定（[../spec/adr/0021-async-reward-pipeline.md](../spec/adr/0021-async-reward-pipeline.md)）。
+既定のままで動くので、通常は触る必要がない。
+
+- **`enabled`**：`false` にすると全段階を main thread で同期実行する（非同期化前の挙動）。報酬まわりで原因不明の問題が出たときの切り戻し口として使う。
+- **`queue_capacity`**：ワーカーへ渡すキューの容量。溢れた分の報酬は捨てる。1 件あたり 200 バイト前後なので、既定の 100000 件で 20MB 程度を上限として見込む。
+- **`backlog_warn_ratio`**：キュー深度がこの割合を超えたら WARNING を出す。ワーカーが追いついていない状態を、報酬を捨て始める前に知らせる。
+- **`economy_on_main`**：`true` にすると Vault 送金だけを main thread へ戻す。Economy プラグインがスレッドセーフでない場合に立てる。
+- **`main_work_per_tick`**：`economy_on_main` が `true` のとき、1 tick に main thread で処理する送金の上限。
+- **`slow_extension_threshold_ms`**：拡張 Modifier / Splitter 1 件の所要時間がこれを超えたら WARNING を出す。ワーカーは 1 本しかないので、遅い拡張実装は全プレイヤーの報酬処理を止める。
+- **`drain_timeout_ms`**：停止時にワーカーの残り処理を待つ上限。
+
+報酬の支払いはアクションから数 tick 遅れる。
+プレイヤーから見て即時ではないが、`occurred_at` は検知時刻で記録されるため、行動ログと日次上限の集計はずれない。
 
 ### `daily_cap`
 
@@ -272,6 +296,14 @@ YAML の構文エラーがあれば失敗メッセージが返り、旧設定の
 
 サーバ再起動前や、書き込み障害の切り分け（キューに残っていないか）に使う。書き込み件数がチャットに返る。
 
+### `/jobs admin queue`
+
+報酬ワーカのキュー深度、累計 drop 件数、処理レートを表示する。`economy_on_main` が `true` のときは main thread 待ちの件数も出る。
+
+`reward.async.enabled` が `false` のときは、その旨だけを返す。
+
+サーバログに `reward queue backlog` の WARNING が出たときに、まずこれで実際の深度と処理レートを見る。
+
 ### `/jobs admin kvs ...`
 
 自動化対策の追跡データ（KVS）を覗く・掃除する。追跡データはメモリ上の短寿命データで、`recently_placed_break`・`auto_fed_processing`・`villager_repeat_trade` の 3 種類が入っている（[../spec/05-persistence.md](../spec/05-persistence.md) の「追跡ストレージ（KVS）」）。
@@ -315,7 +347,7 @@ YAML の構文エラーがあれば失敗メッセージが返り、旧設定の
 
 親ノード `jobs.admin` に `children:` として全管理コマンドを束ねてある。上位ランクへの一括付与に使える。個別にも切り分けできる。
 
-`jobs.admin.reload` / `jobs.admin.inspect` / `jobs.admin.stats` / `jobs.admin.actions` / `jobs.admin.set` / `jobs.admin.reset-cooldown` / `jobs.admin.pay` / `jobs.admin.reset-daily-cap` / `jobs.admin.reset-variety` / `jobs.admin.flush` / `jobs.admin.kvs`
+`jobs.admin.reload` / `jobs.admin.inspect` / `jobs.admin.stats` / `jobs.admin.actions` / `jobs.admin.set` / `jobs.admin.reset-cooldown` / `jobs.admin.pay` / `jobs.admin.reset-daily-cap` / `jobs.admin.reset-variety` / `jobs.admin.flush` / `jobs.admin.queue` / `jobs.admin.kvs`
 
 `jobs.admin.kvs` だけは配下が 2 つに分かれている。`jobs.admin.kvs.inspect` が閲覧（`stats` / `list` / `get` / `block`）、`jobs.admin.kvs.modify` が削除（`remove` / `clear`）で、閲覧だけを下位ランクに委譲できる。
 
@@ -411,6 +443,19 @@ Jobs プラグインは他プラグインが差し込める拡張点を持つ（
 ### 「/jobs admin flush が遅い」
 
 `action_log` の書き込み待ちが溜まっている可能性。頻度の高いサーバでは pool_size を上げるか、通常運用に任せて明示 flush を控える。
+
+### 「サーバログに reward queue backlog の WARNING が出る」
+
+報酬ワーカが到着レートに追いついていない。`/jobs admin queue` で深度と処理レートを見る。
+
+深度が一時的に上がって戻るならバーストなので、`reward.async.queue_capacity` を上げれば吸収できる。
+深度が下がらないなら恒常的な過負荷で、容量を増やしても報酬の遅延が伸びるだけである。
+このときは 1 件あたりの処理時間を疑う。支配的なコストは Vault 送金なので、Economy プラグインのバックエンド（DB 接続など）を確認する。
+`slow extension` の WARNING が併発しているなら、名前が出ている拡張プラグイン側の実装が原因である。
+
+### 「サーバログに reward queue full の WARNING が出る」
+
+キューが溢れて報酬を捨てている。上の backlog と同じ手順で原因を切り分ける。捨てた分は復旧できない。
 
 ### 「ダイアログが Bedrock 側で崩れる」
 

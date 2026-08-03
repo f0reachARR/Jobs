@@ -1,7 +1,9 @@
 # 報酬パイプラインの非同期化
 
-現在の `pipeline.RewardPipeline` は段階 1 から 12 までを listener の中で main thread 同期実行する。
-本文書は、段階 4 から 11 を単一のワーカースレッドへ移す設計と、そのために必要な変更を実装順にまとめる。
+段階 4 から 11 を単一のワーカースレッドへ移す設計と、そのために必要な変更を実装順にまとめる。
+
+実装済み。決定の記録は [ADR-0021](../spec/adr/0021-async-reward-pipeline.md) にある。
+本文書は設計の導出と検討経緯を残す。
 
 ## 現状と制約
 
@@ -93,10 +95,13 @@ drop を減らす主な手段はキューを十分大きく取ることである
 
 容量を上げるだけでは足りない点が 2 つある。
 
-第一に、深いキューは `Player` 参照を掴んだままになる。
-`PipelineContext` が強参照で `Player` を持つと、ログアウト後もエンティティとワールドのグラフが解放されない。
-`VaultEconomyAdapter#deposit` は既に `OfflinePlayer` を受け取るので、境界で `Player` の強参照を捨て、送金時に `Bukkit.getOfflinePlayer(uuid)` で引き直す。
-UUID 指定の `getOfflinePlayer` はブロッキング検索を行わないので、ワーカーから呼んで差し支えない。
+第一に、1 アクションごとに別物を掴む参照を持ち越さないことである。
+`DetectionSubject` の `Block` と `Entity` は境界で捨てる（後述）。
+
+`Player` の強参照は保持する。
+同一プレイヤーの複数タスクが同じ 1 個を共有するので、キューが深くなっても取り分は増えず、解放はそのプレイヤーの最後のタスクが流れた時点で起きる。
+参照を捨てて `Bukkit.getPlayer(uuid)` で引き直す形も考えたが、この API はスレッド安全性が保証されていない。
+1 個の `CraftPlayer` を drain まで掴むほうが安い。
 
 第二に、容量が吸収できるのはバーストだけである。
 到着レートがワーカーのスループットを恒常的に上回る状態では、容量を増やしても drop が遅延に置き換わるだけで、最後は同じところへ行き着く。
@@ -131,7 +136,7 @@ public interface Stage {
 
 `reward.async.enabled: false` のときは分割せず、全段階を呼び出しスレッドで同期実行する。
 
-`EconomyTransferStage` の affinity は WORKER のままで、`economy_on_main` が true のときだけ `deposit` 呼び出しを `runOnMain` へ包む。
+`EconomyTransferStage` の affinity は WORKER のままで、`economy_on_main` が true のときだけ `deposit` 呼び出しを `MainWorkQueue` へ積む。
 
 ### PipelineContext の非同期安全化
 
@@ -140,23 +145,27 @@ prologue からワーカーへ渡る境界で、Bukkit 依存を落とす。
 - `detachBukkitRefs()` を追加し、`subject` を `DetectionSubject.empty()` に差し替える。段階 4 以降が `Block` と `Entity` に触れないことをコードで保証する。
 - `playerUuid` と `playerName` を prologue で確定して保持する。
 - bypass 権限 4 種（`BYPASS_SPECIALTY`, `BYPASS_ANTI_AUTOMATION`, `BYPASS_VARIETY_PENALTY`, `BYPASS_DAILY_CAP`）を prologue で解決し、boolean として持つ。`Player#hasPermission` をワーカーから呼ばずに済み、パイプライン全体で判定が一貫する。
-- `Player` の強参照を捨てる。段階 10 の送金は `Bukkit.getOfflinePlayer(uuid)` で引き直し、拡張 API の `getPlayer()` は `Bukkit.getPlayer(uuid)` を都度引く。オフラインなら null を返す nullable 契約になる。
+- `Player` 参照は保持する。`isPlayerOnline()` を足し、オンライン前提の処理はそれで確認する。ワーカーから触れてよいのは参照の同一性と状態を持たない読み出しに限る、と拡張 API の javadoc に明記する。
 
 `SpecialtyStage` と `AntiAutomationStage` と `BuiltinModifierStage` の `hasPermission` 呼び出しを、この boolean 参照へ置き換える。
 
 ### 可変状態の扱い
 
 書き手はワーカー 1 本に限られるが、読み手は main thread にも居る。
-UI と `/jobs status` と PlaceholderAPI が `VarietyPenaltyEvaluator#snapshot` と `DailyTotalCache#todayTotal` を main thread から読む。
+UI と `/jobs status` と PlaceholderAPI が `VarietyPenaltyEvaluator#snapshot` と `DailyTotalCache#totalOn` を main thread から読む。
 
 `HashMap` は「単一書き手 + 別スレッドからの読み」でも安全ではない。
 resize の途中を読むと null や無限ループが起きる。
 `DailyTotalCache.byPlayer` と `VarietyPenaltyEvaluator.ringBuffers` と `curveCache` を `ConcurrentHashMap` にする。
 
 値そのものの可視性も要る。
-`VarietyRingBuffer` は `record()` のたびに不変の `Snapshot` を `volatile` フィールドへ公開し、`VarietyPenaltyEvaluator#snapshot` はそのフィールドだけを読む。
-`DailyTotalCache.DayEntry` の累計も同様に不変 snapshot として公開する。
-これで読み手はロックを取らずに整合した値を見る。
+守り方は状態の形に合わせて分ける。
+
+- **`DailyTotalCache.DayEntry`**：`total` を `volatile double`、`perJob` を `ConcurrentHashMap` にする。volatile double の読み書きは atomic なので、ロックも per-action の割り当ても要らない。
+- **`VarietyRingBuffer`**：全メソッドを `synchronized` にする。内部が `ArrayDeque` と `HashMap` で、整合した観測値を返すには複数フィールドをまとめて読む必要がある。件数と比率と最多キーを 1 回のロックで返す `snapshot()` を足す。臨界区間は異なるキー数だけのループで、UI からの読み出しも稀なので競合はほぼ起きない。
+
+不変 snapshot を毎 `record()` で公開する形も考えたが、1 アクションごとに O(異なるキー数) の集計と割り当てが増える。
+読み出しが稀な側にコストを寄せるほうがよい。
 
 書き手を 1 本に保つため、ワーカーへの境界キューはタスクの直和を運ぶ。
 
@@ -185,6 +194,9 @@ in-flight の報酬処理と競合しなくなる。
 `ActionLogStage` は現在 `JobActionPaidEvent` を `asyncExecutor.runAsync` で発火しているが、ワーカー自体が main thread 外なので二重に投げる必要がなくなる。
 ワーカー上で `callEvent` を直接呼ぶ形に単純化する。
 async event の契約は変わらない。
+
+ただし `enabled: false` のときはこの Stage も main thread で走る。
+async event は main thread から発火できないので、その場合だけ `AsyncExecutor` へ逃がす。
 
 段階 11 の enqueue もワーカー上で走るので、`action_log` の `occurred_at` 順序は保たれる。
 
@@ -263,11 +275,10 @@ tick あたりの上限はここでは掛けない。停止処理なので滞在
 
 ### Phase B: context と状態
 
-1. `PipelineContext` に `playerUuid`, `playerName`, bypass boolean 4 種, `detachBukkitRefs()` を足し、`Player` の強参照を捨てる。`zeroReasons` を遅延生成にする。
+1. `PipelineContext` に `playerUuid`, `playerName`, bypass boolean 4 種, `detachBukkitRefs()`, `isPlayerOnline()` を足す。`zeroReasons` を遅延生成にする。
 2. 各 Stage の `hasPermission` 呼び出しを boolean 参照へ置き換える。
-3. `EconomyTransferStage` を `Bukkit.getOfflinePlayer(uuid)` 経由に変える。
-4. `DailyTotalView` と `DailyTotalCache` と `DailyCapEvaluator` に `LocalDate` を渡す形へ変え、日付の起点を `occurredAt` にする。
-5. `DailyTotalCache` と `VarietyPenaltyEvaluator` を `ConcurrentHashMap` 化し、snapshot を volatile 公開に変え、`warmup` と `unload` と `reset` を制御タスク経由にする。
+3. `DailyTotalView` と `DailyTotalCache` と `DailyCapEvaluator` に `LocalDate` を渡す形へ変え、日付の起点を `occurredAt` にする。
+4. `DailyTotalCache` を `ConcurrentHashMap` + `volatile double`、`VarietyRingBuffer` を `synchronized` にし、`warmup` と `unload` と `reset` を制御タスク経由にする。
 
 ### Phase C: driver
 
@@ -286,20 +297,24 @@ tick あたりの上限はここでは掛けない。停止処理なので滞在
 
 ## テスト
 
-新規に必要なもの。
+新規に書いたもの。
 
-- `RewardWorkerTest`：FIFO 保証、`queue_capacity` 超過での drop と WARNING、水位警告が 30 秒に 1 回へ絞られること、`drainAndStop` のタイムアウト、報酬タスクと制御タスクの順序。
-- `MainWorkQueueTest`：1 tick の処理件数が `main_work_per_tick` を超えないこと、残りが次の tick へ繰り越されること。
-- `DailyCapDateTest`：`occurredAt` が前日のタスクを日付をまたいだあとに処理しても、前日の枠へ計上されること。
-- `RewardPipelineSplitTest`：affinity による 2 ブロック分割、prologue の HALT でワーカーへ積まれないこと、`enabled: false` で全段階が同期実行されること。
-- `DailyCapWorkerTest`：同一プレイヤーの N 件をワーカー経由で流し、累計が正確で上限を超えないこと。
-- `VarietyPenaltyWorkerTest`：同じ条件で比率と multiplier が同期実行時と一致すること。
-- `PipelineContext` の `detachBukkitRefs` 後に `subject()` が empty を返すこと。
+- `RewardWorkQueueTest`：FIFO 保証、`queue_capacity` 超過での drop 計上、水位警告が最も高い閾値で 30 秒に 1 回へ絞られること、drop 警告が前回報告以降の件数を出すこと。
+- `RewardWorkerTest`：enqueue 順の処理、タスク例外でワーカーが落ちないこと、`drainAndStop` が残キューを処理し切ること、タイムアウト時に未処理が残ること。
+- `MainWorkQueueTest`：1 tick の処理件数が `main_work_per_tick` を超えないこと、残りが次の tick へ繰り越されること、`drainAllInline` が上限を無視すること。
+- `MainThreadRewardDispatcherTest`：`enabled: false` の経路で報酬タスクと制御タスクが呼び出しスレッドで同期実行され、順序が保たれること。
+- `RewardPipelineSplitTest`：affinity による 2 ブロック分割、prologue の HALT でワーカーへ積まれないこと、`detachBukkitRefs` 後に `subject()` が empty になること、`MAIN` を `WORKER` の後ろに置いた並びが起動時に弾かれること。
+- `BuiltinModifierWorkerTest`：同一プレイヤーの 200 件をワーカー経由で流して累計が正確で上限を超えないこと、variety の倍率が同期実行時と一致すること、`occurredAt` が日跨ぎの 2 件がそれぞれの日付の枠へ計上されること。
+- `SlowExtensionReporterTest`：閾値超過の検出、id の出力、30 秒に 1 回への絞り込み、閾値 0 で計測そのものを省くこと。
+- `ConfigLoaderTest`：`reward.async` の既定値と全キーの上書き、不正な `queue_capacity` と `backlog_warn_ratio` の拒否。
 
 既存テストへの影響。
 
-- `BaseRewardStageTest`, `BuiltinModifierStageTest`, `SpecialtyStageTest`, `AntiAutomationStageTest`, `RewardRoundingStageTest` は `PipelineContext` の構築方法が変わるため追従が必要。
-- ワーカーを同期実行するテストダブルを用意し、境界キューを介する処理を決定的に検証できるようにする。
+- `BaseRewardStageTest` は `RareRollStage` が `AsyncExecutor` を取るようになったため追従した。
+- `BuiltinModifierStageTest` は `BuiltinModifierStage` が `ZoneId` を取り、`DailyTotalView` が `LocalDate` を取るようになったため追従した。
+- `DailyCapEvaluatorTest` は `evaluate` と `recordPaid` の signature 変更に追従した。
+- `EventDispatcherTest` は `RewardPipeline` が `RewardDispatcher` を取るようになったため追従した。
+- テスト用に `testsupport.InlineRewardDispatcher`（投入されたタスクを呼び出しスレッドで即実行する）を足し、境界キューを介する処理を決定的に検証できるようにした。
 
 ## 残る論点
 

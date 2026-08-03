@@ -115,6 +115,9 @@ ring buffer が `window` 件に満たない間は penalty を発動しない（`
 
 #### daily_cap
 
+計上先の日付はアクションの発生時刻（`occurred_at`）から求める。
+処理時刻から求めると、ワーカーのキューが深いときに 23:59 のアクションが翌日の枠へ計上される。
+
 その日の累計報酬を取得し、`amount` との差分を確認する。
 報酬を支払うと差分を超える場合、超過分だけ報酬を削る。
 日次累計が既に上限に達している場合は報酬 0。
@@ -175,18 +178,28 @@ advancement 経路の場合のみ、最後に `AdvancementProgress.revokeCriteri
 - 内蔵 Modifier：内部例外時はその Modifier を skip し、ログに記録。
 - 拡張 Modifier・Splitter：個別の Modifier/Splitter が例外を投げた場合、その 1 件のみ skip。chain 全体は継続。
 - 丸め：`rounding_mode: UNNECESSARY` を指定していて実際には端数がある場合、`ArithmeticException` が上がる。当該行動の報酬を 0 として続行し、WARNING をログに残す。
-- Economy 送金：送金失敗は致命扱い。リトライ後、`action_log` に `final_reward` を負号で書き込み（または別フラグで）、運営に通知。
+- Economy 送金：送金失敗は SEVERE ログに残し、運営に通知する。`economy_on_main` が true のとき送金の成否は段階 11 より後に確定しうるため、`action_log` へは反映しない。
 - 行動ログ：書き込み失敗時はリトライ。リトライ失敗は致命扱い。
+- 報酬キュー溢れ：そのアクションの段階 4 以降を丸ごと捨てる。深度が閾値を超えた時点で WARNING を出すので、drop に至る前に検知できる。`/jobs admin queue` で深度と累計 drop 件数と処理レートを読む。
 
 ## スレッドモデル
 
 Bukkit イベントは main thread で発火する。
-パイプラインの段階 1 から 9 までは main thread で同期実行する。
-段階 10 の送金は Economy プラグインの契約に従う（同期前提）。
-段階 11 のログ書き込みのみ async に流す。
+パイプラインは prologue（段階 1 から 3 と 12）と worker（段階 4 から 11）の 2 ブロックに分かれる（[async-reward-pipeline.md](../plan/async-reward-pipeline.md)）。
 
-`PlayerAdvancementDoneEvent` 経由のときも同様、main thread で実行する。
-`revokeCriteria` も main thread で行う必要がある。
+prologue は listener の中で main thread で同期実行する。
+段階 3 が `Block#getState` と PDC と `Entity#getEntitySpawnReason` を読み、段階 12 の `revokeCriteria` も main thread を要するためである。
+段階 12 を末尾ではなく prologue に置くのは、ワーカー経由にすると advancement の再発火が遅れ、その間のイベントを取りこぼすからである。
+`revokeCriteria` は報酬の算出結果に依存しないので、位置を移しても意味論は変わらない。
+
+worker は Jobs 専用の単一 daemon スレッドで走る。
+ワーカーを 1 本に絞ることで、`VarietyRingBuffer` と `DailyTotalCache` の read-modify-write が直列化される。
+
+Bukkit API を要する副作用だけを main thread へ投げ返す。
+rare の announce は `AsyncExecutor#runOnMain` へ、`reward.async.economy_on_main` が true のときの送金は `MainWorkQueue` へ渡す。
+ワーカーは投げ返した処理の完了を待たない。
+
+`reward.async.enabled: false` のときは分割せず、全段階を main thread で同期実行する。
 
 ## 関連 ADR
 
@@ -199,3 +212,4 @@ Bukkit イベントは main thread で発火する。
 - [ADR-0016 recently_placed_break は placer 非依存](./adr/0016-recently-placed-break.md)
 - [ADR-0017 投入者追跡を共通化する](./adr/0017-operator-tracking-common.md)
 - [ADR-0019 報酬額を小数値として扱う](./adr/0019-decimal-reward.md)
+- [ADR-0021 報酬パイプラインを単一ワーカーで非同期化する](./adr/0021-async-reward-pipeline.md)

@@ -65,6 +65,13 @@ command:
     reset_variety:
       ok: "<green><name> の単調性 ring buffer をクリアしました。</green>"
       offline: "<yellow><name> はオフラインです (variety は memory-only)。</yellow>"
+    queue:
+      header: "<gold>== 報酬キュー ==</gold>"
+      disabled: "<yellow>reward.async.enabled が false です (全段階を main thread で実行)。</yellow>"
+      depth: "<gray>キュー深度:</gray> <white><depth></white><gray> / 上限 <capacity> (<percent>%)</gray>"
+      dropped: "<gray>累計 drop:</gray> <white><dropped></white><gray> 件</gray>"
+      rate: "<gray>処理レート:</gray> <white><rate></white><gray> 件/秒 (累計 <processed> 件)</gray>"
+      main_pending: "<gray>main thread 待ち:</gray> <white><pending></white><gray> 件 / tick 上限 <per_tick></gray>"
     flush:
       ok: "<green>action_log を flush しました (<count> 件)。</green>"
       error: "<red>flush に失敗しました: <error></red>"

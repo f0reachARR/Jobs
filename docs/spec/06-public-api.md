@@ -148,6 +148,8 @@ public interface JobRewardModifier {
 
 public class JobRewardContext {
   public Player getPlayer();
+  public UUID getPlayerUuid();
+  public String getPlayerName();
   public String getJobId();
   public String getActionKey();
   public double getCurrentReward();  // ここまでの段階で確定している報酬 (未丸め)
@@ -162,6 +164,16 @@ public class ModifiedReward {
 
 `getCurrentReward` と `reward` は丸める前の値である（[ADR-0019](./adr/0019-decimal-reward.md)）。
 Modifier 実装側で丸めを行うと合成順で結果が変わるため、丸めはパイプライン末尾の丸めステージに一本化する。
+
+**スレッド契約**：`modify` は Jobs 専用のワーカースレッドから呼ばれる。main thread ではない（[ADR-0021](./adr/0021-async-reward-pipeline.md)）。
+
+`getPlayer()` でワーカースレッドから触れてよいのは、参照の同一性と `getUniqueId()` や `isOnline()` のような状態を持たない読み出しに限る。
+位置、インベントリ、装備といった可変状態の読み書きは、実装側で main thread へ戻してから行う。
+UUID と名前だけで足りるなら `getPlayerUuid()` と `getPlayerName()` を使う。
+報酬処理がキューに滞在するあいだにログアウトしている場合があるので、オンライン前提の処理では `isOnline()` を確認する。
+
+ワーカーは 1 本しかないので、ここでブロッキング I/O を行うとサーバ全体の報酬処理が詰まる。
+所要時間が `reward.async.slow_extension_threshold_ms` を超えると、どの `getId()` が遅いかを WARNING に出す。
 
 実装の典型例。
 
@@ -193,6 +205,8 @@ public class Split {
 
 `getRewardAfterModifiers` と `deductedFromPlayer` も丸め前の `double` である。
 プラグイン境界の最終丸めは Job プラグイン側で行うため、Splitter は素の比率計算だけを書けばよい。
+
+`split` のスレッド契約は `JobRewardModifier#modify` と同じで、Jobs 専用のワーカースレッドから呼ばれる。
 
 実装の典型例。
 

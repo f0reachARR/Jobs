@@ -209,8 +209,11 @@ public final class JobsServices {
     }
 
     private void wireExtensions() {
-        this.extensionModifierChain = new ExtensionModifierChain(plugin);
-        this.splitterChain = new SplitterChain(plugin);
+        // ワーカーは 1 本なので、遅い拡張実装は全プレイヤーの報酬処理を詰まらせる。
+        var slowReporter = new me.f0reach.jobs.modifier.SlowExtensionReporter(
+                plugin.getLogger(), config.reward().async().slowExtensionThresholdMs());
+        this.extensionModifierChain = new ExtensionModifierChain(plugin, slowReporter);
+        this.splitterChain = new SplitterChain(plugin, slowReporter);
         this.queryService = new ActionLogQueryServiceImpl(actionLogRepository, asyncExecutor);
         PlayerJobServiceImpl playerJobService =
                 new PlayerJobServiceImpl(specialtyService, playerJobRepository, asyncExecutor);

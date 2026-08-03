@@ -4,6 +4,7 @@ import me.f0reach.jobs.api.JobsApi;
 import me.f0reach.jobs.api.extension.JobRewardSplitter;
 import me.f0reach.jobs.api.extension.Split;
 import me.f0reach.jobs.modifier.PipelineJobRewardContext;
+import me.f0reach.jobs.modifier.SlowExtensionReporter;
 import me.f0reach.jobs.pipeline.PipelineContext;
 import org.bukkit.plugin.Plugin;
 
@@ -25,10 +26,16 @@ import java.util.logging.Level;
 public final class SplitterChain implements JobsApi.ExtensionRegistry<JobRewardSplitter> {
 
     private final Plugin plugin;
+    private final SlowExtensionReporter slowReporter;
     private final Map<String, JobRewardSplitter> byId = new ConcurrentHashMap<>();
 
     public SplitterChain(Plugin plugin) {
+        this(plugin, SlowExtensionReporter.disabled());
+    }
+
+    public SplitterChain(Plugin plugin, SlowExtensionReporter slowReporter) {
         this.plugin = plugin;
+        this.slowReporter = slowReporter;
     }
 
     @Override
@@ -56,6 +63,7 @@ public final class SplitterChain implements JobsApi.ExtensionRegistry<JobRewardS
                 .sorted(Comparator.comparingInt(JobRewardSplitter::getPriority))
                 .toList();
         for (JobRewardSplitter s : ordered) {
+            long startedAt = slowReporter.now();
             try {
                 Split split = s.split(new PipelineJobRewardContext(ctx, net, afterModifiers));
                 if (split == null) continue;
@@ -64,6 +72,8 @@ public final class SplitterChain implements JobsApi.ExtensionRegistry<JobRewardS
             } catch (RuntimeException e) {
                 plugin.getLogger().log(Level.WARNING,
                         "JobRewardSplitter '" + s.getId() + "' threw; skipping", e);
+            } finally {
+                slowReporter.reportIfSlow("JobRewardSplitter", s.getId(), startedAt);
             }
         }
         return net;

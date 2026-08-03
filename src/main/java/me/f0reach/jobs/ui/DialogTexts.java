@@ -67,6 +67,12 @@ public final class DialogTexts {
     public static final String COMMAND_ADMIN_RESET_DAILY_CAP_OK = "command.admin.reset_daily_cap.ok";
     public static final String COMMAND_ADMIN_RESET_VARIETY_OK = "command.admin.reset_variety.ok";
     public static final String COMMAND_ADMIN_RESET_VARIETY_OFFLINE = "command.admin.reset_variety.offline";
+    public static final String COMMAND_ADMIN_QUEUE_HEADER = "command.admin.queue.header";
+    public static final String COMMAND_ADMIN_QUEUE_DISABLED = "command.admin.queue.disabled";
+    public static final String COMMAND_ADMIN_QUEUE_DEPTH = "command.admin.queue.depth";
+    public static final String COMMAND_ADMIN_QUEUE_DROPPED = "command.admin.queue.dropped";
+    public static final String COMMAND_ADMIN_QUEUE_RATE = "command.admin.queue.rate";
+    public static final String COMMAND_ADMIN_QUEUE_MAIN_PENDING = "command.admin.queue.main_pending";
     public static final String COMMAND_ADMIN_FLUSH_OK = "command.admin.flush.ok";
     public static final String COMMAND_ADMIN_FLUSH_ERROR = "command.admin.flush.error";
     public static final String COMMAND_ADMIN_KVS_UNSUPPORTED = "command.admin.kvs.unsupported";

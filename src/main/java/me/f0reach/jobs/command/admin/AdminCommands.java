@@ -18,6 +18,9 @@ import me.f0reach.jobs.domain.job.JobId;
 import me.f0reach.jobs.modifier.variety.VarietyPenaltyEvaluator;
 import me.f0reach.jobs.api.event.JobActionPaidEvent;
 import me.f0reach.jobs.persistence.ActionLogRepository;
+import me.f0reach.jobs.pipeline.async.MainWorkQueue;
+import me.f0reach.jobs.pipeline.async.RewardWorkQueue;
+import me.f0reach.jobs.pipeline.async.RewardWorker;
 import me.f0reach.jobs.persistence.dto.ActionLogRow;
 import me.f0reach.jobs.persistence.dto.PlayerJobRow;
 import me.f0reach.jobs.specialty.SpecialtyChangeResult;
@@ -78,6 +81,7 @@ public final class AdminCommands {
                 .then(buildResetDailyCap())
                 .then(buildResetVariety())
                 .then(buildFlush())
+                .then(buildQueue())
                 .then(kvsCommands.build());
     }
 
@@ -150,6 +154,12 @@ public final class AdminCommands {
         return Commands.literal("flush")
                 .requires(s -> s.getSender().hasPermission(Permissions.ADMIN_FLUSH))
                 .executes(this::executeFlush);
+    }
+
+    private LiteralArgumentBuilder<CommandSourceStack> buildQueue() {
+        return Commands.literal("queue")
+                .requires(s -> s.getSender().hasPermission(Permissions.ADMIN_QUEUE))
+                .executes(this::executeQueue);
     }
 
     private LiteralArgumentBuilder<CommandSourceStack> buildStats() {
@@ -558,6 +568,47 @@ public final class AdminCommands {
                     sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_FLUSH_OK,
                             Placeholder.parsed("count", Integer.toString(count))));
                 }));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    /**
+     * 報酬キューの深度と drop 件数と処理レートを出す。
+     *
+     * <p>容量を増やしても吸収できるのはバーストだけで、到着レートがワーカーの
+     * スループットを恒常的に上回る状態は drop が起きる前にここで見える
+     * （docs/plan/async-reward-pipeline.md 「境界キューの容量」）。
+     */
+    private int executeQueue(CommandContext<CommandSourceStack> ctx) {
+        JobsServices bound = requireBound(ctx);
+        if (bound == null) return Command.SINGLE_SUCCESS;
+        CommandSender sender = ctx.getSource().getSender();
+        sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_QUEUE_HEADER));
+
+        RewardWorkQueue queue = bound.rewardWorkQueue();
+        RewardWorker worker = bound.rewardWorker();
+        if (queue == null || worker == null) {
+            sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_QUEUE_DISABLED));
+            return Command.SINGLE_SUCCESS;
+        }
+
+        int depth = queue.size();
+        int capacity = queue.capacity();
+        sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_QUEUE_DEPTH,
+                Placeholder.parsed("depth", Integer.toString(depth)),
+                Placeholder.parsed("capacity", Integer.toString(capacity)),
+                Placeholder.parsed("percent", String.format("%.1f", 100.0 * depth / capacity))));
+        sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_QUEUE_DROPPED,
+                Placeholder.parsed("dropped", Long.toString(queue.droppedTotal()))));
+        sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_QUEUE_RATE,
+                Placeholder.parsed("rate", String.format("%.1f", worker.ratePerSecond())),
+                Placeholder.parsed("processed", Long.toString(worker.processedTotal()))));
+
+        MainWorkQueue mainQueue = bound.mainWorkQueue();
+        if (mainQueue != null) {
+            sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_QUEUE_MAIN_PENDING,
+                    Placeholder.parsed("pending", Integer.toString(mainQueue.pending())),
+                    Placeholder.parsed("per_tick", Integer.toString(mainQueue.perTick()))));
+        }
         return Command.SINGLE_SUCCESS;
     }
 
