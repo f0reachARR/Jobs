@@ -27,6 +27,25 @@ reward:
   # 丸め方式。java.math.RoundingMode の名称をそのまま指定する。
   # HALF_UP / HALF_EVEN / HALF_DOWN / UP / DOWN / CEILING / FLOOR / UNNECESSARY のいずれか。
   rounding_mode: HALF_UP
+  # 報酬パイプラインの非同期実行。docs/plan/async-reward-pipeline.md を参照。
+  async:
+    # 段階 4 (基礎報酬) から 11 (行動ログ) を専用ワーカースレッドで実行するか。
+    # false のとき全段階を main thread で同期実行する (従来の挙動)。
+    enabled: true
+    # ワーカーへの境界キュー容量。溢れた分は WARNING を出して捨てる。
+    # 1 件あたり 200 バイト前後なので、100000 件で 20MB 程度を上限として見込む。
+    queue_capacity: 100000
+    # キュー深度がこの割合を超えたら WARNING を出す (30 秒に 1 回へ絞る)。
+    backlog_warn_ratio: [0.5, 0.8]
+    # 段階 10 の Vault 送金を main thread へ投げ返して実行するか。
+    # Economy プラグインがスレッドセーフでない場合は true にする。
+    economy_on_main: false
+    # economy_on_main が true のとき、1 tick に main thread で処理する送金の上限。
+    main_work_per_tick: 200
+    # 拡張 Modifier / Splitter chain 1 件の所要時間がこれを超えたら WARNING を出す (ミリ秒)。
+    slow_extension_threshold_ms: 50
+    # onDisable でワーカーの drain を待つ上限 (ミリ秒)。
+    drain_timeout_ms: 5000
 
 daily_cap:
   # 1 日あたりの報酬上限。scope は total (全ジョブ合算) または per_job。

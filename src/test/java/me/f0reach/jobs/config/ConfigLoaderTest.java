@@ -93,4 +93,113 @@ class ConfigLoaderTest {
         assertEquals(2, config.reward().decimals());
         assertEquals(java.math.RoundingMode.HALF_EVEN, config.reward().roundingMode());
     }
+
+    @Test
+    void rewardAsyncDefaultsWhenSectionMissing() {
+        PluginConfig config = load("""
+                specialty_mode:
+                  reward_non_specialty: 0.0
+                  change_policy:
+                    - default:
+                      cooldown: 5d
+                reward:
+                  decimals: 0
+                  rounding_mode: HALF_UP
+                daily_cap:
+                  amount: 0
+                  scope: total
+                persistence:
+                  type: mysql
+                kvs:
+                  type: memory
+                """);
+        PluginConfig.AsyncConfig async = config.reward().async();
+        assertEquals(PluginConfig.AsyncConfig.defaults(), async);
+        assertTrue(async.enabled());
+        assertEquals(100_000, async.queueCapacity());
+        assertFalse(async.economyOnMain());
+    }
+
+    @Test
+    void rewardAsyncOverridesEveryKey() {
+        PluginConfig config = load("""
+                specialty_mode:
+                  reward_non_specialty: 0.0
+                  change_policy:
+                    - default:
+                      cooldown: 5d
+                reward:
+                  decimals: 0
+                  rounding_mode: HALF_UP
+                  async:
+                    enabled: false
+                    queue_capacity: 512
+                    backlog_warn_ratio: [0.25, 0.9]
+                    economy_on_main: true
+                    main_work_per_tick: 32
+                    slow_extension_threshold_ms: 10
+                    drain_timeout_ms: 1234
+                daily_cap:
+                  amount: 0
+                  scope: total
+                persistence:
+                  type: mysql
+                kvs:
+                  type: memory
+                """);
+        PluginConfig.AsyncConfig async = config.reward().async();
+        assertFalse(async.enabled());
+        assertEquals(512, async.queueCapacity());
+        assertEquals(java.util.List.of(0.25, 0.9), async.backlogWarnRatios());
+        assertTrue(async.economyOnMain());
+        assertEquals(32, async.mainWorkPerTick());
+        assertEquals(10L, async.slowExtensionThresholdMs());
+        assertEquals(1234L, async.drainTimeoutMs());
+    }
+
+    @Test
+    void rewardAsyncRejectsInvalidQueueCapacity() {
+        org.junit.jupiter.api.Assertions.assertThrows(ConfigException.class, () -> load("""
+                specialty_mode:
+                  reward_non_specialty: 0.0
+                  change_policy:
+                    - default:
+                      cooldown: 5d
+                reward:
+                  decimals: 0
+                  rounding_mode: HALF_UP
+                  async:
+                    queue_capacity: 0
+                daily_cap:
+                  amount: 0
+                  scope: total
+                persistence:
+                  type: mysql
+                kvs:
+                  type: memory
+                """));
+    }
+
+    @Test
+    void rewardAsyncRejectsOutOfRangeBacklogRatio() {
+        org.junit.jupiter.api.Assertions.assertThrows(ConfigException.class, () -> load("""
+                specialty_mode:
+                  reward_non_specialty: 0.0
+                  change_policy:
+                    - default:
+                      cooldown: 5d
+                reward:
+                  decimals: 0
+                  rounding_mode: HALF_UP
+                  async:
+                    backlog_warn_ratio: [1.5]
+                daily_cap:
+                  amount: 0
+                  scope: total
+                persistence:
+                  type: mysql
+                kvs:
+                  type: memory
+                """));
+    }
 }

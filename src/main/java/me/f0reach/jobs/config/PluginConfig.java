@@ -27,14 +27,18 @@ public record PluginConfig(
     ) {}
 
     /**
-     * 報酬額の丸め設定。ADR-0019 と spec/04-reward-pipeline.md の丸め段階を参照。
+     * 報酬額の丸め設定と非同期実行の設定。
+     * ADR-0019 と spec/04-reward-pipeline.md の丸め段階、
+     * docs/plan/async-reward-pipeline.md を参照。
      *
      * @param decimals     小数点以下の桁数。0..6 を許容。
      * @param roundingMode {@link java.math.RoundingMode} の名称そのまま。
+     * @param async        段階 4 以降を専用ワーカーで回す設定。
      */
     public record RewardConfig(
             int decimals,
-            RoundingMode roundingMode
+            RoundingMode roundingMode,
+            AsyncConfig async
     ) {
         public RewardConfig {
             if (decimals < 0 || decimals > 6) {
@@ -43,6 +47,57 @@ public record PluginConfig(
             if (roundingMode == null) {
                 throw new IllegalArgumentException("reward.rounding_mode is required");
             }
+            if (async == null) async = AsyncConfig.defaults();
+        }
+    }
+
+    /**
+     * 報酬パイプラインの非同期実行設定。
+     * docs/plan/async-reward-pipeline.md 「config」を参照。
+     *
+     * @param enabled                  段階 4 から 11 を専用ワーカースレッドで実行するか。
+     *                                 false のとき全段階を main thread で同期実行する。
+     * @param queueCapacity            ワーカーへの境界キュー容量。溢れた分は捨てる。
+     * @param backlogWarnRatios        キュー深度がこの割合を超えたら WARNING を出す。
+     * @param economyOnMain            段階 10 の送金を main thread へ投げ返すか。
+     * @param mainWorkPerTick          economyOnMain のとき 1 tick に main thread で処理する上限。
+     * @param slowExtensionThresholdMs 拡張 chain 1 件がこれを超えたら WARNING を出す。
+     * @param drainTimeoutMs           onDisable でワーカーの drain を待つ上限。
+     */
+    public record AsyncConfig(
+            boolean enabled,
+            int queueCapacity,
+            List<Double> backlogWarnRatios,
+            boolean economyOnMain,
+            int mainWorkPerTick,
+            long slowExtensionThresholdMs,
+            long drainTimeoutMs
+    ) {
+        public AsyncConfig {
+            if (queueCapacity <= 0) {
+                throw new IllegalArgumentException("reward.async.queue_capacity must be > 0");
+            }
+            if (mainWorkPerTick <= 0) {
+                throw new IllegalArgumentException("reward.async.main_work_per_tick must be > 0");
+            }
+            if (slowExtensionThresholdMs < 0) {
+                throw new IllegalArgumentException("reward.async.slow_extension_threshold_ms must be >= 0");
+            }
+            if (drainTimeoutMs < 0) {
+                throw new IllegalArgumentException("reward.async.drain_timeout_ms must be >= 0");
+            }
+            backlogWarnRatios = backlogWarnRatios == null ? List.of() : List.copyOf(backlogWarnRatios);
+            for (Double ratio : backlogWarnRatios) {
+                if (ratio == null || ratio <= 0.0 || ratio > 1.0) {
+                    throw new IllegalArgumentException(
+                            "reward.async.backlog_warn_ratio entries must be in (0, 1]");
+                }
+            }
+        }
+
+        public static AsyncConfig defaults() {
+            return new AsyncConfig(
+                    true, 100_000, List.of(0.5, 0.8), false, 200, 50L, 5_000L);
         }
     }
 

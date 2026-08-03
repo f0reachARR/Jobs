@@ -32,7 +32,8 @@ public final class ConfigLoader {
 
     private PluginConfig.RewardConfig loadReward(ConfigurationSection section) {
         if (section == null) {
-            return new PluginConfig.RewardConfig(0, RoundingMode.HALF_UP);
+            return new PluginConfig.RewardConfig(
+                    0, RoundingMode.HALF_UP, PluginConfig.AsyncConfig.defaults());
         }
         int decimals = section.getInt("decimals", 0);
         String modeRaw = section.getString("rounding_mode", "HALF_UP").toUpperCase(Locale.ROOT);
@@ -43,10 +44,37 @@ public final class ConfigLoader {
             throw new ConfigException("Unknown reward.rounding_mode: " + modeRaw, e);
         }
         try {
-            return new PluginConfig.RewardConfig(decimals, mode);
+            return new PluginConfig.RewardConfig(
+                    decimals, mode, loadRewardAsync(section.getConfigurationSection("async")));
         } catch (IllegalArgumentException e) {
             throw new ConfigException(e.getMessage(), e);
         }
+    }
+
+    private PluginConfig.AsyncConfig loadRewardAsync(ConfigurationSection section) {
+        PluginConfig.AsyncConfig defaults = PluginConfig.AsyncConfig.defaults();
+        if (section == null) return defaults;
+        List<Double> ratios = new ArrayList<>();
+        if (section.isSet("backlog_warn_ratio")) {
+            for (Object raw : section.getList("backlog_warn_ratio", List.of())) {
+                if (!(raw instanceof Number n)) {
+                    throw new ConfigException(
+                            "reward.async.backlog_warn_ratio must be a list of numbers, got: " + raw);
+                }
+                ratios.add(n.doubleValue());
+            }
+        } else {
+            ratios.addAll(defaults.backlogWarnRatios());
+        }
+        return new PluginConfig.AsyncConfig(
+                section.getBoolean("enabled", defaults.enabled()),
+                section.getInt("queue_capacity", defaults.queueCapacity()),
+                ratios,
+                section.getBoolean("economy_on_main", defaults.economyOnMain()),
+                section.getInt("main_work_per_tick", defaults.mainWorkPerTick()),
+                section.getLong("slow_extension_threshold_ms", defaults.slowExtensionThresholdMs()),
+                section.getLong("drain_timeout_ms", defaults.drainTimeoutMs())
+        );
     }
 
     private PluginConfig.SpecialtyModeConfig loadSpecialtyMode(ConfigurationSection section) {

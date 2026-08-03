@@ -62,7 +62,7 @@ class RewardRoundingStageTest {
     void decimalsZeroRoundsToInteger() {
         RewardRoundingStage s = new RewardRoundingStage(
                 MockBukkit.createMockPlugin(),
-                new PluginConfig.RewardConfig(0, RoundingMode.HALF_UP));
+                new PluginConfig.RewardConfig(0, RoundingMode.HALF_UP, PluginConfig.AsyncConfig.defaults()));
         PipelineContext c = ctxWith(1.5, 2.4, 3.6);
         s.execute(c);
         assertEquals(2.0, c.baseReward());
@@ -74,7 +74,7 @@ class RewardRoundingStageTest {
     void decimalsTwoKeepsCentPrecision() {
         RewardRoundingStage s = new RewardRoundingStage(
                 MockBukkit.createMockPlugin(),
-                new PluginConfig.RewardConfig(2, RoundingMode.HALF_UP));
+                new PluginConfig.RewardConfig(2, RoundingMode.HALF_UP, PluginConfig.AsyncConfig.defaults()));
         PipelineContext c = ctxWith(1.235, 2.005, 3.499);
         s.execute(c);
         assertEquals(1.24, c.baseReward());
@@ -86,7 +86,7 @@ class RewardRoundingStageTest {
     void floorTruncatesTowardZero() {
         RewardRoundingStage s = new RewardRoundingStage(
                 MockBukkit.createMockPlugin(),
-                new PluginConfig.RewardConfig(0, RoundingMode.FLOOR));
+                new PluginConfig.RewardConfig(0, RoundingMode.FLOOR, PluginConfig.AsyncConfig.defaults()));
         PipelineContext c = ctxWith(1.9, 2.5, 0.1);
         s.execute(c);
         assertEquals(1.0, c.baseReward());
@@ -98,7 +98,7 @@ class RewardRoundingStageTest {
     void unnecessaryWithFractionZeroesRewardAndContinues() {
         RewardRoundingStage s = new RewardRoundingStage(
                 MockBukkit.createMockPlugin(),
-                new PluginConfig.RewardConfig(0, RoundingMode.UNNECESSARY));
+                new PluginConfig.RewardConfig(0, RoundingMode.UNNECESSARY, PluginConfig.AsyncConfig.defaults()));
         PipelineContext c = ctxWith(1.5, 2.5, 3.5);
         s.execute(c);
         assertEquals(0.0, c.baseReward());
