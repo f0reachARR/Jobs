@@ -13,7 +13,11 @@ import org.bukkit.block.data.Ageable;
  * spec/04-reward-pipeline.md 「自動化対策」3 番目 (ADR-0016)。
  *
  * <p>Ageable block は対象外 (unplanted_crop_harvest 側で扱う)。
+ * {@link PlacementRecorder} は作物も記録するが (ADR-0023 の設置側判定が使う)、
+ * 破壊側で作物を巻き込まない判断 (ADR-0016) はこの check が持つ。
  * TTL は BlockPlace 時点で置く (PlacementRecorder)。
+ *
+ * <p>設置側の対になる判定は {@link RecentlyPlacedReplaceCheck}。ON/OFF と window を共有する。
  */
 public final class RecentlyPlacedBreakCheck implements AntiAutomationCheck {
 

@@ -8,6 +8,7 @@ import me.f0reach.jobs.domain.job.VarietyPenaltyConfig;
 import me.f0reach.jobs.persistence.dto.Actor;
 import me.f0reach.jobs.persistence.dto.PlayerJobHistoryRow;
 import me.f0reach.jobs.registry.JobRegistry;
+import me.f0reach.jobs.testsupport.FixedFirstJoinProvider;
 import me.f0reach.jobs.testsupport.InMemoryPlayerJobHistoryRepository;
 import me.f0reach.jobs.testsupport.InMemoryPlayerJobRepository;
 import org.bukkit.NamespacedKey;
@@ -75,7 +76,40 @@ class SpecialtyServiceTest {
                 )),
                 ZoneOffset.UTC
         );
-        return new SpecialtyService(plugin, repo, history, reg, policy, clock);
+        return new SpecialtyService(
+                plugin, repo, history, reg, policy, FixedFirstJoinProvider.unknown(), clock);
+    }
+
+    /** 初参加から firstJoinWithin 以内なら newbie、それ以外は fallback を返す policy で組む。 */
+    private SpecialtyService buildFirstJoinService(
+            me.f0reach.jobs.persistence.PlayerJobRepository repo,
+            me.f0reach.jobs.persistence.PlayerJobHistoryRepository history,
+            JobRegistry reg,
+            Clock clock,
+            Instant firstJoinAt,
+            Duration firstJoinWithin,
+            Duration newbie,
+            Duration fallback
+    ) {
+        CooldownPolicy policy = new CooldownPolicy(
+                List.of(
+                        new me.f0reach.jobs.config.PluginConfig.ChangePolicy(
+                                false,
+                                new me.f0reach.jobs.config.PluginConfig.WithinCondition(
+                                        List.of(), firstJoinWithin),
+                                newbie
+                        ),
+                        new me.f0reach.jobs.config.PluginConfig.ChangePolicy(
+                                true,
+                                me.f0reach.jobs.config.PluginConfig.WithinCondition.none(),
+                                fallback
+                        )
+                ),
+                ZoneOffset.UTC
+        );
+        return new SpecialtyService(
+                plugin, repo, history, reg, policy,
+                FixedFirstJoinProvider.at(firstJoinAt), clock);
     }
 
     @Test
@@ -330,6 +364,92 @@ class SpecialtyServiceTest {
         SpecialtyChangeResult result = service.setForced(
                 target.getUniqueId(), new JobId("mining"), UUID.randomUUID());
         assertInstanceOf(SpecialtyChangeResult.Success.class, result);
+    }
+
+    @Test
+    void newPlayerGetsFirstJoinCooldown() {
+        JobRegistry registry = new JobRegistry();
+        registry.loadAll(List.of(job("combat"), job("mining")));
+        InMemoryPlayerJobRepository repo = new InMemoryPlayerJobRepository();
+        InMemoryPlayerJobHistoryRepository history = new InMemoryPlayerJobHistoryRepository();
+
+        Instant firstJoin = Instant.parse("2026-01-01T00:00:00Z");
+        // 初参加の 1 時間後に select、その 2 時間後に change → 初参加から 3h 経過で 72h 以内
+        SpecialtyService atSelect = buildFirstJoinService(repo, history, registry,
+                Clock.fixed(firstJoin.plus(Duration.ofHours(1)), ZoneOffset.UTC),
+                firstJoin, Duration.ofHours(72), Duration.ofHours(1), Duration.ofDays(5));
+        Player player = server.addPlayer();
+        atSelect.loadPlayer(player.getUniqueId());
+        atSelect.select(player, new JobId("combat"));
+
+        SpecialtyService atChange = buildFirstJoinService(repo, history, registry,
+                Clock.fixed(firstJoin.plus(Duration.ofHours(3)), ZoneOffset.UTC),
+                firstJoin, Duration.ofHours(72), Duration.ofHours(1), Duration.ofDays(5));
+        atChange.loadPlayer(player.getUniqueId());
+
+        assertEquals(Duration.ofHours(1), atChange.currentCooldown(player.getUniqueId()));
+        // select から 2 時間経っているので 1h cooldown は明けている
+        assertInstanceOf(SpecialtyChangeResult.Success.class,
+                atChange.change(player, new JobId("mining")));
+    }
+
+    @Test
+    void veteranPlayerFallsBackToDefaultCooldown() {
+        JobRegistry registry = new JobRegistry();
+        registry.loadAll(List.of(job("combat"), job("mining")));
+        InMemoryPlayerJobRepository repo = new InMemoryPlayerJobRepository();
+        InMemoryPlayerJobHistoryRepository history = new InMemoryPlayerJobHistoryRepository();
+
+        Instant firstJoin = Instant.parse("2026-01-01T00:00:00Z");
+        Instant selectAt = firstJoin.plus(Duration.ofDays(30));
+        SpecialtyService atSelect = buildFirstJoinService(repo, history, registry,
+                Clock.fixed(selectAt, ZoneOffset.UTC),
+                firstJoin, Duration.ofHours(72), Duration.ofHours(1), Duration.ofDays(5));
+        Player player = server.addPlayer();
+        atSelect.loadPlayer(player.getUniqueId());
+        atSelect.select(player, new JobId("combat"));
+
+        // 初参加から 72h を大きく超えているので default の 5d が効く
+        SpecialtyService atChange = buildFirstJoinService(repo, history, registry,
+                Clock.fixed(selectAt.plus(Duration.ofHours(3)), ZoneOffset.UTC),
+                firstJoin, Duration.ofHours(72), Duration.ofHours(1), Duration.ofDays(5));
+        atChange.loadPlayer(player.getUniqueId());
+
+        assertEquals(Duration.ofDays(5), atChange.currentCooldown(player.getUniqueId()));
+        assertInstanceOf(SpecialtyChangeResult.CooldownRemaining.class,
+                atChange.change(player, new JobId("mining")));
+        assertEquals(selectAt.plus(Duration.ofDays(5)),
+                atChange.nextAvailableAt(player.getUniqueId()).orElseThrow());
+    }
+
+    @Test
+    void crossingFirstJoinThresholdReEvaluatesPolicy() {
+        // base は据え置きのまま policy を毎回引き直すので、しきい値を跨ぐと
+        // 同じ base に対する nextAvailableAt が後退する (ADR-0022 の既知の副作用)。
+        JobRegistry registry = new JobRegistry();
+        registry.loadAll(List.of(job("combat")));
+        InMemoryPlayerJobRepository repo = new InMemoryPlayerJobRepository();
+        InMemoryPlayerJobHistoryRepository history = new InMemoryPlayerJobHistoryRepository();
+
+        Instant firstJoin = Instant.parse("2026-01-01T00:00:00Z");
+        Instant selectAt = firstJoin.plus(Duration.ofHours(71));
+        SpecialtyService atSelect = buildFirstJoinService(repo, history, registry,
+                Clock.fixed(selectAt, ZoneOffset.UTC),
+                firstJoin, Duration.ofHours(72), Duration.ofHours(1), Duration.ofDays(5));
+        Player player = server.addPlayer();
+        atSelect.loadPlayer(player.getUniqueId());
+        atSelect.select(player, new JobId("combat"));
+
+        assertEquals(selectAt.plus(Duration.ofHours(1)),
+                atSelect.nextAvailableAt(player.getUniqueId()).orElseThrow());
+
+        SpecialtyService afterThreshold = buildFirstJoinService(repo, history, registry,
+                Clock.fixed(firstJoin.plus(Duration.ofHours(73)), ZoneOffset.UTC),
+                firstJoin, Duration.ofHours(72), Duration.ofHours(1), Duration.ofDays(5));
+        afterThreshold.loadPlayer(player.getUniqueId());
+
+        assertEquals(selectAt.plus(Duration.ofDays(5)),
+                afterThreshold.nextAvailableAt(player.getUniqueId()).orElseThrow());
     }
 
     @Test

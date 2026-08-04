@@ -203,8 +203,18 @@ public final class AdminCommands {
         sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_INSPECT_COOLDOWN_BASE,
                 Placeholder.parsed("base_at", formatInstant(row.cooldownBaseAt()))));
 
+        // 「なぜこの人だけ cooldown が違うのか」を追えるように、初参加時刻と
+        // 現在適用中の cooldown も出す (change_policy の first_join_within 判定の入力)。
+        sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_INSPECT_FIRST_JOIN,
+                Placeholder.parsed("first_join_at", bound.specialtyService().firstJoinAt(uuid)
+                        .map(AdminCommands::formatInstant)
+                        .orElse("unknown"))));
+        sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_INSPECT_COOLDOWN_APPLIED,
+                Placeholder.parsed("cooldown", formatDuration(
+                        bound.specialtyService().currentCooldown(uuid)))));
+
         // オフライン相手でも DB 上の cooldown_base_at から nextAvailable を計算する。
-        Instant next = bound.specialtyService().nextAvailableFrom(row.cooldownBaseAt());
+        Instant next = bound.specialtyService().nextAvailableFrom(uuid, row.cooldownBaseAt());
         sender.sendMessage(bound.i18n().format(sender, DialogTexts.COMMAND_ADMIN_INSPECT_NEXT_CHANGE,
                 Placeholder.parsed("next_at", formatInstant(next))));
 
@@ -665,6 +675,16 @@ public final class AdminCommands {
     private static String formatInstant(Instant instant) {
         LocalDateTime local = LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
         return local.format(TIMESTAMP);
+    }
+
+    private static String formatDuration(Duration d) {
+        long totalSec = Math.max(0, d.toSeconds());
+        long days = totalSec / 86400;
+        long hours = (totalSec % 86400) / 3600;
+        long minutes = (totalSec % 3600) / 60;
+        if (days > 0) return days + "d " + hours + "h";
+        if (hours > 0) return hours + "h " + minutes + "m";
+        return minutes + "m";
     }
 
     private JobsServices requireBound(CommandContext<CommandSourceStack> ctx) {

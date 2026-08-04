@@ -13,6 +13,7 @@ import me.f0reach.jobs.antiautomation.OperatorTracker;
 import me.f0reach.jobs.antiautomation.PlacementRecorder;
 import me.f0reach.jobs.antiautomation.PlantedFlagWriter;
 import me.f0reach.jobs.antiautomation.RecentlyPlacedBreakCheck;
+import me.f0reach.jobs.antiautomation.RecentlyPlacedReplaceCheck;
 import me.f0reach.jobs.antiautomation.SpawnerOriginCheck;
 import me.f0reach.jobs.antiautomation.TradeRecorder;
 import me.f0reach.jobs.antiautomation.UnplantedCropCheck;
@@ -91,7 +92,9 @@ import me.f0reach.jobs.registry.ActionKeyDeriver;
 import me.f0reach.jobs.registry.JobRegistry;
 import me.f0reach.jobs.registry.ShadowDetector;
 import me.f0reach.jobs.registry.TagResolver;
+import me.f0reach.jobs.specialty.BukkitFirstJoinProvider;
 import me.f0reach.jobs.specialty.CooldownPolicy;
+import me.f0reach.jobs.specialty.FirstJoinProvider;
 import me.f0reach.jobs.specialty.SpecialtyService;
 import me.f0reach.jobs.ui.DialogService;
 import me.f0reach.jobs.ui.JobConditionsDialog;
@@ -143,6 +146,7 @@ public final class JobsServices {
     private DailyRewardTotalRepository dailyRewardTotalRepository;
 
     private SpecialtyService specialtyService;
+    private FirstJoinProvider firstJoinProvider;
     private DialogService dialogService;
     private JobConditionsFormatter jobConditionsFormatter;
     private JobConditionsDialog jobConditionsDialog;
@@ -246,6 +250,7 @@ public final class JobsServices {
                 new SpawnerOriginCheck(),
                 unplanted,
                 new RecentlyPlacedBreakCheck(kvStore),
+                new RecentlyPlacedReplaceCheck(kvStore),
                 new AutoFedProcessingCheck(kvStore),
                 new VillagerRepeatTradeCheck(kvStore),
                 new BreedNonPlayerBreederCheck()
@@ -320,8 +325,10 @@ public final class JobsServices {
 
     private void wireSpecialty() {
         CooldownPolicy policy = new CooldownPolicy(config.specialtyMode().changePolicy());
+        this.firstJoinProvider = new BukkitFirstJoinProvider();
         this.specialtyService = new SpecialtyService(
-                plugin, playerJobRepository, playerJobHistoryRepository, jobRegistry, policy);
+                plugin, playerJobRepository, playerJobHistoryRepository, jobRegistry, policy,
+                firstJoinProvider);
     }
 
     private void wireDialogs() {
@@ -382,6 +389,7 @@ public final class JobsServices {
         pm.registerEvents(
                 new PlayerJoinListener(
                         specialtyService,
+                        firstJoinProvider,
                         specialtyListDialog,
                         varietyPenaltyEvaluator,
                         dailyTotalCache,

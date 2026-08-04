@@ -9,6 +9,7 @@ import me.f0reach.jobs.persistence.dto.Actor;
 import me.f0reach.jobs.registry.JobRegistry;
 import me.f0reach.jobs.specialty.CooldownPolicy;
 import me.f0reach.jobs.specialty.SpecialtyService;
+import me.f0reach.jobs.testsupport.FixedFirstJoinProvider;
 import me.f0reach.jobs.testsupport.InMemoryPlayerJobHistoryRepository;
 import me.f0reach.jobs.testsupport.InMemoryPlayerJobRepository;
 import me.f0reach.jobs.util.AsyncExecutor;
@@ -80,7 +81,8 @@ class PlayerJobServiceImplTest {
                         true, PluginConfig.WithinCondition.none(), cooldown)),
                 ZoneOffset.UTC
         );
-        return new SpecialtyService(plugin, repo, history, reg, policy, clock);
+        return new SpecialtyService(
+                plugin, repo, history, reg, policy, FixedFirstJoinProvider.unknown(), clock);
     }
 
     private static <T> T await(java.util.concurrent.CompletableFuture<T> future) {

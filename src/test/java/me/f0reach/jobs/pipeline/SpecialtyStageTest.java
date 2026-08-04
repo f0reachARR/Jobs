@@ -88,7 +88,8 @@ class SpecialtyStageTest {
                         true, PluginConfig.WithinCondition.none(), Duration.ofDays(5))),
                 ZoneOffset.UTC);
         return new SpecialtyService(
-                plugin, new InMemoryRepo(), new InMemoryHistory(), registry, policy, Clock.systemUTC());
+                plugin, new InMemoryRepo(), new InMemoryHistory(), registry, policy,
+                me.f0reach.jobs.testsupport.FixedFirstJoinProvider.unknown(), Clock.systemUTC());
     }
 
     @Test

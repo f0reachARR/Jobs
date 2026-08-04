@@ -43,6 +43,7 @@ Jobs プラグインは、報酬パイプラインの中で「これは自然な
 | `spawner_origin_kills` | スポナー由来の mob を倒したとき | `entity_killed` |
 | `unplanted_crop_harvest` | 自分（または他プレイヤー）が植えていない作物を収穫したとき | `block_broken`（作物のみ） |
 | `recently_placed_break` | 直近に置かれたブロックを破壊したとき | `block_broken`（作物以外） |
+| `recently_placed_replace` | 直近にブロックが置かれた位置へ置き直したとき | `block_placed`（作物を含む） |
 | `auto_fed_processing` | Furnace や BrewingStand に人手ではなくホッパー等で材料を入れたとき | `item_smelted`, `item_brewed` |
 | `villager_repeat_trade` | 同じ村人と短時間に同じ取引を繰り返したとき | `villager_traded` |
 | `breed_non_player_breeder` | プレイヤー以外（ディスペンサー等）の交配 | `entity_bred` |
@@ -57,6 +58,7 @@ Jobs プラグインは、報酬パイプラインの中で「これは自然な
 - **「経験値は入ったのに通貨だけ入らない」**：Minecraft の経験値と Jobs の報酬は別系統。自動化対策が発動していると通貨だけ 0 になる。
 - **「自分が植えた作物のはずなのに 0 だった」**：チャンクがアンロードされた／爆発で吹き飛んだブロックは「植えた」フラグが失われる仕様。
 - **「置いてすぐ壊しただけで 0 になった」**：置いてから設定秒数（デフォルト 3600 秒 = 1 時間）以内の破壊は `recently_placed_break` の対象。置いて即回収は無効化される。
+- **「同じ場所に置き直したら 0 になった」**：同じ設定秒数のあいだ、直近にブロックが置かれた位置への設置は `recently_placed_replace` の対象。植える → 壊す → また植えるや、置き直しの繰り返しで設置報酬を稼ぐ経路が塞がれている。
 - **「Furnace の中身を取り出したのに 0」**：入れたのがホッパーだと `auto_fed_processing` で 0 になる。人手で入れれば通常どおり報酬対象。
 
 ## 日次キャップ

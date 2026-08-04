@@ -40,6 +40,8 @@ specialty_mode:
   disclose_before_select: true
   disclose_reward_amount: true
   change_policy:
+    - within: { first_join_within: 72h }
+      cooldown: 1h
     - within: { event_hours: [0, 24] }
       cooldown: 1h
     - default:
@@ -51,6 +53,10 @@ specialty_mode:
 - **`disclose_before_select`**：職業一覧のボタンを押したときに、即確定せず条件開示ダイアログを挟むか。`true` 推奨。
 - **`disclose_reward_amount`**：`/jobs info` などで報酬額を表示するか。イベント演出で額を伏せたい場合のみ `false`。rare の chance/reward はこのフラグに関わらず常に非表示。
 - **`change_policy`**：専業変更クールダウン。上から評価し、最初にマッチした `within` 条件が適用される。`default` はフォールバック。時間単位は `1h` / `5d` / `30m` のような書式。イベント開催中を「先着 24 時間だけ短縮」にするような制度に向く。
+  - `within` に書けるのは `event_hours`（時間帯。`end` は排他上限、`[22, 6]` の日跨ぎも可）と `first_join_within`（サーバー初参加からの経過時間の上限）の 2 つ。両方書いた場合はどちらも満たしたときだけマッチする。
+  - `first_join_within: 72h` は「初参加から 72 時間以内のプレイヤー」に効く。合わない職業を選んでしまった新規プレイヤーを救う用途を想定している。「72 時間経過後」を書く手段は無いので、後続のポリシーか `default` で受ける。
+  - 初参加時刻はサーバーの playerdata から取る。取得できないプレイヤーは `first_join_within` にマッチせず、`default` 側の長いクールダウンになる。playerdata を消すと初参加時刻もリセットされ、複数バックエンド構成ではサーバーごとの値になる（[../spec/adr/0022-first-join-based-cooldown.md](../spec/adr/0022-first-join-based-cooldown.md)）。
+  - 判定は毎回引き直すので、しきい値を跨いだプレイヤーは進行中のクールダウンの残りが伸びる。初参加 71 時間目に `1h` で変更したプレイヤーは、72 時間を跨いだ時点で `変更時刻 + 5d` を見ることになる。誰にどのクールダウンが効いているかは `/jobs admin inspect` で確認できる。
 
 ### `reward`
 
@@ -126,7 +132,7 @@ MySQL への接続情報。`retention_days` は `action_log` テーブルの保�
 anti_automation:
   # spawner_origin_kills: zero
   # unplanted_crop_harvest: zero
-  # recently_placed_break:
+  # recently_placed_break:      # 破壊側 (作物以外) と設置側 (作物含む) の両方に効く
   #   window_sec: 3600
   # auto_fed_processing:
   #   operator_ttl_sec: 60
@@ -140,6 +146,7 @@ anti_automation:
       spawner_origin_kill: true
       unplanted_crop_harvest: true
       recently_placed_break: true
+      recently_placed_replace: true
       auto_fed_processing: true
       villager_repeat_trade: true
       breed_non_player_breeder: true
@@ -230,6 +237,7 @@ YAML の構文エラーがあれば失敗メッセージが返り、旧設定の
 
 - 現在の専業
 - cooldown 起点時刻と次回変更可能時刻
+- サーバー初参加時刻と、そのプレイヤーに現在適用されている cooldown（`change_policy` のどのポリシーが効いているかの確認用）
 - 当日累計獲得額
 - 単調性 ring buffer のスナップショット（memory 常駐なのでオフライン時は「取得不可」）
 
@@ -306,7 +314,7 @@ YAML の構文エラーがあれば失敗メッセージが返り、旧設定の
 
 ### `/jobs admin kvs ...`
 
-自動化対策の追跡データ（KVS）を覗く・掃除する。追跡データはメモリ上の短寿命データで、`recently_placed_break`・`auto_fed_processing`・`villager_repeat_trade` の 3 種類が入っている（[../spec/05-persistence.md](../spec/05-persistence.md) の「追跡ストレージ（KVS）」）。
+自動化対策の追跡データ（KVS）を覗く・掃除する。追跡データはメモリ上の短寿命データで、`recently_placed_break` / `recently_placed_replace`・`auto_fed_processing`・`villager_repeat_trade` の 3 種類が入っている（[../spec/05-persistence.md](../spec/05-persistence.md) の「追跡ストレージ（KVS）」）。
 
 | サブコマンド | 動作 |
 |---|---|
@@ -318,13 +326,15 @@ YAML の構文エラーがあれば失敗メッセージが返り、旧設定の
 | `kvs clear <place\|op\|trade>` | 種別ごとに一括削除する |
 | `kvs clear all confirm` | 全削除する。`confirm` は省略できない |
 
+`place:` は作物を含む全ブロックの設置を記録する。エントリ総数は `kvs.memory.max_entries`（既定 500,000）で頭打ちになり、超えるとランダムに evict される。農業系の稼働が多いサーバーでは `kvs stats` で総数を見ておく（evict が起きると追跡窓に穴が空く）。
+
 普段使うのは `kvs block` で、誤検知の切り分けはこの流れになる。
 
 1. 対象のブロックを見ながら `/jobs admin kvs block` を実行する。
-2. `place:` のエントリが出れば `recently_placed_break` の窓の内側にいる（= その報酬は 0 になる）。`op:` のエントリで「投入者なし」が出ていれば `auto_fed_processing` が効いている。
+2. `place:` のエントリが出れば `recently_placed_break` / `recently_placed_replace` の窓の内側にいる（= その位置の破壊報酬と設置報酬は 0 になる）。`op:` のエントリで「投入者なし」が出ていれば `auto_fed_processing` が効いている。
 3. 誤検知と判断したら `/jobs admin kvs remove <key>` で消す。TTL 切れを待つ必要はない。
 
-`kvs clear all` は全追跡データを落とすため、実行直後は自動化検知が一時的に抜ける。窓が切れるまでの間、置いた直後のブロックを壊しても報酬が出る点に注意する。削除系の実行はいずれも sender 名つきでサーバログに残る。
+`kvs clear all` は全追跡データを落とすため、実行直後は自動化検知が一時的に抜ける。窓が切れるまでの間、置いた直後のブロックを壊しても、同じ位置に置き直しても報酬が出る点に注意する。削除系の実行はいずれも sender 名つきでサーバログに残る。
 
 任意の値を書き込むサブコマンドは用意していない。
 
@@ -358,7 +368,7 @@ YAML の構文エラーがあれば失敗メッセージが返り、旧設定の
 | ノード | 効果 |
 |---|---|
 | `jobs.bypass.specialty` | 専業外アクションでも報酬・ログ発生 |
-| `jobs.bypass.anti-automation` | 自動化対策 6 種を通過 |
+| `jobs.bypass.anti-automation` | 自動化対策をすべて通過 |
 | `jobs.bypass.daily-cap` | 日次キャップを無視 |
 | `jobs.bypass.variety-penalty` | 単調性ペナルティ倍率 1.0 固定（ring buffer 更新は継続） |
 | `jobs.bypass.cooldown` | 専業変更クールダウンを無視 |

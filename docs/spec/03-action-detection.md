@@ -27,7 +27,7 @@ Track A だけで 5 職業の代表アクションをすべて表現できる。
 | `item_brewed` | `BrewEvent` | `item`、`potion` | 出力 slot ごとに 1 event × 1 amount |
 | `advancement` | `PlayerAdvancementDoneEvent`（Track B） | `advancement` | 1 アクションごとに 1 件 |
 
-`BlockPlaceEvent` は報酬イベントであると同時に、未植え作物判定と `recently_placed_break` のマーキングにも使う。
+`BlockPlaceEvent` は報酬イベントであると同時に、未植え作物判定と `recently_placed_break` / `recently_placed_replace` のマーキングにも使う。
 `InventoryClickEvent` と `InventoryMoveItemEvent` は `auto_fed_processing` の投入者追跡にも使う。
 
 ## match の評価
@@ -119,21 +119,26 @@ Track B を使わない最小構成では、`data/jobs/advancement/` を空の�
 チャンクアンロードや爆発による破壊で `PDC` が消えるリスクは Paper 標準の挙動に従う。
 高頻度植えで `PDC` 書き込みのオーバーヘッドが問題になる場合は、`Chunk PDC` に座標集合を持つ方式へ移行する余地を残す。
 
-作物判定は `unplanted_crop_harvest` が担う。
-作物ブロックは後述の `recently_placed_break` の追跡対象からは除外する。
+作物の収穫判定は `unplanted_crop_harvest` が担う。
+作物ブロックは後述の `recently_placed_break`（破壊側）の判定対象からは除外する。
+追跡そのものは作物にも行う（設置側の `recently_placed_replace` が使う）。
 
-### recently_placed_break
+### recently_placed_break / recently_placed_replace
 
-placer を問わず、直近に置かれた block の破壊を検知する（[ADR-0016](./adr/0016-recently-placed-break.md)）。
+placer を問わず、直近に置かれた block の破壊と、同じ位置への再設置を検知する（[ADR-0016](./adr/0016-recently-placed-break.md) / [ADR-0023](./adr/0023-recently-placed-replace.md)）。
 
-`BlockPlaceEvent`（Ageable 以外の全ブロック）で KVS に書く。
+`BlockPlaceEvent`（作物を含む全ブロック）で KVS に書く。
 
 - key：`place:<world-uuid>:<x>:<y>:<z>`
-- value：`placed_at`（epoch millis）
+- value：1 バイトのマーカー（「いつ」は TTL が持つ）
 - ttl：`window_sec`
 
 `BlockBreakEvent` の段階 3 直前に `get` する。
-残っていれば `via_recently_placed=true` を立てて 0 確定する。
+残っていれば 0 確定する（`recently_placed_break`）。作物は対象外。
+
+`BlockPlaceEvent` でも同じ key を `get` する。
+残っていれば 0 確定する（`recently_placed_replace`）。作物も対象。
+この `get` は同じ event の `put` より先に走らせる必要があるため、listener は dispatch を済ませてから KVS に書く。
 
 ### auto_fed_processing
 

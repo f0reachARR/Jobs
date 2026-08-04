@@ -196,9 +196,11 @@ rare がヒットしたとき、通常報酬は支払わず rare 報酬で置き
 
 - `spawner_origin_kills`：`zero` のとき、スポナー由来 MOB の討伐報酬を 0 にする。
 - `unplanted_crop_harvest`：`zero` のとき、プレイヤーが植えていない作物の収穫報酬を 0 にする。
-- `recently_placed_break`：直近に置かれた block の破壊報酬を 0 にする（[ADR-0016](./adr/0016-recently-placed-break.md)）。
-  - `window_sec`：置かれてからこの秒数以内の破壊を対象とする。デフォルト 3600。
-  - 作物ブロック（`Ageable`）は追跡対象外で、`unplanted_crop_harvest` 側で扱う。
+- `recently_placed_break`：直近に置かれた block の破壊報酬と、同じ位置への再設置報酬を 0 にする（[ADR-0016](./adr/0016-recently-placed-break.md) / [ADR-0023](./adr/0023-recently-placed-replace.md)）。
+  - `window_sec`：置かれてからこの秒数以内の破壊・再設置を対象とする。デフォルト 3600。
+  - 破壊側（`block_broken`）は作物ブロック（`Ageable`）を対象外とし、`unplanted_crop_harvest` 側で扱う。
+  - 設置側（`block_placed`）は作物を含む全ブロックが対象。置く → 壊す → また置く のループを塞ぐため。
+  - 0 判定の reason は破壊側が `recently_placed_break`、設置側が `recently_placed_replace` に分かれる（通知文言が別）。
 - `auto_fed_processing`：Furnace / BlastFurnace / Smoker / BrewingStand で hopper / dispenser 経由の自動投入から得た完成品の報酬を 0 にする（[ADR-0017](./adr/0017-operator-tracking-common.md)）。
   - `operator_ttl_sec`：手動投入の operator を有効とみなす秒数。デフォルト 60。
   - 対象容器はプラグイン側で固定リスト（4 種）を持ち、YAML では列挙しない。
@@ -229,6 +231,8 @@ specialty_mode:
   disclose_before_select: true     # 選択・変更前に JobConditionsDialog を挟むか
   disclose_reward_amount: true     # JobConditionsDialog / /jobs info で報酬額を出すか
   change_policy:
+    - within: { first_join_within: 72h }         # 初参加から 72 時間以内
+      cooldown: 1h
     - within: { event_hours: [0, 24] }
       cooldown: 1h
     - default:
@@ -267,6 +271,7 @@ anti_automation:
     action_bar:
       spawner_origin_kill: true
       recently_placed_break: true
+      recently_placed_replace: true
       # ...
 ```
 
@@ -287,6 +292,20 @@ rare の `chance` と `reward` はこのフラグに関わらず出さない（`
 **change_policy**：専業変更のクールダウン。
 上から評価し、`within` 条件にマッチした最初のポリシーが適用される。
 `default` は条件なしのフォールバック。
+
+`within` に書けるキーは以下の 2 つで、複数書いた場合はすべて満たしたときだけマッチする（AND）。
+キーを 1 つも持たない `within` はどのポリシーにもマッチしない。
+
+| キー | 意味 |
+|---|---|
+| `event_hours` | `[start, end]` の時間帯。`end` は排他上限。`[22, 6]` のような日跨ぎも書ける |
+| `first_join_within` | サーバー初参加からの経過時間の上限。`now < 初参加時刻 + 値` のときマッチ |
+
+`first_join_within` は `cooldown` と同じ duration 記法（`s` / `m` / `h` / `d`）で、正の値のみ許容する。
+「N 時間経過後」に相当する条件は書けないので、後続のポリシーか `default` で受ける（[ADR-0004](./adr/0004-first-match-wins.md) の first match wins をそのまま踏襲する）。
+初参加時刻は Bukkit の playerdata から取得し、取得できないプレイヤーでは `first_join_within` を持つポリシーはマッチしない（＝より長い `default` 側に落ちる）。詳細と制約は [ADR-0022](./adr/0022-first-join-based-cooldown.md) を参照。
+
+判定は評価のたびに引き直すので、初参加からの経過時間がしきい値を跨ぐと、同じ `cooldown_base_at` に対する「次回変更可能時刻」も変わる（[05-persistence.md](./05-persistence.md) の `cooldown_base_at`）。
 
 **reward**：報酬額の丸め設定（[ADR-0019](./adr/0019-decimal-reward.md)）。
 `decimals` は小数点以下の桁数で、`0` のとき整数のみに丸める。上限は `6`。
@@ -317,5 +336,7 @@ default 値を供給する。per-job YAML でキーが省略されたら default
 - [ADR-0011 自動化対策を内蔵する](./adr/0011-builtin-anti-automation.md)
 - [ADR-0015 追跡ストレージを KVS 抽象化する](./adr/0015-kvs-abstraction.md)
 - [ADR-0016 recently_placed_break は placer 非依存](./adr/0016-recently-placed-break.md)
+- [ADR-0023 recently_placed の判定を再設置にも広げる](./adr/0023-recently-placed-replace.md)
 - [ADR-0017 投入者追跡を共通化する](./adr/0017-operator-tracking-common.md)
 - [ADR-0019 報酬額を小数値として扱う](./adr/0019-decimal-reward.md)
+- [ADR-0022 変更クールダウンを初参加からの経過時間で分岐する](./adr/0022-first-join-based-cooldown.md)

@@ -26,6 +26,8 @@ Job プラグインの設計判断記録（Architecture Decision Record）。
 - [ADR-0019 報酬額を小数値として扱う](./0019-decimal-reward.md)
 - [ADR-0020 KVS の管理操作を別インタフェースに分離する](./0020-kvs-admin-interface.md)
 - [ADR-0021 報酬パイプラインを単一ワーカーで非同期化する](./0021-async-reward-pipeline.md)
+- [ADR-0022 変更クールダウンを初参加からの経過時間で分岐する](./0022-first-join-based-cooldown.md)
+- [ADR-0023 recently_placed の判定を再設置にも広げる](./0023-recently-placed-replace.md)
 
 ## ステータスの読み方
 

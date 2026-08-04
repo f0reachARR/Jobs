@@ -12,7 +12,7 @@ Track A と Track B はマッチ確定後に合流し、以降は共通の流れ
    ↓
 （2）専業判定：プレイヤーの専業 = このジョブか? 否なら完全に return
    ↓
-（3）自動化対策：spawner_origin / unplanted_crop / recently_placed_break / auto_fed_processing / villager_repeat_trade / breed_non_player_breeder 該当時は 0 確定
+（3）自動化対策：spawner_origin / unplanted_crop / recently_placed_break / recently_placed_replace / auto_fed_processing / villager_repeat_trade / breed_non_player_breeder 該当時は 0 確定
    ↓
 （4）基礎報酬：reward 固定値または乱数範囲 × amount（値は double）
    ↓
@@ -61,7 +61,9 @@ Track A と Track B はマッチ確定後に合流し、以降は共通の流れ
 
 1. `spawner_origin_kills`：`Entity.getEntitySpawnReason() == SPAWNER` なら 0。
 2. `unplanted_crop_harvest`：Block PDC に「植えた」フラグが無ければ 0（作物ブロックのみ対象）。
-3. `recently_placed_break`：KVS に `place:*` キーが残っていれば 0（Ageable 以外のブロックのみ対象、[ADR-0016](./adr/0016-recently-placed-break.md)）。
+3. `recently_placed_break`：KVS に `place:*` キーが残っていれば 0（`block_broken`、Ageable 以外のブロックのみ対象、[ADR-0016](./adr/0016-recently-placed-break.md)）。
+   `recently_placed_replace`：同じ `place:*` キーが残っている位置への再設置も 0（`block_placed`、Ageable を含む全ブロックが対象、[ADR-0023](./adr/0023-recently-placed-replace.md)）。
+   両者は `anti_automation.recently_placed_break` の ON/OFF と `window_sec` を共有する。
 4. `auto_fed_processing`：KVS の `op:*` キーの `operator_uuid` が null または未登録なら 0（`item_smelted` と `item_brewed`、[ADR-0017](./adr/0017-operator-tracking-common.md)）。
 5. `villager_repeat_trade`：KVS の `trade:<villager>:<recipe>` に前回取引が残っていれば 0（`villager_traded`）。
 6. `breed_non_player_breeder`：`EntityBreedEvent#getBreeder` が Player でなければ 0（`entity_bred`）。
@@ -74,7 +76,7 @@ Track A と Track B はマッチ確定後に合流し、以降は共通の流れ
 ActionBar 送信は main thread から `Player#sendActionBar` を直接叩く。
 通知の有効化は config.yml のグローバルフラグのみ（per-job override は無い）。
 
-プレイヤーが `jobs.bypass.anti-automation` を持つ場合、この段階を丸ごとスキップし、6 種のいずれの判定も走らせない（[08-permissions.md](./08-permissions.md)）。
+プレイヤーが `jobs.bypass.anti-automation` を持つ場合、この段階を丸ごとスキップし、いずれの判定も走らせない（[08-permissions.md](./08-permissions.md)）。
 
 ### 4. 基礎報酬
 
@@ -210,6 +212,7 @@ rare の announce は `AsyncExecutor#runOnMain` へ、`reward.async.economy_on_m
 - [ADR-0012 報酬パイプラインの拡張点](./adr/0012-reward-modifier-extension.md)
 - [ADR-0015 追跡ストレージを KVS 抽象化する](./adr/0015-kvs-abstraction.md)
 - [ADR-0016 recently_placed_break は placer 非依存](./adr/0016-recently-placed-break.md)
+- [ADR-0023 recently_placed の判定を再設置にも広げる](./adr/0023-recently-placed-replace.md)
 - [ADR-0017 投入者追跡を共通化する](./adr/0017-operator-tracking-common.md)
 - [ADR-0019 報酬額を小数値として扱う](./adr/0019-decimal-reward.md)
 - [ADR-0021 報酬パイプラインを単一ワーカーで非同期化する](./adr/0021-async-reward-pipeline.md)

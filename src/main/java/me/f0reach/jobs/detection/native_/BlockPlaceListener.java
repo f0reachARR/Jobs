@@ -51,8 +51,6 @@ public final class BlockPlaceListener implements Listener {
         var player = event.getPlayer();
         var block = event.getBlockPlaced();
 
-        writeMarkers(player.getUniqueId(), event);
-
         MatchContext ctx = MatchContext.builder()
                 .block(block.getType().getKey())
                 .amount(1)
@@ -61,6 +59,13 @@ public final class BlockPlaceListener implements Listener {
                 .block(block)
                 .build();
         dispatcher.dispatch(player, ActionType.BLOCK_PLACED, ctx, SourceFlags.none(), subject);
+
+        // マーカーは dispatch の後に書く。recently_placed_replace は「この設置より前に
+        // 置かれた記録」を見る判定なので、先に書くと自分の書いたマーカーを読んで常に 0 に
+        // なってしまう。段階 3 (AntiAutomationStage) は Stage.Affinity.MAIN で
+        // RewardPipeline の prologue として同期実行されるため、dispatch から戻った時点で
+        // 判定は済んでいる (ADR-0021 / ADR-0023)。
+        writeMarkers(player.getUniqueId(), event);
     }
 
     private void writeMarkers(java.util.UUID playerUuid, BlockPlaceEvent event) {

@@ -23,6 +23,7 @@ import me.f0reach.jobs.registry.JobRegistry;
 import me.f0reach.jobs.registry.TagResolver;
 import me.f0reach.jobs.specialty.CooldownPolicy;
 import me.f0reach.jobs.specialty.SpecialtyService;
+import me.f0reach.jobs.testsupport.FixedFirstJoinProvider;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
@@ -119,7 +120,8 @@ class EventDispatcherTest {
         InMemoryHistory history = new InMemoryHistory();
         SpecialtyService specialty = new SpecialtyService(
                 plugin, repo, history, registry,
-                new CooldownPolicy(List.of())
+                new CooldownPolicy(List.of()),
+                FixedFirstJoinProvider.unknown()
         );
         AtomicInteger stageCalls = new AtomicInteger();
         Stage counterStage = ctx -> { stageCalls.incrementAndGet(); return Stage.Result.CONTINUE; };
@@ -141,7 +143,8 @@ class EventDispatcherTest {
         InMemoryHistory history = new InMemoryHistory();
         SpecialtyService specialty = new SpecialtyService(
                 plugin, repo, history, registry,
-                new CooldownPolicy(List.of())
+                new CooldownPolicy(List.of()),
+                FixedFirstJoinProvider.unknown()
         );
         AtomicInteger stageCalls = new AtomicInteger();
         Stage counterStage = ctx -> { stageCalls.incrementAndGet(); return Stage.Result.CONTINUE; };
@@ -165,7 +168,8 @@ class EventDispatcherTest {
         InMemoryHistory history = new InMemoryHistory();
         SpecialtyService specialty = new SpecialtyService(
                 plugin, repo, history, registry,
-                new CooldownPolicy(List.of())
+                new CooldownPolicy(List.of()),
+                FixedFirstJoinProvider.unknown()
         );
         AtomicInteger stageCalls = new AtomicInteger();
         Stage counterStage = ctx -> { stageCalls.incrementAndGet(); return Stage.Result.CONTINUE; };
@@ -190,7 +194,8 @@ class EventDispatcherTest {
         InMemoryHistory history = new InMemoryHistory();
         SpecialtyService specialty = new SpecialtyService(
                 plugin, repo, history, registry,
-                new CooldownPolicy(List.of())
+                new CooldownPolicy(List.of()),
+                FixedFirstJoinProvider.unknown()
         );
         AtomicInteger firstCalls = new AtomicInteger();
         AtomicInteger secondCalls = new AtomicInteger();

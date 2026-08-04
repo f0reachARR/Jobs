@@ -14,7 +14,16 @@ specialty_mode:
   # false のときは対象のみ列挙し、額は伏せる。rare の chance/reward はどちらでも出さない。
   disclose_reward_amount: true
   # 専業変更のクールダウン。上から評価し within にマッチした最初のポリシーが適用される。
+  # within に複数キーを書いた場合はすべて満たしたときだけマッチする (AND)。
+  #   event_hours:      [start, end] の時間帯。end は排他上限。[22, 6] のような日跨ぎも可。
+  #   first_join_within: サーバー初参加からの経過時間の上限。新規プレイヤーの優遇に使う。
+  #                      初参加時刻が取得できないプレイヤーはマッチしない (default 側に落ちる)。
+  # 判定は毎回引き直すので、初参加からの経過が閾値を跨ぐと次回変更可能時刻も変わる。
   change_policy:
+    # 新規プレイヤーを優遇する例。有効にするなら他のポリシーより上に置く。
+    # - within:
+    #     first_join_within: 72h
+    #   cooldown: 1h
     - within:
         event_hours: [0, 24]
       cooldown: 1h
@@ -79,7 +88,7 @@ anti_automation:
 
   # spawner_origin_kills: zero
   # unplanted_crop_harvest: zero
-  # recently_placed_break:
+  # recently_placed_break:      # 破壊側 (作物以外) と設置側 (作物含む) の両方に効く
   #   window_sec: 3600
   # auto_fed_processing:
   #   operator_ttl_sec: 60
@@ -96,6 +105,7 @@ anti_automation:
       spawner_origin_kill: true
       unplanted_crop_harvest: true
       recently_placed_break: true
+      recently_placed_replace: true
       auto_fed_processing: true
       villager_repeat_trade: true
       breed_non_player_breeder: true

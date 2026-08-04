@@ -7,6 +7,8 @@ import java.io.StringReader;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ConfigLoaderTest {
@@ -69,6 +71,73 @@ class ConfigLoaderTest {
         assertFalse(mode.showSelectDialogOnJoin());
         assertFalse(mode.discloseBeforeSelect());
         assertFalse(mode.discloseRewardAmount());
+    }
+
+    @Test
+    void changePolicyParsesFirstJoinWithin() {
+        PluginConfig config = load("""
+                specialty_mode:
+                  reward_non_specialty: 0.0
+                  change_policy:
+                    - within:
+                        first_join_within: 72h
+                      cooldown: 1h
+                    - within:
+                        event_hours: [20, 23]
+                        first_join_within: 30d
+                      cooldown: 6h
+                    - default:
+                      cooldown: 5d
+                reward:
+                  decimals: 0
+                  rounding_mode: HALF_UP
+                daily_cap:
+                  amount: 0
+                  scope: total
+                persistence:
+                  type: mysql
+                kvs:
+                  type: memory
+                """);
+        var policies = config.specialtyMode().changePolicy();
+        assertEquals(3, policies.size());
+
+        PluginConfig.WithinCondition first = policies.get(0).within();
+        assertEquals(java.time.Duration.ofHours(72), first.firstJoinWithin());
+        assertTrue(first.eventHours().isEmpty());
+        assertFalse(first.isEmpty());
+
+        PluginConfig.WithinCondition second = policies.get(1).within();
+        assertEquals(java.time.Duration.ofDays(30), second.firstJoinWithin());
+        assertEquals(java.util.List.of(20, 23), second.eventHours());
+
+        // default は within なし
+        assertTrue(policies.get(2).within().isEmpty());
+        assertNull(policies.get(2).within().firstJoinWithin());
+    }
+
+    @Test
+    void changePolicyRejectsNonPositiveFirstJoinWithin() {
+        assertThrows(ConfigException.class, () -> load("""
+                specialty_mode:
+                  reward_non_specialty: 0.0
+                  change_policy:
+                    - within:
+                        first_join_within: 0h
+                      cooldown: 1h
+                    - default:
+                      cooldown: 5d
+                reward:
+                  decimals: 0
+                  rounding_mode: HALF_UP
+                daily_cap:
+                  amount: 0
+                  scope: total
+                persistence:
+                  type: mysql
+                kvs:
+                  type: memory
+                """));
     }
 
     @Test

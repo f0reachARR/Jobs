@@ -39,6 +39,8 @@ public final class DialogTexts {
     public static final String COMMAND_ADMIN_INSPECT_NO_SPECIALTY = "command.admin.inspect.no_specialty";
     public static final String COMMAND_ADMIN_INSPECT_CURRENT = "command.admin.inspect.current";
     public static final String COMMAND_ADMIN_INSPECT_COOLDOWN_BASE = "command.admin.inspect.cooldown_base";
+    public static final String COMMAND_ADMIN_INSPECT_FIRST_JOIN = "command.admin.inspect.first_join";
+    public static final String COMMAND_ADMIN_INSPECT_COOLDOWN_APPLIED = "command.admin.inspect.cooldown_applied";
     public static final String COMMAND_ADMIN_INSPECT_NEXT_CHANGE = "command.admin.inspect.next_change";
     public static final String COMMAND_ADMIN_INSPECT_DAILY_TOTAL = "command.admin.inspect.daily_total";
     public static final String COMMAND_ADMIN_INSPECT_VARIETY_OFFLINE = "command.admin.inspect.variety_offline";
@@ -181,6 +183,7 @@ public final class DialogTexts {
     public static final String NOTIFY_ANTI_AUTOMATION_SPAWNER_ORIGIN_KILL = "notify.anti_automation.spawner_origin_kill";
     public static final String NOTIFY_ANTI_AUTOMATION_UNPLANTED_CROP_HARVEST = "notify.anti_automation.unplanted_crop_harvest";
     public static final String NOTIFY_ANTI_AUTOMATION_RECENTLY_PLACED_BREAK = "notify.anti_automation.recently_placed_break";
+    public static final String NOTIFY_ANTI_AUTOMATION_RECENTLY_PLACED_REPLACE = "notify.anti_automation.recently_placed_replace";
     public static final String NOTIFY_ANTI_AUTOMATION_AUTO_FED_PROCESSING = "notify.anti_automation.auto_fed_processing";
     public static final String NOTIFY_ANTI_AUTOMATION_VILLAGER_REPEAT_TRADE = "notify.anti_automation.villager_repeat_trade";
     public static final String NOTIFY_ANTI_AUTOMATION_BREED_NON_PLAYER_BREEDER = "notify.anti_automation.breed_non_player_breeder";

@@ -60,7 +60,7 @@ KVS の閲覧と削除を別ノードにしているのは、`clear all` が全�
 | ノード | 適用箇所（パイプライン段階） | 効果 |
 |---|---|---|
 | `jobs.bypass.specialty` | [04-reward-pipeline.md](./04-reward-pipeline.md) 段階 2「専業判定」 | 専業外アクションでも報酬・ログを発生させる。 |
-| `jobs.bypass.anti-automation` | 段階 3「自動化対策」 | 6 種すべての 0 判定を通過させる。 |
+| `jobs.bypass.anti-automation` | 段階 3「自動化対策」 | すべての 0 判定を通過させる。 |
 | `jobs.bypass.daily-cap` | 段階 6「内蔵 Modifier > daily_cap」 | 日次キャップを無視。 |
 | `jobs.bypass.variety-penalty` | 段階 6「内蔵 Modifier > variety_penalty」 | 倍率 1.0 固定。ring buffer の更新は継続する。 |
 | `jobs.bypass.cooldown` | `SpecialtyService#change` | 専業変更クールダウンを無視。次回変更可能時刻の表示ロジックは通常通り。 |

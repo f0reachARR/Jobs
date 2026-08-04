@@ -29,7 +29,7 @@ public final class AntiAutomationStage implements Stage {
     @Override
     public Result execute(PipelineContext ctx) {
         if (ctx.zeroLocked()) return Result.CONTINUE;
-        // BYPASS_ANTI_AUTOMATION を持つプレイヤーは 6 種いずれの判定も走らせない。
+        // BYPASS_ANTI_AUTOMATION を持つプレイヤーはいずれの判定も走らせない。
         if (ctx.bypassAntiAutomation()) return Result.CONTINUE;
         String reason = coordinator.firstZero(ctx, ctx.matchedEntry().actionType());
         if (reason != null) {

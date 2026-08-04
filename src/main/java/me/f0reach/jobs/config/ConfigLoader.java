@@ -115,20 +115,35 @@ public final class ConfigLoader {
         PluginConfig.WithinCondition within = PluginConfig.WithinCondition.none();
         Object withinRaw = map.get("within");
         if (withinRaw instanceof java.util.Map<?, ?> withinMap) {
-            Object hours = withinMap.get("event_hours");
-            if (hours instanceof List<?> list) {
-                List<Integer> parsed = new ArrayList<>();
-                for (Object h : list) {
-                    if (h instanceof Number n) {
-                        parsed.add(n.intValue());
-                    } else {
-                        throw new ConfigException("event_hours must be numbers: " + hours);
-                    }
-                }
-                within = new PluginConfig.WithinCondition(List.copyOf(parsed));
-            }
+            within = parseWithin(withinMap);
         }
         return new PluginConfig.ChangePolicy(isDefault, within, cooldown);
+    }
+
+    /** within の各キーを読む。複数指定されたときは CooldownPolicy 側で AND 評価される。 */
+    private PluginConfig.WithinCondition parseWithin(java.util.Map<?, ?> withinMap) {
+        List<Integer> hours = new ArrayList<>();
+        Object hoursRaw = withinMap.get("event_hours");
+        if (hoursRaw instanceof List<?> list) {
+            for (Object h : list) {
+                if (h instanceof Number n) {
+                    hours.add(n.intValue());
+                } else {
+                    throw new ConfigException("event_hours must be numbers: " + hoursRaw);
+                }
+            }
+        }
+
+        Duration firstJoinWithin = null;
+        Object firstJoinRaw = withinMap.get("first_join_within");
+        if (firstJoinRaw != null) {
+            firstJoinWithin = parseDuration(firstJoinRaw.toString());
+            if (firstJoinWithin.isZero() || firstJoinWithin.isNegative()) {
+                throw new ConfigException(
+                        "within.first_join_within must be positive: " + firstJoinRaw);
+            }
+        }
+        return new PluginConfig.WithinCondition(hours, firstJoinWithin);
     }
 
     private Duration parseDuration(String value) {

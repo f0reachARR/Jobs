@@ -33,24 +33,36 @@ public final class CooldownPolicy {
     /**
      * 現時点で適用される cooldown を返す。
      * どれにもマッチしない場合は Duration.ZERO（＝いつでも変更可）を返す。
+     *
+     * @param firstJoinAt サーバー初参加時刻。不明なら null。null のとき
+     *                    {@code first_join_within} を持つポリシーはマッチしない。
      */
-    public Duration currentCooldown(Instant now) {
+    public Duration currentCooldown(Instant now, Instant firstJoinAt) {
         int hour = LocalDateTime.ofInstant(now, zone).getHour();
         for (PluginConfig.ChangePolicy policy : policies) {
             if (policy.isDefault()) {
                 return policy.cooldown();
             }
-            if (matches(policy.within(), hour)) {
+            if (matches(policy.within(), now, hour, firstJoinAt)) {
                 return policy.cooldown();
             }
         }
         return Duration.ZERO;
     }
 
-    private boolean matches(PluginConfig.WithinCondition within, int hour) {
-        if (within == null) return false;
-        List<Integer> hours = within.eventHours();
-        if (hours == null || hours.isEmpty()) return false;
+    /** within に書かれたキーをすべて満たしたときだけマッチする（AND）。 */
+    private boolean matches(
+            PluginConfig.WithinCondition within, Instant now, int hour, Instant firstJoinAt
+    ) {
+        if (within == null || within.isEmpty()) return false;
+        if (!within.eventHours().isEmpty() && !matchesEventHours(within.eventHours(), hour)) {
+            return false;
+        }
+        return within.firstJoinWithin() == null
+                || matchesFirstJoin(within.firstJoinWithin(), now, firstJoinAt);
+    }
+
+    private boolean matchesEventHours(List<Integer> hours, int hour) {
         // 現状の spec では [start, end] の 2 要素リスト。end は排他上限。
         if (hours.size() == 2) {
             int start = hours.get(0);
@@ -60,5 +72,11 @@ public final class CooldownPolicy {
             return hour >= start || hour < end;
         }
         return hours.contains(hour);
+    }
+
+    /** 初参加からの経過が limit 未満か。初参加時刻が不明ならマッチさせない。 */
+    private boolean matchesFirstJoin(Duration limit, Instant now, Instant firstJoinAt) {
+        if (firstJoinAt == null) return false;
+        return now.isBefore(firstJoinAt.plus(limit));
     }
 }

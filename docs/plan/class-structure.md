@@ -46,7 +46,7 @@ me.f0reach.jobs
 ├── matcher                 rewards[] 走査 (first match wins)
 ├── pipeline                報酬パイプライン (段階 1〜12)
 │   └── stage               各段階の Stage クラス
-├── antiautomation          6 種類の自動化対策と補助 tracker
+├── antiautomation          自動化対策の各 check と補助 tracker
 ├── modifier                内蔵 Modifier (variety_penalty, daily_cap) と拡張点 chain
 │   ├── variety
 │   └── dailycap
@@ -229,8 +229,12 @@ Stage は必要に応じて field を書き換える。
 **UnplantedCropCheck / PlantedFlagWriter**：`block_broken` かつ `Ageable` のとき、ブロックの `PersistentDataContainer` から「植えた」フラグを読む。
 `PlantedFlagWriter` は `BlockPlaceListener` から呼ばれ、置いたブロックの PDC に `NamespacedKey("jobs", "planted_by_player")` を書き込む。
 
-**RecentlyPlacedBreakCheck / PlacementRecorder**：`block_broken` のとき、KVS の `place:<world-uuid>:<x>:<y>:<z>` を `get` し、残っていれば 0。
-`PlacementRecorder` は `BlockPlaceListener` から呼ばれ、`Ageable` 以外のブロックについて KVS に書く。TTL は config の `window_sec`（デフォルト 3600）。
+**RecentlyPlacedBreakCheck / PlacementRecorder**：`block_broken` のとき、KVS の `place:<world-uuid>:<x>:<y>:<z>` を `get` し、残っていれば 0。`Ageable` は対象外。
+`PlacementRecorder` は `BlockPlaceListener` から呼ばれ、作物を含む全ブロックについて KVS に書く。TTL は config の `window_sec`（デフォルト 3600）。
+
+**RecentlyPlacedReplaceCheck**：`block_placed` のとき、同じ `place:` キーを `get` し、残っていれば 0（[ADR-0023](../spec/adr/0023-recently-placed-replace.md)）。
+`RecentlyPlacedBreakCheck` と ON/OFF・`window_sec` を共有し、作物も対象にする。
+判定は「この設置より前の記録」を読む必要があるため、`BlockPlaceListener` は dispatch を済ませてから `PlacementRecorder` を呼ぶ。
 
 **AutoFedProcessingCheck / OperatorTracker / ContainerKind**：`item_smelted` と `item_brewed` のとき、KVS の `op:<container-kind>:<coords>` を `get` し、`operator_uuid` が null または未登録なら 0。
 `OperatorTracker` は `InventoryClickEvent` と `InventoryMoveItemEvent` を購読し、Player 由来なら operator を書き、hopper/dispenser 由来なら operator を null で上書きする。

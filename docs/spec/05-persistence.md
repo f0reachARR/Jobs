@@ -95,7 +95,8 @@ CREATE TABLE player_job (
 
 - 通常の `select` / `change` では `now` に更新する。
 - `/jobs admin reset-cooldown` は `Instant.EPOCH` に上書きする。EPOCH は現在時刻より十分過去なので、`nextAvailable` が必ず過去に落ち、cooldown が経過扱いになる（[08-permissions.md](./08-permissions.md)）。
-- `CooldownPolicy` が時刻依存で変わる（イベント割引など）ため、resolved な `next_change_at` ではなく base を保持する。判定は毎回 policy を再評価する。
+- `CooldownPolicy` が時刻依存で変わる（イベント割引、初参加からの経過時間による優遇）ため、resolved な `next_change_at` ではなく base を保持する。判定は毎回 policy を再評価する。
+- そのため、`within.first_join_within` のしきい値を跨いだ瞬間に、同じ base に対する「次回変更可能時刻」が後退して見えることがある（[ADR-0022](./adr/0022-first-join-based-cooldown.md)）。
 
 現在専業の取得は `WHERE player_uuid = ?` の単純クエリで済み、`MAX(selected_at)` の集計が不要になる。
 
@@ -279,7 +280,7 @@ key の組み立ては `KvsKeys` に閉じ、呼び出し側では文字列連�
 
 | key | 値 | 用途 |
 |---|---|---|
-| `place:<world-uuid>:<x>:<y>:<z>` | 1 バイトのマーカー | `recently_placed_break`。存在すれば「窓の内側」 |
+| `place:<world-uuid>:<x>:<y>:<z>` | 1 バイトのマーカー | `recently_placed_break` と `recently_placed_replace`。存在すれば「窓の内側」。作物を含む全ブロックを記録する |
 | `op:<container-kind>:<world-uuid>:<x>:<y>:<z>` | `0x00`（投入者なし）または `0x01` + UUID 16 バイト | `auto_fed_processing`。投入者が Player かどうか |
 | `trade:<villager-uuid>:<recipe-index>` | 1 バイトのマーカー | `villager_repeat_trade`。存在すれば cooldown 中 |
 

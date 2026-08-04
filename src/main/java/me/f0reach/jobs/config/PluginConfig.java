@@ -112,14 +112,31 @@ public record PluginConfig(
     ) {}
 
     /**
-     * within の条件。Phase 1 では event_hours のみを取り込む。
-     * 詳細な意味論は Phase 4 の SpecialtyService で解釈する。
+     * within の条件。指定されたキーはすべて満たす必要がある (AND)。
+     * 実際の判定は {@link me.f0reach.jobs.specialty.CooldownPolicy} が行う。
+     *
+     * @param eventHours     [start, end] の 2 要素で表す時間帯。end は排他上限。空なら時間帯を問わない。
+     * @param firstJoinWithin サーバー初参加からの経過時間の上限。null なら初参加時刻を問わない。
      */
     public record WithinCondition(
-            List<Integer> eventHours
+            List<Integer> eventHours,
+            Duration firstJoinWithin
     ) {
+        public WithinCondition {
+            eventHours = eventHours == null ? List.of() : List.copyOf(eventHours);
+            if (firstJoinWithin != null
+                    && (firstJoinWithin.isZero() || firstJoinWithin.isNegative())) {
+                throw new IllegalArgumentException("within.first_join_within must be positive");
+            }
+        }
+
         public static WithinCondition none() {
-            return new WithinCondition(List.of());
+            return new WithinCondition(List.of(), null);
+        }
+
+        /** 条件が 1 つも指定されていないか。空の within はどのポリシーにもマッチさせない。 */
+        public boolean isEmpty() {
+            return eventHours.isEmpty() && firstJoinWithin == null;
         }
     }
 

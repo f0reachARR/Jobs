@@ -38,6 +38,7 @@ public final class SpecialtyService {
     private final PlayerJobHistoryRepository historyRepository;
     private final JobRegistry jobRegistry;
     private final CooldownPolicy cooldownPolicy;
+    private final FirstJoinProvider firstJoinProvider;
     private final Clock clock;
 
     /** 現在の専業。null は未選択。 */
@@ -50,9 +51,11 @@ public final class SpecialtyService {
             PlayerJobRepository repository,
             PlayerJobHistoryRepository historyRepository,
             JobRegistry jobRegistry,
-            CooldownPolicy cooldownPolicy
+            CooldownPolicy cooldownPolicy,
+            FirstJoinProvider firstJoinProvider
     ) {
-        this(plugin, repository, historyRepository, jobRegistry, cooldownPolicy, Clock.systemUTC());
+        this(plugin, repository, historyRepository, jobRegistry, cooldownPolicy,
+                firstJoinProvider, Clock.systemUTC());
     }
 
     public SpecialtyService(
@@ -61,6 +64,7 @@ public final class SpecialtyService {
             PlayerJobHistoryRepository historyRepository,
             JobRegistry jobRegistry,
             CooldownPolicy cooldownPolicy,
+            FirstJoinProvider firstJoinProvider,
             Clock clock
     ) {
         this.plugin = plugin;
@@ -68,6 +72,7 @@ public final class SpecialtyService {
         this.historyRepository = historyRepository;
         this.jobRegistry = jobRegistry;
         this.cooldownPolicy = cooldownPolicy;
+        this.firstJoinProvider = firstJoinProvider;
         this.clock = clock;
     }
 
@@ -148,7 +153,7 @@ public final class SpecialtyService {
         // nextAvailableAt が返す値は cooldownBaseCache 通り (base + cooldown) のままなので、
         // /jobs status の表示は変わらない。
         if (!player.hasPermission(Permissions.BYPASS_COOLDOWN)) {
-            Duration cooldown = cooldownPolicy.currentCooldown(now);
+            Duration cooldown = cooldownPolicy.currentCooldown(now, firstJoinAt(uuid).orElse(null));
             Instant base = cooldownBaseCache.get(uuid);
             if (base != null && !cooldown.isZero()) {
                 Instant nextAvailable = base.plus(cooldown);
@@ -230,16 +235,28 @@ public final class SpecialtyService {
     public Optional<Instant> nextAvailableAt(UUID player) {
         Instant base = cooldownBaseCache.get(player);
         if (base == null) return Optional.empty();
-        return Optional.of(nextAvailableFrom(base));
+        return Optional.of(nextAvailableFrom(player, base));
     }
 
     /**
      * 任意の cooldown_base_at から次回変更可能時刻を計算する。
      * DB から直接取ってきた base に対して policy を適用したい経路（/jobs admin inspect など）で使う。
+     *
+     * <p>policy は評価時点で引き直すので、初参加からの経過時間がしきい値を跨ぐと
+     * 同じ base に対する戻り値も変わる（spec/05-persistence.md「cooldown_base_at」）。
      */
-    public Instant nextAvailableFrom(Instant cooldownBaseAt) {
-        Duration cooldown = cooldownPolicy.currentCooldown(Instant.now(clock));
-        return cooldownBaseAt.plus(cooldown);
+    public Instant nextAvailableFrom(UUID player, Instant cooldownBaseAt) {
+        return cooldownBaseAt.plus(currentCooldown(player));
+    }
+
+    /** 対象プレイヤーに現在適用される cooldown。/jobs admin inspect の表示に使う。 */
+    public Duration currentCooldown(UUID player) {
+        return cooldownPolicy.currentCooldown(Instant.now(clock), firstJoinAt(player).orElse(null));
+    }
+
+    /** サーバー初参加時刻。取得できない場合は Optional.empty()。 */
+    public Optional<Instant> firstJoinAt(UUID player) {
+        return firstJoinProvider.firstJoinAt(player);
     }
 
     /** 変更履歴を持たない（未選択）プレイヤーか。 */
