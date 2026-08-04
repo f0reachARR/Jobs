@@ -26,6 +26,7 @@ public final class ConfigLoader {
                 loadDailyCap(config.getConfigurationSection("daily_cap")),
                 loadPersistence(config.getConfigurationSection("persistence")),
                 loadKvs(config.getConfigurationSection("kvs")),
+                loadSmelting(config.getConfigurationSection("smelting")),
                 loadAntiAutomation(config.getConfigurationSection("anti_automation"))
         );
     }
@@ -248,5 +249,17 @@ public final class ConfigLoader {
             throw new ConfigException("Unknown kvs.type: " + typeRaw, e);
         }
         return new PluginConfig.KvsConfig(type);
+    }
+
+    private PluginConfig.SmeltingConfig loadSmelting(ConfigurationSection section) {
+        PluginConfig.SmeltingConfig defaults = PluginConfig.SmeltingConfig.defaults();
+        if (section == null) return defaults;
+        try {
+            return new PluginConfig.SmeltingConfig(
+                    section.getLong("flush_ticks", defaults.flushTicks()),
+                    section.getInt("max_pending", defaults.maxPending()));
+        } catch (IllegalArgumentException e) {
+            throw new ConfigException(e.getMessage(), e);
+        }
     }
 }

@@ -281,7 +281,7 @@ key の組み立ては `KvsKeys` に閉じ、呼び出し側では文字列連�
 | key | 値 | 用途 |
 |---|---|---|
 | `place:<world-uuid>:<x>:<y>:<z>` | 1 バイトのマーカー | `recently_placed_break` と `recently_placed_replace`。存在すれば「窓の内側」。作物を含む全ブロックを記録する |
-| `op:<container-kind>:<world-uuid>:<x>:<y>:<z>` | `0x00`（投入者なし）または `0x01` + UUID 16 バイト | `auto_fed_processing`。投入者が Player かどうか |
+| `op:<container-kind>:<world-uuid>:<x>:<y>:<z>` | `0x00`（投入者なし）または `0x01` + UUID 16 バイト | `auto_fed_processing`。投入者が Player かどうか。BrewingStand のみ（かまどは精錬元帳が担う、[ADR-0024](./adr/0024-smelt-ledger-on-block-pdc.md)） |
 | `trade:<villager-uuid>:<recipe-index>` | 1 バイトのマーカー | `villager_repeat_trade`。存在すれば cooldown 中 |
 
 `op:` の `0x00` は hopper / dispenser 由来の投入を表し、「未登録」とは意味が異なる。
@@ -338,6 +338,42 @@ kvs:
   #   password: ...
 ```
 
+## 追跡ストレージ（Block PDC）
+
+TTL を持たない長寿命の追跡データはブロックの `PersistentDataContainer` に持つ。
+チャンクと共に保存されるため、再起動やチャンクのアンロードを跨いで残り、対象ブロックが壊れれば一緒に消える。
+
+| key | 型 | 用途 |
+|---|---|---|
+| `jobs:planted_by_player` | `BYTE` | `unplanted_crop_harvest`。Ageable ブロックに「Player が植えた」フラグ |
+| `jobs:smelt_ledger` | `BYTE_ARRAY` | `item_smelted`。かまどの精錬元帳（後述） |
+
+### 精錬元帳（Block PDC）
+
+かまど（Furnace / BlastFurnace / Smoker）ごとに「誰の何個が精錬待ちか」を投入順に持つ（[ADR-0024](./adr/0024-smelt-ledger-on-block-pdc.md)）。
+
+```
+version(1) | item key 長(1) | item key(UTF-8) | entry 数(1) | entry × N
+
+entry: marker(1) | UUID(16, marker=0x01 のときのみ) | count(2, big endian)
+  marker 0x00 = 自動投入（hopper / dispenser / dropper 由来、所有者なし）
+  marker 0x01 = Player 投入
+```
+
+- **item key**：入力スロットのアイテム種別。実際の入力スロットと異なれば元帳を破棄する。
+- **entry**：投入順の FIFO。精錬完了で先頭から 1 個ずつ消費する。上限 8 件で、超過時は最古の 2 件を古い側の所有者へ合算する。
+- **count**：1 エントリあたり最大 65535。かまどの入力スロットは 64 個までなので上限に当たらない。
+
+元帳の合計は入力スロットの実個数へ同期させる。
+投入系イベントの 1 tick 後に `FurnaceInventory#getSmelting()` を読み、増分を直前の接触者へ帰属させ、減分は新しいエントリから削る。
+差分が無ければ PDC への書き込みも行わない。
+
+読み書きは `Block#getState(false)` 経由で非スナップショットの `TileState` に対して行う。
+スナップショットのコピーと書き戻しを避けるためで、書き込み後は `BlockState#update(true, false)` を呼んでチャンクへ保存させる。
+PDC は main thread からのみ触れるので、報酬パイプラインの段階 4 以降（ワーカー）からは参照しない（[ADR-0021](./adr/0021-async-reward-pipeline.md)）。
+
+サーバ再起動で失われないため、`op:` のような TTL 切れによる取りこぼしは起きない。
+
 ## 関連 ADR
 
 - [ADR-0009 永続化を MySQL とする](./adr/0009-mysql-persistence.md)
@@ -346,3 +382,4 @@ kvs:
 - [ADR-0017 投入者追跡を共通化する](./adr/0017-operator-tracking-common.md)
 - [ADR-0018 リポジトリ層をインタフェースで切る](./adr/0018-repository-interface.md)
 - [ADR-0019 報酬額を小数値として扱う](./adr/0019-decimal-reward.md)
+- [ADR-0024 精錬報酬を投入者への精錬完了ベースにする](./adr/0024-smelt-ledger-on-block-pdc.md)

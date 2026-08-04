@@ -28,6 +28,7 @@ Job プラグインの設計判断記録（Architecture Decision Record）。
 - [ADR-0021 報酬パイプラインを単一ワーカーで非同期化する](./0021-async-reward-pipeline.md)
 - [ADR-0022 変更クールダウンを初参加からの経過時間で分岐する](./0022-first-join-based-cooldown.md)
 - [ADR-0023 recently_placed の判定を再設置にも広げる](./0023-recently-placed-replace.md)
+- [ADR-0024 精錬報酬を投入者への精錬完了ベースにする](./0024-smelt-ledger-on-block-pdc.md)
 
 ## ステータスの読み方
 

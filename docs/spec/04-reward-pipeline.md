@@ -12,7 +12,7 @@ Track A と Track B はマッチ確定後に合流し、以降は共通の流れ
    ↓
 （2）専業判定：プレイヤーの専業 = このジョブか? 否なら完全に return
    ↓
-（3）自動化対策：spawner_origin / unplanted_crop / recently_placed_break / recently_placed_replace / auto_fed_processing / villager_repeat_trade / breed_non_player_breeder 該当時は 0 確定
+（3）自動化対策：spawner_origin / unplanted_crop / recently_placed_break / recently_placed_replace / auto_fed_processing（BrewingStand のみ）/ villager_repeat_trade / breed_non_player_breeder 該当時は 0 確定
    ↓
 （4）基礎報酬：reward 固定値または乱数範囲 × amount（値は double）
    ↓
@@ -64,7 +64,8 @@ Track A と Track B はマッチ確定後に合流し、以降は共通の流れ
 3. `recently_placed_break`：KVS に `place:*` キーが残っていれば 0（`block_broken`、Ageable 以外のブロックのみ対象、[ADR-0016](./adr/0016-recently-placed-break.md)）。
    `recently_placed_replace`：同じ `place:*` キーが残っている位置への再設置も 0（`block_placed`、Ageable を含む全ブロックが対象、[ADR-0023](./adr/0023-recently-placed-replace.md)）。
    両者は `anti_automation.recently_placed_break` の ON/OFF と `window_sec` を共有する。
-4. `auto_fed_processing`：KVS の `op:*` キーの `operator_uuid` が null または未登録なら 0（`item_smelted` と `item_brewed`、[ADR-0017](./adr/0017-operator-tracking-common.md)）。
+4. `auto_fed_processing`：KVS の `op:*` キーの `operator_uuid` が null または未登録なら 0（`item_brewed` のみ、[ADR-0017](./adr/0017-operator-tracking-common.md)）。
+   `item_smelted` は対象外である。かまどの自動投入分は精錬元帳の所有者が null になり、そもそも dispatch されない（[ADR-0024](./adr/0024-smelt-ledger-on-block-pdc.md)）。
 5. `villager_repeat_trade`：KVS の `trade:<villager>:<recipe>` に前回取引が残っていれば 0（`villager_traded`）。
 6. `breed_non_player_breeder`：`EntityBreedEvent#getBreeder` が Player でなければ 0（`entity_bred`）。
 7. TNT 起爆判定：`via_tnt` の指定と一致しない場合はマッチ側で弾かれる（段階 1 で処理済み）。
@@ -84,7 +85,7 @@ ActionBar 送信は main thread から `Player#sendActionBar` を直接叩く。
 値は `double` として保持し、この段階では丸めない（[ADR-0019](./adr/0019-decimal-reward.md)）。
 amount 解釈は次の通り。
 
-- `item_smelted`：`FurnaceExtractEvent#getItemAmount` を掛ける。
+- `item_smelted`：精錬が完了した個数のうち、その投入者に帰属する分を掛ける（[ADR-0024](./adr/0024-smelt-ledger-on-block-pdc.md)）。
 - `item_crafted`：`CraftItemEvent` で実際に取り出したスタック数を掛ける（シフトクリックの複数取り出しに対応）。
 - `villager_traded`：取引成立時の受け取り個数を掛ける。
 - `item_brewed`：`BrewEvent` の出力 slot 数（0〜3）を掛ける。

@@ -118,10 +118,10 @@ rare がヒットしたとき、通常報酬は支払わず rare 報酬で置き
 - `item`：アイテム種別。
 - `treasure`：`true` のとき、`PlayerFishEvent` のキャッチが宝箱ループテーブル由来であるもののみマッチ。
 
-`item_smelted` のとき。
+`item_smelted` のとき。報酬は取り出した人ではなく材料を投入した人に入り、個数は精錬が完了した個数で数える（[ADR-0024](./adr/0024-smelt-ledger-on-block-pdc.md)）。
 
-- `item`：取り出した精錬物の種別。Furnace / BlastFurnace / Smoker のすべてで同じ `on` を使う。
-- このエントリで支払う報酬は「取り出した個数 × reward」となる。
+- `item`：精錬物の種別。Furnace / BlastFurnace / Smoker のすべてで同じ `on` を使う。
+- このエントリで支払う報酬は「精錬が完了した個数 × reward」となる。
 
 `item_crafted` のとき。
 
@@ -201,9 +201,10 @@ rare がヒットしたとき、通常報酬は支払わず rare 報酬で置き
   - 破壊側（`block_broken`）は作物ブロック（`Ageable`）を対象外とし、`unplanted_crop_harvest` 側で扱う。
   - 設置側（`block_placed`）は作物を含む全ブロックが対象。置く → 壊す → また置く のループを塞ぐため。
   - 0 判定の reason は破壊側が `recently_placed_break`、設置側が `recently_placed_replace` に分かれる（通知文言が別）。
-- `auto_fed_processing`：Furnace / BlastFurnace / Smoker / BrewingStand で hopper / dispenser 経由の自動投入から得た完成品の報酬を 0 にする（[ADR-0017](./adr/0017-operator-tracking-common.md)）。
+- `auto_fed_processing`：BrewingStand で hopper / dispenser 経由の自動投入から得た完成品の報酬を 0 にする（[ADR-0017](./adr/0017-operator-tracking-common.md)）。
   - `operator_ttl_sec`：手動投入の operator を有効とみなす秒数。デフォルト 60。
-  - 対象容器はプラグイン側で固定リスト（4 種）を持ち、YAML では列挙しない。
+  - 対象容器はプラグイン側で固定し、YAML では列挙しない。
+  - かまど（Furnace / BlastFurnace / Smoker）はこの対策の対象外である。自動投入分は精錬元帳の所有者が null になり、`item_smelted` の報酬がそもそも発生しない（[ADR-0024](./adr/0024-smelt-ledger-on-block-pdc.md)）。
 - `villager_repeat_trade`：同 villager × 同 recipe の連続取引に対する cooldown。
   - `cooldown_sec`：デフォルト 60。
   - `scope`：`recipe`（同 villager × 同 recipe）で固定。

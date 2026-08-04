@@ -76,6 +76,16 @@ kvs:
   # memory または redis。redis は Phase 2 の予約。
   type: memory
 
+# 精錬 (item_smelted) の報酬。docs/spec/adr/0024-smelt-ledger-on-block-pdc.md を参照。
+# 報酬は取り出した人ではなく材料を投入した人に入り、精錬が完了した時点で確定する。
+smelting:
+  # 精錬完了ぶんをまとめて 1 件として dispatch するまでの tick 数。
+  # 1 個ごとに 1 件にすると 64 個スタックで 64 件になり、variety_penalty の窓の
+  # 意味論も変わる。20 tick = 1 秒。
+  flush_ticks: 20
+  # まとめ待ちの (投入者 x かまど x アイテム) の上限。超えたら tick を待たずに flush する。
+  max_pending: 4096
+
 anti_automation:
   # 各 check の「グローバルデフォルト」。per-job YAML の anti_automation で
   # 同じキーを明示すれば per-job 値が勝つ。省略なら下の default が全ジョブに効く。

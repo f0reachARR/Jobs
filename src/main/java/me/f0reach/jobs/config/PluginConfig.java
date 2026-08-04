@@ -15,8 +15,13 @@ public record PluginConfig(
         DailyCapConfig dailyCap,
         PersistenceConfig persistence,
         KvsConfig kvs,
+        SmeltingConfig smelting,
         AntiAutomationConfig antiAutomation
 ) {
+
+    public PluginConfig {
+        if (smelting == null) smelting = SmeltingConfig.defaults();
+    }
 
     public record SpecialtyModeConfig(
             double rewardNonSpecialty,
@@ -165,6 +170,30 @@ public record PluginConfig(
             Type type
     ) {
         public enum Type { MEMORY, REDIS }
+    }
+
+    /**
+     * 精錬報酬の設定。ADR-0024 を参照。
+     *
+     * @param flushTicks 精錬完了ぶんをまとめて 1 件として dispatch するまでの tick 数。
+     * @param maxPending まとめ待ちエントリの上限。超えたら tick を待たずに flush する。
+     */
+    public record SmeltingConfig(
+            long flushTicks,
+            int maxPending
+    ) {
+        public SmeltingConfig {
+            if (flushTicks < 1) {
+                throw new IllegalArgumentException("smelting.flush_ticks must be >= 1");
+            }
+            if (maxPending < 1) {
+                throw new IllegalArgumentException("smelting.max_pending must be >= 1");
+            }
+        }
+
+        public static SmeltingConfig defaults() {
+            return new SmeltingConfig(20L, 4096);
+        }
     }
 
     /**

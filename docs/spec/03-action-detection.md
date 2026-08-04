@@ -15,7 +15,7 @@ Track A だけで 5 職業の代表アクションをすべて表現できる。
 | `block_broken` | `BlockBreakEvent`、TNT 由来は `EntityExplodeEvent` を合成 | `block`、`crop_mature`、`via_tnt` | 1 アクションごとに 1 件 |
 | `block_placed` | `BlockPlaceEvent`（Player 発火のみ） | `block` | 1 アクションごとに 1 件 |
 | `item_fished` | `PlayerFishEvent`（state は CAUGHT_FISH か CAUGHT_ENTITY） | `item`、`treasure` | 1 アクションごとに 1 件 |
-| `item_smelted` | `FurnaceExtractEvent`（Furnace / BlastFurnace / Smoker 共通） | `item` | 取り出した個数 × reward |
+| `item_smelted` | `FurnaceSmeltEvent`（Furnace / BlastFurnace / Smoker 共通） | `item` | 精錬が完了した個数 × reward |
 | `item_crafted` | `CraftItemEvent`（Player click のみ） | `item` | 取り出した個数 × reward |
 | `item_enchanted` | `EnchantItemEvent` | `item`、`enchantment`、`level_min` | 1 アクションごとに 1 件 |
 | `item_repaired` | Anvil の `InventoryClickEvent` と `PlayerItemMendEvent` | `item`、`source` | 1 アクションごとに 1 件 |
@@ -28,7 +28,15 @@ Track A だけで 5 職業の代表アクションをすべて表現できる。
 | `advancement` | `PlayerAdvancementDoneEvent`（Track B） | `advancement` | 1 アクションごとに 1 件 |
 
 `BlockPlaceEvent` は報酬イベントであると同時に、未植え作物判定と `recently_placed_break` / `recently_placed_replace` のマーキングにも使う。
-`InventoryClickEvent` と `InventoryMoveItemEvent` は `auto_fed_processing` の投入者追跡にも使う。
+`InventoryClickEvent` と `InventoryMoveItemEvent` は `auto_fed_processing` の投入者追跡（BrewingStand）にも使う。
+
+`item_smelted` は投入者への報酬であり、取り出したプレイヤーには払わない（[ADR-0024](./adr/0024-smelt-ledger-on-block-pdc.md)）。
+かまどの PDC が持つ精錬元帳から投入者を引き当てるため、発火は取り出しではなく精錬完了に置く。
+元帳の詳細は [05-persistence.md](./05-persistence.md) の「精錬元帳（Block PDC）」を参照。
+
+- 投入系イベント（`InventoryClickEvent` / `InventoryDragEvent` / `InventoryMoveItemEvent`）を受けたら、1 tick 後に元帳を入力スロットの実個数へ同期する。
+- `FurnaceSmeltEvent` で元帳の先頭から 1 個を消費し、所有者へ帰属させる。所有者が null（自動投入）またはオフラインなら消費だけを行い、dispatch しない。
+- 同一の `(投入者, かまど, アイテム)` は `smelting.flush_ticks` の間まとめ、`amount` に畳んで 1 件として dispatch する。
 
 ## match の評価
 
