@@ -107,6 +107,7 @@ import me.f0reach.jobs.ui.SpecialtyListDialog;
 import me.f0reach.jobs.util.AsyncExecutor;
 import me.f0reach.jobs.yaml.JobYamlLoader;
 import me.f0reach.jobs.yaml.YamlErrors;
+import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.scheduler.BukkitTask;
@@ -117,6 +118,7 @@ import java.sql.SQLException;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.SplittableRandom;
+import java.util.UUID;
 import java.util.logging.Level;
 import java.util.random.RandomGenerator;
 
@@ -260,14 +262,8 @@ public final class JobsServices {
         this.plantedFlagWriter = new PlantedFlagWriter(unplanted.key());
         this.placementRecorder = new PlacementRecorder(kvStore);
         this.tradeRecorder = new TradeRecorder(kvStore);
-        // operator_ttl_sec は job ごとに違い得るが、Phase 7 では簡便にジョブ全域で最大値を採用する。
-        int operatorTtlSec = jobRegistry.all().stream()
-                .map(j -> j.antiAutomation() == null ? null : j.antiAutomation().autoFedProcessing())
-                .filter(java.util.Objects::nonNull)
-                .filter(cfg -> cfg.enabled())
-                .mapToInt(cfg -> cfg.operatorTtlSec())
-                .max().orElse(60);
-        this.operatorTracker = new OperatorTracker(kvStore, operatorTtlSec);
+        // listener は reload で再登録しないので、TTL は書き込みのたびに jobRegistry から引き直す。
+        this.operatorTracker = new OperatorTracker(kvStore, this::resolveOperatorTtlSec);
 
         List<AntiAutomationCheck> checks = List.of(
                 new SpawnerOriginCheck(),
@@ -281,6 +277,16 @@ public final class JobsServices {
         this.antiAutomationCoordinator = new AntiAutomationCoordinator(plugin, checks);
         this.antiAutomationNotifier = new AntiAutomationNotifier(
                 i18n, config.antiAutomation().notifyActionBar());
+    }
+
+    /** operator_ttl_sec は job ごとに違い得るが、Phase 7 では簡便にジョブ全域で最大値を採用する。 */
+    private int resolveOperatorTtlSec() {
+        return jobRegistry.all().stream()
+                .map(j -> j.antiAutomation() == null ? null : j.antiAutomation().autoFedProcessing())
+                .filter(java.util.Objects::nonNull)
+                .filter(cfg -> cfg.enabled())
+                .mapToInt(cfg -> cfg.operatorTtlSec())
+                .max().orElse(60);
     }
 
     /**
@@ -458,7 +464,7 @@ public final class JobsServices {
      *   <li>lang/*.yml を再読込</li>
      *   <li>jobs/*.yml を再読込 (registry を差し替え)</li>
      *   <li>tag cache を破棄</li>
-     *   <li>variety curve キャッシュを破棄</li>
+     *   <li>variety curve キャッシュを破棄し、ring buffer を online player ぶん作り直す</li>
      *   <li>advancement datapack を再展開</li>
      * </ul>
      * config.yml 自体は再読込しない (persistence / kvs 種別の再構築が絡み、複雑さの割にニーズが薄いため)。
@@ -469,8 +475,25 @@ public final class JobsServices {
         new MissingKeyReporter(plugin, localeRegistry).report();
         loadJobs();
         runShadowDetection();
-        if (varietyPenaltyEvaluator != null) varietyPenaltyEvaluator.invalidateCurves();
+        rewarmVarietyState();
         installAdvancementDatapack();
+    }
+
+    /**
+     * variety_penalty の in-memory 状態を新しい job 定義に合わせ直す。
+     * curve は job 定義から作った lookup なので捨てる。ring buffer も容量 (= window) を
+     * 生成時に固定するので捨て、online player ぶんは行動ログから作り直す。
+     */
+    private void rewarmVarietyState() {
+        if (varietyPenaltyEvaluator == null) return;
+        varietyPenaltyEvaluator.invalidateCurves();
+        varietyPenaltyEvaluator.invalidateBuffers();
+        for (Player player : plugin.getServer().getOnlinePlayers()) {
+            UUID uuid = player.getUniqueId();
+            specialtyService.currentJob(uuid)
+                    .flatMap(jobRegistry::get)
+                    .ifPresent(job -> varietyPenaltyEvaluator.warmupFor(uuid, job));
+        }
     }
 
     /** サンプルとして同梱している職業定義。plugins/Jobs/jobs/ が空のときのみ展開する。 */

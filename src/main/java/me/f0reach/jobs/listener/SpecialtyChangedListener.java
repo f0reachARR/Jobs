@@ -1,7 +1,6 @@
 package me.f0reach.jobs.listener;
 
 import me.f0reach.jobs.api.event.JobSpecialtyChangedEvent;
-import me.f0reach.jobs.domain.job.JobDefinition;
 import me.f0reach.jobs.domain.job.JobId;
 import me.f0reach.jobs.modifier.variety.VarietyPenaltyEvaluator;
 import me.f0reach.jobs.registry.JobRegistry;
@@ -34,9 +33,7 @@ public final class SpecialtyChangedListener implements Listener {
         } catch (IllegalArgumentException e) {
             return;
         }
-        JobDefinition def = jobRegistry.get(newJobId).orElse(null);
-        if (def == null) return;
-        if (def.varietyPenalty() == null || !def.varietyPenalty().enabled()) return;
-        varietyPenaltyEvaluator.warmup(event.getPlayer().getUniqueId(), newJobId, def.varietyPenalty().window());
+        jobRegistry.get(newJobId).ifPresent(def ->
+                varietyPenaltyEvaluator.warmupFor(event.getPlayer().getUniqueId(), def));
     }
 }

@@ -63,7 +63,7 @@ public final class VarietyPenaltyEvaluator {
             return Result.noPenalty();
         }
         Key key = new Key(playerUuid, job.id());
-        VarietyRingBuffer buffer = ringBuffers.computeIfAbsent(key, k -> new VarietyRingBuffer(config.window()));
+        VarietyRingBuffer buffer = bufferFor(key, config.window());
         // 件数と ratio は 1 回のロックでまとめて取る。個別 getter を並べると
         // 読み出しの合間に値がずれる余地が残る。
         VarietyRingBuffer.Snapshot before = buffer.snapshot();
@@ -83,6 +83,16 @@ public final class VarietyPenaltyEvaluator {
     }
 
     /**
+     * {@link JobDefinition} から window を読んで {@link #warmup(UUID, JobId, int)} する。
+     * variety_penalty が無いか無効なら何もしない。
+     */
+    public void warmupFor(UUID playerUuid, JobDefinition job) {
+        VarietyPenaltyConfig config = job.varietyPenalty();
+        if (config == null || !config.enabled()) return;
+        warmup(playerUuid, job.id(), config.window());
+    }
+
+    /**
      * プレイヤー参加時に、現在の専業について ring buffer を async でウォームアップする。
      * 事前に呼ぶ jobId は現在の専業のみ。未選択なら何もしない。
      */
@@ -98,10 +108,7 @@ public final class VarietyPenaltyEvaluator {
                         "variety warmup failed for " + playerUuid + "/" + jobId.value(), e);
                 return;
             }
-            dispatcher.dispatchControl(() -> {
-                VarietyRingBuffer buffer = ringBuffers.computeIfAbsent(key, k -> new VarietyRingBuffer(window));
-                buffer.initFromRecent(recent);
-            });
+            dispatcher.dispatchControl(() -> bufferFor(key, window).initFromRecent(recent));
         });
     }
 
@@ -119,6 +126,25 @@ public final class VarietyPenaltyEvaluator {
         return new Snapshot(s.size(), s.capacity(), s.topRatio(), s.topKey());
     }
 
+    /**
+     * key に対応する ring buffer を返す。無ければ作る。
+     * 既存 buffer の容量が window と違う場合は作り直す。
+     * reload で {@code variety_penalty.window} が変われば、古い容量の buffer が残ってしまうため
+     * （buffer の容量は生成時に固定される）。
+     *
+     * <p>呼び出しは {@link RewardDispatcher} の単一スレッドからのみなので、
+     * get → put の間に別の書き手は挟まらない。
+     */
+    private VarietyRingBuffer bufferFor(Key key, int window) {
+        VarietyRingBuffer existing = ringBuffers.get(key);
+        if (existing != null && existing.capacity() == window) {
+            return existing;
+        }
+        VarietyRingBuffer fresh = new VarietyRingBuffer(window);
+        ringBuffers.put(key, fresh);
+        return fresh;
+    }
+
     private VarietyCurveLookup curveFor(JobId jobId, VarietyPenaltyConfig config) {
         return curveCache.computeIfAbsent(jobId.value(), k -> new VarietyCurveLookup(config.curve()));
     }
@@ -126,6 +152,14 @@ public final class VarietyPenaltyEvaluator {
     /** curve キャッシュを破棄する。reload 時に呼ぶ想定。 */
     public void invalidateCurves() {
         curveCache.clear();
+    }
+
+    /**
+     * ring buffer を全破棄する。reload 時に呼ぶ想定。
+     * 破棄後は online player ぶんを {@link #warmupFor} で作り直す（JobsServices#reload）。
+     */
+    public void invalidateBuffers() {
+        dispatcher.dispatchControl(ringBuffers::clear);
     }
 
     private record Key(UUID playerUuid, JobId jobId) {

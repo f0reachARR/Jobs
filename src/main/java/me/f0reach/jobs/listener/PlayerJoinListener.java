@@ -1,6 +1,5 @@
 package me.f0reach.jobs.listener;
 
-import me.f0reach.jobs.domain.job.JobDefinition;
 import me.f0reach.jobs.domain.job.JobId;
 import me.f0reach.jobs.modifier.dailycap.DailyTotalCache;
 import me.f0reach.jobs.modifier.variety.VarietyPenaltyEvaluator;
@@ -76,9 +75,6 @@ public final class PlayerJoinListener implements Listener {
     }
 
     private void warmupVariety(UUID uuid, JobId jobId) {
-        JobDefinition def = jobRegistry.get(jobId).orElse(null);
-        if (def == null) return;
-        if (def.varietyPenalty() == null || !def.varietyPenalty().enabled()) return;
-        varietyPenaltyEvaluator.warmup(uuid, jobId, def.varietyPenalty().window());
+        jobRegistry.get(jobId).ifPresent(def -> varietyPenaltyEvaluator.warmupFor(uuid, def));
     }
 }

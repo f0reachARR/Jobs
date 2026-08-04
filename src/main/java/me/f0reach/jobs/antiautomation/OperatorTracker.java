@@ -16,12 +16,15 @@ import org.bukkit.inventory.ItemStack;
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.UUID;
+import java.util.function.IntSupplier;
 
 /**
  * BrewingStand への「投入者」を KVS に記録する。
  * spec/04-reward-pipeline.md 「auto_fed_processing」および ADR-0017 を参照。
  *
  * <p>Player が UI で投入したら operator = Player UUID + TTL (config.operator_ttl_sec)。
+ * TTL は job YAML 由来なので、{@code /jobs reload} で変わり得る。値は書き込みのたびに
+ * supplier から読み直す（listener は再登録しないため、固定値を持つと reload で古いままになる）。
  * Hopper / Dispenser 由来なら operator = null (すぐ AutoFedProcessingCheck が 0 判定する)。
  * どちらの経路でも write-through で最新値が勝つ。
  *
@@ -35,9 +38,9 @@ public final class OperatorTracker implements Listener {
     private static final byte MARKER_PLAYER = 1;
 
     private final JobsKVStore kvStore;
-    private final int operatorTtlSec;
+    private final IntSupplier operatorTtlSec;
 
-    public OperatorTracker(JobsKVStore kvStore, int operatorTtlSec) {
+    public OperatorTracker(JobsKVStore kvStore, IntSupplier operatorTtlSec) {
         this.kvStore = kvStore;
         this.operatorTtlSec = operatorTtlSec;
     }
@@ -65,7 +68,7 @@ public final class OperatorTracker implements Listener {
                 bak.block().getWorld().getUID(),
                 bak.block().getX(), bak.block().getY(), bak.block().getZ()
         );
-        kvStore.put(key, encodePlayer(player), Duration.ofSeconds(operatorTtlSec));
+        kvStore.put(key, encodePlayer(player), Duration.ofSeconds(operatorTtlSec.getAsInt()));
     }
 
     /** Hopper / Dispenser 由来のアイテム移動を捕捉して operator を null にする。 */
@@ -86,7 +89,7 @@ public final class OperatorTracker implements Listener {
                 bak.block().getWorld().getUID(),
                 bak.block().getX(), bak.block().getY(), bak.block().getZ()
         );
-        kvStore.put(key, encodeNull(), Duration.ofSeconds(operatorTtlSec));
+        kvStore.put(key, encodeNull(), Duration.ofSeconds(operatorTtlSec.getAsInt()));
     }
 
     /** operator (UUID / null) をエンコード。1 byte で kind、続けて UUID 16 byte。 */
