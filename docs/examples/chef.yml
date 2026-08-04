@@ -141,6 +141,9 @@ variety_penalty:
   hide_numbers: false
 
 anti_automation:
-  # Smoker / Furnace の自動投入経路を封殺
+  # かまど (Smoker / Furnace) の自動投入は auto_fed_processing の対象外。
+  # 精錬報酬は投入した人に、焼き上がった時点で入るため、ホッパー投入ぶんは
+  # そもそも誰にも払われない (ADR-0024)。
+  # この職業には item_brewed が無いので、下の設定は実質的に効かない。
   auto_fed_processing:
     operator_ttl_sec: 60

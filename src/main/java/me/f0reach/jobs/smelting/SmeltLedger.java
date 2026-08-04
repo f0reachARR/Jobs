@@ -111,7 +111,9 @@ public final class SmeltLedger {
             return;
         }
         if (!actualItemKey.equals(itemKey)) {
-            // 別の材料に入れ替わった。元帳ごと差し替える。
+            // 別の材料に入れ替わった (または元帳が無い) 。元帳ごと差し替える。
+            // 元帳が無い状態では「前からあった分」と「今入れた分」を区別できないので、
+            // 全量が接触者に帰属する。導入時の移行アーティファクトとして許容する (ADR-0024)。
             entries.clear();
             itemKey = actualItemKey;
             credit(attributeTo, actualCount);

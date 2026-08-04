@@ -189,5 +189,7 @@ variety_penalty:
   hide_numbers: false
 
 anti_automation:
+  # BrewingStand の自動投入対策。かまど (item_smelted) は対象外で、
+  # 精錬報酬は投入した人に焼き上がり時点で入る (ADR-0024)。
   auto_fed_processing:
     operator_ttl_sec: 60
