@@ -19,6 +19,7 @@ import me.f0reach.jobs.antiautomation.TradeRecorder;
 import me.f0reach.jobs.antiautomation.UnplantedCropCheck;
 import me.f0reach.jobs.antiautomation.VillagerRepeatTradeCheck;
 import me.f0reach.jobs.config.ConfigLoader;
+import me.f0reach.jobs.config.ConfigReloadPolicy;
 import me.f0reach.jobs.config.PluginConfig;
 import me.f0reach.jobs.detection.EventDispatcher;
 import me.f0reach.jobs.detection.advancement.AdvancementDatapackInstaller;
@@ -116,6 +117,7 @@ import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.SplittableRandom;
 import java.util.UUID;
@@ -134,7 +136,10 @@ public final class JobsServices {
     private final JobsPlugin plugin;
     private final AsyncExecutor asyncExecutor;
 
-    private PluginConfig config;
+    /** reload で差し替える。読み手は worker / main の双方にいるので volatile。 */
+    private volatile PluginConfig config;
+    /** kvs.memory.max_entries は PluginConfig に載らないので、差分検出用に覚えておく。 */
+    private long kvsMaxEntries;
     private LocaleRegistry localeRegistry;
     private I18n i18n;
 
@@ -198,9 +203,8 @@ public final class JobsServices {
     }
 
     public void wire() {
-        plugin.saveDefaultConfig();
-        plugin.reloadConfig();
-        this.config = new ConfigLoader().load(plugin.getConfig());
+        this.config = loadConfigFile();
+        this.kvsMaxEntries = readKvsMaxEntries();
 
         this.localeRegistry = new LocaleRegistry(plugin);
         this.localeRegistry.load();
@@ -222,10 +226,20 @@ public final class JobsServices {
         registerListeners();
     }
 
+    private PluginConfig loadConfigFile() {
+        plugin.saveDefaultConfig();
+        plugin.reloadConfig();
+        return new ConfigLoader().load(plugin.getConfig());
+    }
+
+    private long readKvsMaxEntries() {
+        return plugin.getConfig().getLong("kvs.memory.max_entries", DEFAULT_KVS_MAX_ENTRIES);
+    }
+
     private void wireExtensions() {
         // ワーカーは 1 本なので、遅い拡張実装は全プレイヤーの報酬処理を詰まらせる。
         var slowReporter = new me.f0reach.jobs.modifier.SlowExtensionReporter(
-                plugin.getLogger(), config.reward().async().slowExtensionThresholdMs());
+                plugin.getLogger(), () -> config.reward().async().slowExtensionThresholdMs());
         this.extensionModifierChain = new ExtensionModifierChain(plugin, slowReporter);
         this.splitterChain = new SplitterChain(plugin, slowReporter);
         this.queryService = new ActionLogQueryServiceImpl(actionLogRepository, asyncExecutor);
@@ -250,10 +264,7 @@ public final class JobsServices {
         this.furnaceLedgerStore = new FurnaceLedgerStore(plugin);
         this.furnaceInputWatcher = new FurnaceInputWatcher(plugin, furnaceLedgerStore);
         this.smeltRewardCollector = new SmeltRewardCollector(
-                plugin,
-                eventDispatcher,
-                config.smelting().flushTicks(),
-                config.smelting().maxPending());
+                plugin, eventDispatcher, () -> config.smelting());
         this.smeltRewardCollector.start();
     }
 
@@ -276,7 +287,7 @@ public final class JobsServices {
         );
         this.antiAutomationCoordinator = new AntiAutomationCoordinator(plugin, checks);
         this.antiAutomationNotifier = new AntiAutomationNotifier(
-                i18n, config.antiAutomation().notifyActionBar());
+                i18n, () -> config.antiAutomation().notifyActionBar());
     }
 
     /** operator_ttl_sec は job ごとに違い得るが、Phase 7 では簡便にジョブ全域で最大値を採用する。 */
@@ -325,7 +336,7 @@ public final class JobsServices {
                 ZoneId.systemDefault(),
                 config.dailyCap().scope()
         );
-        this.dailyCapEvaluator = new DailyCapEvaluator(dailyTotalCache, config.dailyCap());
+        this.dailyCapEvaluator = new DailyCapEvaluator(dailyTotalCache, () -> config.dailyCap());
     }
 
     private void wirePersistence() {
@@ -343,8 +354,7 @@ public final class JobsServices {
     }
 
     private void wireKvs() {
-        long maxEntries = plugin.getConfig().getLong("kvs.memory.max_entries", DEFAULT_KVS_MAX_ENTRIES);
-        this.kvStore = new InMemoryKVStore(maxEntries);
+        this.kvStore = new InMemoryKVStore(kvsMaxEntries);
     }
 
     private void wireEconomy() {
@@ -353,7 +363,8 @@ public final class JobsServices {
     }
 
     private void wireSpecialty() {
-        CooldownPolicy policy = new CooldownPolicy(config.specialtyMode().changePolicy());
+        CooldownPolicy policy = new CooldownPolicy(
+                () -> config.specialtyMode().changePolicy(), ZoneId.systemDefault());
         this.firstJoinProvider = new BukkitFirstJoinProvider();
         this.specialtyService = new SpecialtyService(
                 plugin, playerJobRepository, playerJobHistoryRepository, jobRegistry, policy,
@@ -365,10 +376,10 @@ public final class JobsServices {
         this.jobConditionsFormatter = new JobConditionsFormatter(i18n, amountFormatter, tagResolver);
         this.jobConditionsDialog = new JobConditionsDialog(
                 i18n, jobRegistry, specialtyService, dialogService,
-                jobConditionsFormatter, config.specialtyMode());
+                jobConditionsFormatter, () -> config.specialtyMode());
         this.specialtyListDialog = new SpecialtyListDialog(
                 i18n, jobRegistry, specialtyService, dialogService,
-                jobConditionsDialog, config.specialtyMode());
+                jobConditionsDialog, () -> config.specialtyMode());
         this.specialtyCooldownDialog = new SpecialtyCooldownDialog(i18n, specialtyService, dialogService);
     }
 
@@ -398,7 +409,7 @@ public final class JobsServices {
                 new BuiltinModifierStage(varietyPenaltyEvaluator, dailyCapEvaluator, ZoneId.systemDefault()),
                 new ExtensionModifierStage(extensionModifierChain),
                 new SplitterStage(splitterChain),
-                new RewardRoundingStage(plugin, config.reward()),
+                new RewardRoundingStage(plugin, () -> config.reward()),
                 new EconomyTransferStage(plugin, economy, mainWorkQueue, async.economyOnMain()),
                 new ActionLogStage(plugin, actionLogQueue, batchFlushWorker, asyncExecutor)
         );
@@ -423,7 +434,7 @@ public final class JobsServices {
                         varietyPenaltyEvaluator,
                         dailyTotalCache,
                         jobRegistry,
-                        config.specialtyMode().showSelectDialogOnJoin()),
+                        () -> config.specialtyMode().showSelectDialogOnJoin()),
                 plugin);
         pm.registerEvents(
                 new SpecialtyChangedListener(varietyPenaltyEvaluator, jobRegistry),
@@ -459,24 +470,50 @@ public final class JobsServices {
     }
 
     /**
-     * /jobs reload の実装。config を除いて再読込する。
+     * /jobs reload の実装。
      * <ul>
+     *   <li>config.yml を再読込 (値を読み直すだけで済むキーのみ。{@link ConfigReloadPolicy})</li>
      *   <li>lang/*.yml を再読込</li>
      *   <li>jobs/*.yml を再読込 (registry を差し替え)</li>
      *   <li>tag cache を破棄</li>
      *   <li>variety curve キャッシュを破棄し、ring buffer を online player ぶん作り直す</li>
+     *   <li>精錬の flush 周期を組み直す</li>
      *   <li>advancement datapack を再展開</li>
      * </ul>
-     * config.yml 自体は再読込しない (persistence / kvs 種別の再構築が絡み、複雑さの割にニーズが薄いため)。
-     * config を変える場合は再起動を要求する。
+     * config の読み込みに失敗したら例外を投げ、旧設定のまま動作を続ける
+     * (jobs/lang も触らない。/jobs reload はエラーを返す)。
      */
     public void reload() {
+        reloadConfigFile();
         localeRegistry.load();
         new MissingKeyReporter(plugin, localeRegistry).report();
+        // anti_automation.defaults は YAML 読み込み時に per-job 定義へ merge されるので、
+        // config を差し替えた後に loadJobs すれば新しい default が効く。
         loadJobs();
         runShadowDetection();
         rewarmVarietyState();
+        if (smeltRewardCollector != null) smeltRewardCollector.applyConfig();
         installAdvancementDatapack();
+    }
+
+    /**
+     * config.yml を読み直して差し替える。起動時に組んだ構造物に直結するキーは
+     * 旧値を引き継ぎ、変更されていれば WARNING で列挙する（{@link ConfigReloadPolicy}）。
+     */
+    private void reloadConfigFile() {
+        PluginConfig loaded = loadConfigFile();
+        List<String> restartOnly =
+                new ArrayList<>(ConfigReloadPolicy.restartRequiredChanges(config, loaded));
+        long loadedKvsMaxEntries = readKvsMaxEntries();
+        if (loadedKvsMaxEntries != kvsMaxEntries) {
+            restartOnly.add("kvs.memory.max_entries");
+        }
+        this.config = ConfigReloadPolicy.effective(config, loaded);
+        if (!restartOnly.isEmpty()) {
+            plugin.getLogger().warning(
+                    "these config.yml keys changed but need a server restart to take effect: "
+                            + String.join(", ", restartOnly));
+        }
     }
 
     /**

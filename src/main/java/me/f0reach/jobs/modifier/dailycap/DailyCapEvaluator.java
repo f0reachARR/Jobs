@@ -4,6 +4,7 @@ import me.f0reach.jobs.config.PluginConfig;
 
 import java.time.LocalDate;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 /**
  * 日次キャップを評価する。spec/04-reward-pipeline.md 「daily_cap」を参照。
@@ -17,19 +18,29 @@ import java.util.UUID;
 public final class DailyCapEvaluator {
 
     private final DailyTotalView cache;
-    private final PluginConfig.DailyCapConfig config;
+    private final Supplier<PluginConfig.DailyCapConfig> config;
 
+    /** 固定の設定で組む。テストなど reload を伴わない用途向け。 */
     public DailyCapEvaluator(DailyTotalView cache, PluginConfig.DailyCapConfig config) {
+        this(cache, () -> config);
+    }
+
+    /**
+     * config を参照して組む。{@code /jobs reload} で amount が差し替わるので、
+     * 評価のたびに supplier から読み直す。
+     * scope の変更は {@link DailyTotalCache} の持ち方が変わるため反映しない（要再起動）。
+     */
+    public DailyCapEvaluator(DailyTotalView cache, Supplier<PluginConfig.DailyCapConfig> config) {
         this.cache = cache;
         this.config = config;
     }
 
     public PluginConfig.DailyCapConfig.Scope scope() {
-        return config.scope();
+        return config.get().scope();
     }
 
     public double amount() {
-        return config.amount();
+        return config.get().amount();
     }
 
     /**
@@ -42,6 +53,7 @@ public final class DailyCapEvaluator {
      * @return {@link Result} 支払額と削減量、上限到達フラグ
      */
     public Result evaluate(UUID playerUuid, LocalDate date, String jobId, double proposed) {
+        PluginConfig.DailyCapConfig config = this.config.get();
         double cap = config.amount();
         if (cap <= 0) {
             // amount<=0 は「無効化」相当として扱う（YAML 側の意図を尊重）。

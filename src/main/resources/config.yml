@@ -1,5 +1,13 @@
 # Job プラグイン グローバル設定
 # 詳細は docs/spec/02-yaml-schema.md 「グローバル設定 (config.yml)」を参照。
+#
+# /jobs reload でこのファイルも読み直すが、起動時に組む構造物 (接続プール、報酬ワーカー、
+# キューの容量、キャッシュの持ち方) に直結する下記のキーは反映されず、再起動が必要。
+# 変更されていれば reload 時に WARNING でキー名を出す。
+#   persistence.*
+#   kvs.*
+#   daily_cap.scope
+#   reward.async.enabled / queue_capacity / backlog_warn_ratio / economy_on_main / main_work_per_tick
 
 specialty_mode:
   # 専業外アクションの倍率。0.0 のとき報酬支払いも行動ログ書き込みも行わない。
@@ -37,6 +45,7 @@ reward:
   # HALF_UP / HALF_EVEN / HALF_DOWN / UP / DOWN / CEILING / FLOOR / UNNECESSARY のいずれか。
   rounding_mode: HALF_UP
   # 報酬パイプラインの非同期実行。docs/plan/async-reward-pipeline.md を参照。
+  # slow_extension_threshold_ms と drain_timeout_ms 以外は reload では反映されない (要再起動)。
   async:
     # 段階 4 (基礎報酬) から 11 (行動ログ) を専用ワーカースレッドで実行するか。
     # false のとき全段階を main thread で同期実行する (従来の挙動)。
@@ -58,10 +67,12 @@ reward:
 
 daily_cap:
   # 1 日あたりの報酬上限。scope は total (全ジョブ合算) または per_job。
+  # scope の変更は当日累計キャッシュの持ち方が変わるため、reload では反映されない (要再起動)。
   amount: 1000000
   reset_at: "00:00"
   scope: total
 
+# 接続情報の変更は reload では反映されない (要再起動)。
 persistence:
   type: mysql
   host: localhost
@@ -72,6 +83,7 @@ persistence:
   pool_size: 8
   retention_days: 30
 
+# store の実装と容量は起動時に決めるため、reload では反映されない (要再起動)。
 kvs:
   # memory または redis。redis は Phase 2 の予約。
   type: memory

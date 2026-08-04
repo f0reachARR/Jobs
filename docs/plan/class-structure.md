@@ -395,7 +395,7 @@ Bedrock 側では BedrockDialog が MiniMessage を strip するため、文言�
 
 **StatusSub**：`/jobs status`。ステータスをチャットに MiniMessage で出力する。
 
-**ReloadSub**：`/jobs reload`。YAML、lang、tag cache、advancement datapack を再読込。`jobs.admin.reload` を要求する（[08-permissions.md](../spec/08-permissions.md)）。
+**ReloadSub**：`/jobs reload`。config.yml（`ConfigReloadPolicy` が許すキーのみ）、YAML、lang、tag cache、advancement datapack を再読込。`jobs.admin.reload` を要求する（[08-permissions.md](../spec/08-permissions.md)）。
 
 #### command/admin
 

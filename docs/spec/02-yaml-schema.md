@@ -326,7 +326,28 @@ rare の `chance` と `reward` はこのフラグに関わらず出さない（`
 セクション本体は「anti_automation」節と同じスキーマを取り、per-job YAML の同名キーに
 default 値を供給する。per-job YAML でキーが省略されたら default が適用される。
 `notify.action_bar` は各 reason に対する ActionBar 通知の有効化フラグで、per-job override
-は無い（グローバル固定）。設定 reload は起動時のみ反映される。
+は無い（グローバル固定）。
+
+### reload で反映される範囲
+
+`/jobs reload` は config.yml を読み直すが、反映するのは「値を読み直すだけで済むキー」に限る。
+起動時に組んだ構造物（接続プール、報酬ワーカー、キューの容量、キャッシュの持ち方）に直結する
+以下のキーは旧値を引き継ぎ、変更されていれば reload 時に WARNING でキー名を列挙する。
+
+| 反映しないキー | 理由 |
+|---|---|
+| `persistence.*` | DataSource / pool / schema を起動時に組む |
+| `kvs.*`（`kvs.memory.max_entries` を含む） | store の実装と容量を起動時に決める |
+| `daily_cap.scope` | `DailyTotalCache` の持ち方（合算 / ジョブ別）が変わる |
+| `reward.async.enabled` / `queue_capacity` / `backlog_warn_ratio` / `economy_on_main` / `main_work_per_tick` | ワーカー、境界キュー、main thread ドレイナの構成 |
+
+上記以外（`specialty_mode.*`、`reward.decimals` / `rounding_mode`、
+`reward.async.slow_extension_threshold_ms` / `drain_timeout_ms`、`daily_cap.amount` / `reset_at`、
+`smelting.*`、`anti_automation.*`）は reload で反映される。
+`anti_automation` のグローバルデフォルトは per-job YAML の再読込時に merge されるので、
+default の変更もその場で効く。
+config.yml の構文エラーや値の検証エラーで読み込みに失敗した場合は、jobs / lang も含めて
+何も入れ替えずエラーを返す（旧設定のまま動作を続ける）。
 
 ## 関連 ADR
 

@@ -231,7 +231,7 @@ anti_automation:
 
 YAML を追加・変更した後は次のいずれかで反映する。
 
-- `/jobs reload`：ジョブ、lang、tag cache、advancement datapack をまとめて再読込。
+- `/jobs reload`：config.yml（後述の一部キーを除く）、ジョブ、lang、tag cache、advancement datapack をまとめて再読込。
 - サーバ再起動。
 
 reload に失敗すると `chat` にエラーが返り、旧設定のまま動作を続ける。起動時ログにもスタックトレースが出るので、YAML 構文エラーはそこで確認する。
@@ -242,8 +242,22 @@ reload に失敗すると `chat` にエラーが返り、旧設定のまま動�
 
 ### `/jobs reload`
 
-YAML / lang / tag cache / advancement datapack をすべて再読込する。ジョブ数と報酬エントリ数がチャットに返る。
-YAML の構文エラーがあれば失敗メッセージが返り、旧設定のまま動作継続する。
+config.yml / ジョブ YAML / lang / tag cache / advancement datapack を再読込する。ジョブ数と報酬エントリ数がチャットに返る。
+YAML の構文エラーがあれば失敗メッセージが返り、旧設定のまま動作継続する（config の読み込みに失敗した場合、ジョブと lang も入れ替えない）。
+
+config.yml のうち、起動時に組む構造物に直結する次のキーは reload では反映されず、**サーバ再起動が必要**。
+変更されていれば reload 時に `server.log` へ「need a server restart to take effect」の WARNING がキー名つきで出る。
+
+| 再起動が必要なキー | 理由 |
+|---|---|
+| `persistence.*` | MySQL の接続プールとスキーマ初期化を起動時に行う |
+| `kvs.*` | KVS の実装と容量を起動時に決める |
+| `daily_cap.scope` | 当日累計キャッシュの持ち方（合算 / ジョブ別）が変わる |
+| `reward.async.enabled` / `queue_capacity` / `backlog_warn_ratio` / `economy_on_main` / `main_work_per_tick` | 報酬ワーカーとキュー、送金ドレイナの構成 |
+
+これ以外（`specialty_mode.*`、`reward.decimals` / `rounding_mode`、`daily_cap.amount`、`smelting.*`、`anti_automation.*` など）は reload で反映される。
+`smelting.flush_ticks` を変えた場合は、まとめ待ちのぶんを出してからタイマを組み直す。
+`variety_penalty.window` を変えた場合はオンラインのプレイヤーの窓を作り直す（直近の履歴は行動ログから読み直す）。
 
 ### `/jobs admin inspect <player>`
 

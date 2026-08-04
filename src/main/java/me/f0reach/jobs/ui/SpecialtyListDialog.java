@@ -13,6 +13,8 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.bukkit.entity.Player;
 
+import java.util.function.Supplier;
+
 /**
  * 職業一覧 Dialog。SELECT / CHANGE / INFO の 3 モードで再利用する。
  *
@@ -35,7 +37,7 @@ public final class SpecialtyListDialog {
     private final SpecialtyService specialtyService;
     private final DialogService dialogService;
     private final JobConditionsDialog conditionsDialog;
-    private final PluginConfig.SpecialtyModeConfig specialtyModeConfig;
+    private final Supplier<PluginConfig.SpecialtyModeConfig> specialtyModeConfig;
 
     public SpecialtyListDialog(
             I18n i18n,
@@ -43,7 +45,7 @@ public final class SpecialtyListDialog {
             SpecialtyService specialtyService,
             DialogService dialogService,
             JobConditionsDialog conditionsDialog,
-            PluginConfig.SpecialtyModeConfig specialtyModeConfig
+            Supplier<PluginConfig.SpecialtyModeConfig> specialtyModeConfig
     ) {
         this.i18n = i18n;
         this.jobRegistry = jobRegistry;
@@ -103,7 +105,7 @@ public final class SpecialtyListDialog {
     private void onJobButton(Player player, JobId jobId, Mode mode) {
         switch (mode) {
             case SELECT -> {
-                if (specialtyModeConfig.discloseBeforeSelect()) {
+                if (specialtyModeConfig.get().discloseBeforeSelect()) {
                     conditionsDialog.open(player, jobId, JobConditionsDialog.Mode.PREVIEW_FOR_SELECT,
                             () -> () -> open(player, Mode.SELECT));
                 } else {
@@ -111,7 +113,7 @@ public final class SpecialtyListDialog {
                 }
             }
             case CHANGE -> {
-                if (specialtyModeConfig.discloseBeforeSelect()) {
+                if (specialtyModeConfig.get().discloseBeforeSelect()) {
                     conditionsDialog.open(player, jobId, JobConditionsDialog.Mode.PREVIEW_FOR_CHANGE,
                             () -> () -> open(player, Mode.CHANGE));
                 } else {

@@ -1,5 +1,6 @@
 package me.f0reach.jobs.smelting;
 
+import me.f0reach.jobs.config.PluginConfig;
 import me.f0reach.jobs.detection.EventDispatcher;
 import me.f0reach.jobs.detection.SourceFlags;
 import me.f0reach.jobs.domain.job.ActionType;
@@ -15,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 /**
  * 精錬完了ぶんをまとめて 1 件の {@code item_smelted} として dispatch する。
@@ -33,23 +35,54 @@ public final class SmeltRewardCollector {
 
     private final Plugin plugin;
     private final EventDispatcher dispatcher;
-    private final long flushTicks;
-    private final int maxPending;
+    private final Supplier<PluginConfig.SmeltingConfig> config;
 
     private final Map<PendingKey, Integer> pending = new LinkedHashMap<>();
     private BukkitTask flushTask;
+    /** 現在スケジュールしている flush 周期。{@link #applyConfig()} の差分判定に使う。 */
+    private long scheduledFlushTicks;
 
+    /** 固定の設定で組む。テストなど reload を伴わない用途向け。 */
     public SmeltRewardCollector(
             Plugin plugin, EventDispatcher dispatcher, long flushTicks, int maxPending) {
+        this(plugin, dispatcher,
+                fixed(new PluginConfig.SmeltingConfig(flushTicks, maxPending)));
+    }
+
+    /** config を参照して組む。{@code /jobs reload} 後は {@link #applyConfig()} を呼ぶ。 */
+    public SmeltRewardCollector(
+            Plugin plugin, EventDispatcher dispatcher,
+            Supplier<PluginConfig.SmeltingConfig> config) {
         this.plugin = plugin;
         this.dispatcher = dispatcher;
-        this.flushTicks = flushTicks;
-        this.maxPending = maxPending;
+        this.config = config;
+    }
+
+    private static Supplier<PluginConfig.SmeltingConfig> fixed(PluginConfig.SmeltingConfig cfg) {
+        return () -> cfg;
     }
 
     /** listener 登録と同じタイミングで呼ぶ。 */
     public void start() {
         if (flushTask != null) return;
+        schedule(config.get().flushTicks());
+    }
+
+    /**
+     * reload 後に呼ぶ。max_pending は毎回読むので、ここでは flush 周期だけ見る。
+     * 周期が変わったときはまとめ待ちを出してからタイマを組み直す（周期を跨いで持ち越さない）。
+     */
+    public void applyConfig() {
+        if (flushTask == null) return;
+        long ticks = config.get().flushTicks();
+        if (ticks == scheduledFlushTicks) return;
+        flush();
+        flushTask.cancel();
+        schedule(ticks);
+    }
+
+    private void schedule(long flushTicks) {
+        this.scheduledFlushTicks = flushTicks;
         this.flushTask = plugin.getServer().getScheduler()
                 .runTaskTimer(plugin, this::flush, flushTicks, flushTicks);
     }
@@ -78,7 +111,7 @@ public final class SmeltRewardCollector {
         if (owner == null || block == null || item == null || amount <= 0) return;
         pending.merge(new PendingKey(owner, BlockRef.of(block), item), amount, Integer::sum);
         // 溜め込みすぎないよう、上限に達したら tick を待たずに出す。
-        if (pending.size() >= maxPending) flush();
+        if (pending.size() >= config.get().maxPending()) flush();
     }
 
     /** 溜まっているぶんを dispatch する。オフラインのプレイヤーぶんは捨てる。 */

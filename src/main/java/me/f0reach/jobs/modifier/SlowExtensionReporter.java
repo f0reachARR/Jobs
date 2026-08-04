@@ -19,7 +19,7 @@ public final class SlowExtensionReporter {
     private static final long WARN_INTERVAL_NANOS = 30L * 1_000_000_000L;
 
     private final Logger logger;
-    private final long thresholdNanos;
+    private final LongSupplier thresholdMs;
     private final LongSupplier nanoTime;
     private final AtomicLong lastWarnAt = new AtomicLong();
 
@@ -28,16 +28,33 @@ public final class SlowExtensionReporter {
     }
 
     public SlowExtensionReporter(Logger logger, long thresholdMs) {
+        this(logger, () -> thresholdMs, System::nanoTime);
+    }
+
+    /**
+     * config を参照して組む。{@code /jobs reload} で閾値が差し替わるので、
+     * 計測のたびに supplier から読み直す。
+     */
+    public SlowExtensionReporter(Logger logger, LongSupplier thresholdMs) {
         this(logger, thresholdMs, System::nanoTime);
     }
 
     SlowExtensionReporter(Logger logger, long thresholdMs, LongSupplier nanoTime) {
+        this(logger, () -> thresholdMs, nanoTime);
+    }
+
+    private SlowExtensionReporter(Logger logger, LongSupplier thresholdMs, LongSupplier nanoTime) {
         this.logger = logger;
-        this.thresholdNanos = thresholdMs <= 0 ? 0L : thresholdMs * 1_000_000L;
+        this.thresholdMs = thresholdMs;
         this.nanoTime = nanoTime;
     }
 
-    public boolean enabled() { return thresholdNanos > 0L; }
+    public boolean enabled() { return thresholdNanos() > 0L; }
+
+    private long thresholdNanos() {
+        long ms = thresholdMs.getAsLong();
+        return ms <= 0 ? 0L : ms * 1_000_000L;
+    }
 
     /** 計測開始時刻。無効時は 0 を返し、計測そのものを省く。 */
     public long now() {
@@ -46,9 +63,10 @@ public final class SlowExtensionReporter {
 
     /** {@link #now()} の戻り値を渡す。閾値超過なら WARNING を出す。 */
     public void reportIfSlow(String kind, String id, long startedAt) {
-        if (!enabled()) return;
+        long threshold = thresholdNanos();
+        if (threshold <= 0L) return;
         long elapsed = nanoTime.getAsLong() - startedAt;
-        if (elapsed < thresholdNanos) return;
+        if (elapsed < threshold) return;
         if (!shouldWarn()) return;
         logger.warning(String.format(
                 "%s '%s' took %.1fms on the reward worker;"

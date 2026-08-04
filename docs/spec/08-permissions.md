@@ -30,7 +30,7 @@ Paper 標準の Bukkit パーミッションを使い、`paper-plugin.yml` の `
 | ノード | 適用箇所 | 説明 |
 |---|---|---|
 | `jobs.admin` | 親ノード | 配下すべてを true にする。上位ランクへの一括付与用。 |
-| `jobs.admin.reload` | `/jobs reload` | YAML / lang / tag cache / advancement datapack を再読込。 |
+| `jobs.admin.reload` | `/jobs reload` | config.yml（一部キーを除く）/ YAML / lang / tag cache / advancement datapack を再読込。 |
 | `jobs.admin.set` | `/jobs admin set <player> <job>` | 他プレイヤーの専業を強制付与する。オフラインでも可（[05-persistence.md](./05-persistence.md) の `player_job` を直接更新し、オンラインなら caches も同期）。`player_job_history` に `actor='admin'` で 1 行 append される。cooldown_base_at は now に更新するため、直後 1 回の cooldown はここから起算される。 |
 | `jobs.admin.reset-cooldown` | `/jobs admin reset-cooldown <player>` | 変更クールダウンをクリアする。`player_job.cooldown_base_at` を `Instant.EPOCH` に上書きし、`SpecialtyService#nextAvailableAt` が過去を返す状態にする。履歴 (`player_job_history`) には行を残さない（専業は変わっていないため）。 |
 | `jobs.admin.inspect` | `/jobs admin inspect <player>` | 他プレイヤーの `/jobs status` 相当を閲覧する。オフラインでも DB から現状（current job / cooldown_base_at / 当日累計）を出す。variety の ring buffer は memory 常駐なので、オフライン時は「取得不可」を明示する。 |

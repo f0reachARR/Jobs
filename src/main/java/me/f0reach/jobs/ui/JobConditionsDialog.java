@@ -38,7 +38,7 @@ public final class JobConditionsDialog {
     private final SpecialtyService specialtyService;
     private final DialogService dialogService;
     private final JobConditionsFormatter formatter;
-    private final PluginConfig.SpecialtyModeConfig specialtyModeConfig;
+    private final Supplier<PluginConfig.SpecialtyModeConfig> specialtyModeConfig;
 
     public JobConditionsDialog(
             I18n i18n,
@@ -46,7 +46,7 @@ public final class JobConditionsDialog {
             SpecialtyService specialtyService,
             DialogService dialogService,
             JobConditionsFormatter formatter,
-            PluginConfig.SpecialtyModeConfig specialtyModeConfig
+            Supplier<PluginConfig.SpecialtyModeConfig> specialtyModeConfig
     ) {
         this.i18n = i18n;
         this.jobRegistry = jobRegistry;
@@ -75,7 +75,7 @@ public final class JobConditionsDialog {
                 Placeholder.parsed("display_name", job.displayName())
         );
         Component title = i18n.format(player, DialogTexts.DIALOG_INFO_TITLE, titleResolver);
-        Component body = formatter.build(player, job, specialtyModeConfig.discloseRewardAmount());
+        Component body = formatter.build(player, job, specialtyModeConfig.get().discloseRewardAmount());
 
         MultiButtonDialog.Builder builder = MultiButtonDialog.builder()
                 .title(title)

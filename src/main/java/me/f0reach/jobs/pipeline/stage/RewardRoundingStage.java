@@ -7,6 +7,7 @@ import org.bukkit.plugin.Plugin;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 
 /**
@@ -19,9 +20,18 @@ import java.util.logging.Level;
 public final class RewardRoundingStage implements Stage {
 
     private final Plugin plugin;
-    private final PluginConfig.RewardConfig config;
+    private final Supplier<PluginConfig.RewardConfig> config;
 
+    /** 固定の設定で組む。テストなど reload を伴わない用途向け。 */
     public RewardRoundingStage(Plugin plugin, PluginConfig.RewardConfig config) {
+        this(plugin, () -> config);
+    }
+
+    /**
+     * config を参照して組む。stage の list は差し替えないので、
+     * {@code /jobs reload} 後の decimals / rounding_mode は毎回読み直して反映する。
+     */
+    public RewardRoundingStage(Plugin plugin, Supplier<PluginConfig.RewardConfig> config) {
         this.plugin = plugin;
         this.config = config;
     }
@@ -31,10 +41,12 @@ public final class RewardRoundingStage implements Stage {
 
     @Override
     public Result execute(PipelineContext ctx) {
+        // 3 つの額を別々の設定で丸めないよう、1 回だけ読む。
+        PluginConfig.RewardConfig cfg = config.get();
         try {
-            ctx.setBaseReward(round(ctx.baseReward()));
-            ctx.setFinalReward(round(ctx.finalReward()));
-            ctx.setNetPaid(round(ctx.netPaid()));
+            ctx.setBaseReward(round(ctx.baseReward(), cfg));
+            ctx.setFinalReward(round(ctx.finalReward(), cfg));
+            ctx.setNetPaid(round(ctx.netPaid(), cfg));
         } catch (ArithmeticException e) {
             // rounding_mode: UNNECESSARY で端数があった場合。0 化して WARNING。
             plugin.getLogger().log(Level.WARNING,
@@ -47,15 +59,15 @@ public final class RewardRoundingStage implements Stage {
         return Result.CONTINUE;
     }
 
-    private double round(double value) {
+    private double round(double value, PluginConfig.RewardConfig cfg) {
         if (value == 0.0) return 0.0;
         return BigDecimal.valueOf(value)
-                .setScale(config.decimals(), config.roundingMode())
+                .setScale(cfg.decimals(), cfg.roundingMode())
                 .doubleValue();
     }
 
     /** UNNECESSARY 単体テスト向け getter。 */
     public RoundingMode roundingMode() {
-        return config.roundingMode();
+        return config.get().roundingMode();
     }
 }

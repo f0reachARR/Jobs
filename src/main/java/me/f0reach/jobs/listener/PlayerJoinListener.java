@@ -13,6 +13,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 import java.util.UUID;
+import java.util.function.BooleanSupplier;
 
 /**
  * プレイヤーログイン時に SpecialtyService / 内蔵 Modifier のキャッシュを warm し、
@@ -29,7 +30,7 @@ public final class PlayerJoinListener implements Listener {
     private final VarietyPenaltyEvaluator varietyPenaltyEvaluator;
     private final DailyTotalCache dailyTotalCache;
     private final JobRegistry jobRegistry;
-    private final boolean showSelectDialogOnJoin;
+    private final BooleanSupplier showSelectDialogOnJoin;
 
     public PlayerJoinListener(
             SpecialtyService specialtyService,
@@ -38,7 +39,7 @@ public final class PlayerJoinListener implements Listener {
             VarietyPenaltyEvaluator varietyPenaltyEvaluator,
             DailyTotalCache dailyTotalCache,
             JobRegistry jobRegistry,
-            boolean showSelectDialogOnJoin
+            BooleanSupplier showSelectDialogOnJoin
     ) {
         this.specialtyService = specialtyService;
         this.firstJoinProvider = firstJoinProvider;
@@ -59,7 +60,7 @@ public final class PlayerJoinListener implements Listener {
         dailyTotalCache.warmup(uuid);
         specialtyService.currentJob(uuid).ifPresent(jobId -> warmupVariety(uuid, jobId));
 
-        if (showSelectDialogOnJoin && specialtyService.isFirstTime(uuid)) {
+        if (showSelectDialogOnJoin.getAsBoolean() && specialtyService.isFirstTime(uuid)) {
             // 少し遅延させないと Dialog がまだ届かない場合がある。
             listDialog.open(player, SpecialtyListDialog.Mode.SELECT);
         }

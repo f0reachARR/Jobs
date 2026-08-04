@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.function.Supplier;
 
 /**
  * config.specialty_mode.change_policy を評価して現在の cooldown を決める。
@@ -18,14 +19,24 @@ import java.util.List;
  */
 public final class CooldownPolicy {
 
-    private final List<PluginConfig.ChangePolicy> policies;
+    private final Supplier<List<PluginConfig.ChangePolicy>> policies;
     private final ZoneId zone;
 
+    /** 固定のポリシーで組む。テストなど reload を伴わない用途向け。 */
     public CooldownPolicy(List<PluginConfig.ChangePolicy> policies) {
         this(policies, ZoneId.systemDefault());
     }
 
+    /** 固定のポリシーで組む。テストなど reload を伴わない用途向け。 */
     public CooldownPolicy(List<PluginConfig.ChangePolicy> policies, ZoneId zone) {
+        this(() -> policies, zone);
+    }
+
+    /**
+     * config を参照して組む。{@code /jobs reload} で change_policy が差し替わるので、
+     * 判定のたびに supplier から読み直す。
+     */
+    public CooldownPolicy(Supplier<List<PluginConfig.ChangePolicy>> policies, ZoneId zone) {
         this.policies = policies;
         this.zone = zone;
     }
@@ -39,7 +50,7 @@ public final class CooldownPolicy {
      */
     public Duration currentCooldown(Instant now, Instant firstJoinAt) {
         int hour = LocalDateTime.ofInstant(now, zone).getHour();
-        for (PluginConfig.ChangePolicy policy : policies) {
+        for (PluginConfig.ChangePolicy policy : policies.get()) {
             if (policy.isDefault()) {
                 return policy.cooldown();
             }
