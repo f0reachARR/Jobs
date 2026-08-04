@@ -15,6 +15,7 @@ import me.f0reach.jobs.Permissions;
 import me.f0reach.jobs.antiautomation.ContainerKind;
 import me.f0reach.jobs.kvs.JobsKVStoreAdmin;
 import me.f0reach.jobs.kvs.KvsKeys;
+import me.f0reach.jobs.smelting.SmeltLedger;
 import me.f0reach.jobs.ui.DialogTexts;
 import me.f0reach.jobs.util.AsyncExecutor;
 import me.f0reach.jobs.util.MiniMessages;
@@ -254,6 +255,8 @@ final class KvsCommands {
             keys.add(KvsKeys.op(kind.tag(), worldUuid, x, y, z));
         }
         String worldName = world.getName();
+        // PDC も main thread でしか触れないので、KVS を引く前に読んでおく (ADR-0024)。
+        SmeltLedger ledger = bound.services().furnaceLedgerStore().load(world.getBlockAt(x, y, z));
 
         run(bound, () -> {
             List<JobsKVStoreAdmin.Entry> found = new ArrayList<>();
@@ -267,7 +270,7 @@ final class KvsCommands {
                     Placeholder.parsed("x", Integer.toString(x)),
                     Placeholder.parsed("y", Integer.toString(y)),
                     Placeholder.parsed("z", Integer.toString(z)));
-            if (found.isEmpty()) {
+            if (found.isEmpty() && ledger.isEmpty()) {
                 send(bound, DialogTexts.COMMAND_ADMIN_KVS_BLOCK_EMPTY);
                 return;
             }
@@ -275,8 +278,34 @@ final class KvsCommands {
             for (JobsKVStoreAdmin.Entry entry : found) {
                 sendEntryRow(bound, entry, names);
             }
+            sendSmeltLedger(bound, ledger, names);
         });
         return Command.SINGLE_SUCCESS;
+    }
+
+    /**
+     * 精錬元帳を投入順に出す。KVS ではなくブロックの PDC に持つ別系統のデータで、TTL は無い。
+     * 「精錬の報酬が入らない」の切り分けでは、ここに自分のエントリがあるかを見る。
+     */
+    private void sendSmeltLedger(Bound bound, SmeltLedger ledger, Function<UUID, String> names) {
+        if (ledger.isEmpty()) return;
+        send(bound, DialogTexts.COMMAND_ADMIN_KVS_BLOCK_SMELT_HEADER,
+                Placeholder.parsed("item", String.valueOf(ledger.itemKey())),
+                Placeholder.parsed("total", Integer.toString(ledger.total())));
+        for (SmeltLedger.Entry entry : ledger.entries()) {
+            TagResolver owner;
+            if (entry.owner() == null) {
+                owner = Placeholder.component("owner", bound.services().i18n().format(
+                        bound.sender(), DialogTexts.COMMAND_ADMIN_KVS_VALUE_OPERATOR_AUTOMATION));
+            } else {
+                String name = names.apply(entry.owner());
+                owner = Placeholder.parsed("owner",
+                        name == null ? entry.owner().toString() : name);
+            }
+            send(bound, DialogTexts.COMMAND_ADMIN_KVS_BLOCK_SMELT_ROW,
+                    owner,
+                    Placeholder.parsed("count", Integer.toString(entry.count())));
+        }
     }
 
     private int executeRemove(CommandContext<CommandSourceStack> ctx) {

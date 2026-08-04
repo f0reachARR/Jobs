@@ -99,6 +99,8 @@ command:
       block:
         header: "<gold>== <world> (<x>, <y>, <z>) の追跡データ ==</gold>"
         empty: "<gray>このブロックの追跡データはありません。</gray>"
+        smelt_header: "<gray>精錬元帳 (PDC):</gray> <white><item></white><gray> 計 <total> 個</gray>"
+        smelt_row: "<gray>- </gray><white><owner></white><gray>: <count> 個</gray>"
         no_target: "<yellow>視線の先にブロックがありません。座標を指定してください。</yellow>"
         console: "<red>コンソールからは座標の指定が必要です。</red>"
       remove:

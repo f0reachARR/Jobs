@@ -610,6 +610,11 @@ public final class JobsServices {
         return kvStore;
     }
 
+    /** 精錬元帳の読み書き。{@code /jobs admin kvs block} の表示に使う（ADR-0024）。 */
+    public FurnaceLedgerStore furnaceLedgerStore() {
+        return furnaceLedgerStore;
+    }
+
     public PlayerJobRepository playerJobRepository() {
         return playerJobRepository;
     }

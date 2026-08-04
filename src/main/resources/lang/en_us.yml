@@ -97,6 +97,8 @@ command:
       block:
         header: "<gold>== Tracking data at <world> (<x>, <y>, <z>) ==</gold>"
         empty: "<gray>No tracking data for this block.</gray>"
+        smelt_header: "<gray>Smelt ledger (PDC):</gray> <white><item></white><gray>, <total> total</gray>"
+        smelt_row: "<gray>- </gray><white><owner></white><gray>: <count></gray>"
         no_target: "<yellow>No block in sight. Specify coordinates instead.</yellow>"
         console: "<red>Coordinates are required when running from the console.</red>"
       remove:

@@ -94,6 +94,8 @@ public final class DialogTexts {
     public static final String COMMAND_ADMIN_KVS_GET_RAW = "command.admin.kvs.get.raw";
     public static final String COMMAND_ADMIN_KVS_BLOCK_HEADER = "command.admin.kvs.block.header";
     public static final String COMMAND_ADMIN_KVS_BLOCK_EMPTY = "command.admin.kvs.block.empty";
+    public static final String COMMAND_ADMIN_KVS_BLOCK_SMELT_HEADER = "command.admin.kvs.block.smelt_header";
+    public static final String COMMAND_ADMIN_KVS_BLOCK_SMELT_ROW = "command.admin.kvs.block.smelt_row";
     public static final String COMMAND_ADMIN_KVS_BLOCK_NO_TARGET = "command.admin.kvs.block.no_target";
     public static final String COMMAND_ADMIN_KVS_BLOCK_CONSOLE = "command.admin.kvs.block.console";
     public static final String COMMAND_ADMIN_KVS_REMOVE_OK = "command.admin.kvs.remove.ok";
