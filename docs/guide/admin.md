@@ -124,6 +124,20 @@ persistence:
 
 MySQL への接続情報。`retention_days` は `action_log` テーブルの保持日数で、それより古い行は日次のパージで削除される。監査要件がある場合は長めに設定する。テーブル定義や運用の詳細は [../spec/05-persistence.md](../spec/05-persistence.md)。
 
+### `smelting`
+
+```yaml
+smelting:
+  flush_ticks: 20
+  max_pending: 4096
+```
+
+精錬（`item_smelted`）の報酬は、取り出した人ではなく**材料を投入した人**に、焼き上がった時点で入る（[../spec/adr/0024-smelt-ledger-on-block-pdc.md](../spec/adr/0024-smelt-ledger-on-block-pdc.md)）。ホッパー等で自動投入されたぶんと、焼き上がった瞬間にオフラインだったぶんは払われない。
+
+`flush_ticks` は同じ `(投入者, かまど, アイテム)` の精錬完了をまとめて 1 件にするまでの tick 数（20 tick = 1 秒）。短くすると行動ログの件数が増え、長くすると報酬の反映が遅れる。`max_pending` はまとめ待ちの上限で、超えたら tick を待たずに払う。
+
+投入者と個数の記録はかまどブロックの PDC に持つため、再起動やチャンクのアンロードを跨いでも残る。かまどを壊せば中身と一緒に消える。
+
 ### `anti_automation`
 
 各自動化対策のグローバルデフォルトと、ActionBar 通知設定。
@@ -134,7 +148,7 @@ anti_automation:
   # unplanted_crop_harvest: zero
   # recently_placed_break:      # 破壊側 (作物以外) と設置側 (作物含む) の両方に効く
   #   window_sec: 3600
-  # auto_fed_processing:
+  # auto_fed_processing:      # BrewingStand のみ (かまどは smelting 側で扱う)
   #   operator_ttl_sec: 60
   # villager_repeat_trade:
   #   cooldown_sec: 60
@@ -316,6 +330,8 @@ YAML の構文エラーがあれば失敗メッセージが返り、旧設定の
 
 自動化対策の追跡データ（KVS）を覗く・掃除する。追跡データはメモリ上の短寿命データで、`recently_placed_break` / `recently_placed_replace`・`auto_fed_processing`・`villager_repeat_trade` の 3 種類が入っている（[../spec/05-persistence.md](../spec/05-persistence.md) の「追跡ストレージ（KVS）」）。
 
+かまどの精錬元帳はここには出ない。ブロックの PDC に持つ別系統のデータで、TTL を持たずチャンクと一緒に保存される（[../spec/05-persistence.md](../spec/05-persistence.md) の「精錬元帳（Block PDC）」）。`op:furnace:*` のエントリが残っていても、精錬の判定には使われない。
+
 | サブコマンド | 動作 |
 |---|---|
 | `kvs block [<x> <y> <z>]` | 視線の先、または指定座標のブロックの追跡データを一覧する。座標を省略した場合はコンソールから実行できない |
@@ -331,7 +347,7 @@ YAML の構文エラーがあれば失敗メッセージが返り、旧設定の
 普段使うのは `kvs block` で、誤検知の切り分けはこの流れになる。
 
 1. 対象のブロックを見ながら `/jobs admin kvs block` を実行する。
-2. `place:` のエントリが出れば `recently_placed_break` / `recently_placed_replace` の窓の内側にいる（= その位置の破壊報酬と設置報酬は 0 になる）。`op:` のエントリで「投入者なし」が出ていれば `auto_fed_processing` が効いている。
+2. `place:` のエントリが出れば `recently_placed_break` / `recently_placed_replace` の窓の内側にいる（= その位置の破壊報酬と設置報酬は 0 になる）。`op:` のエントリで「投入者なし」が出ていれば、その BrewingStand で `auto_fed_processing` が効いている。
 3. 誤検知と判断したら `/jobs admin kvs remove <key>` で消す。TTL 切れを待つ必要はない。
 
 `kvs clear all` は全追跡データを落とすため、実行直後は自動化検知が一時的に抜ける。窓が切れるまでの間、置いた直後のブロックを壊しても、同じ位置に置き直しても報酬が出る点に注意する。削除系の実行はいずれも sender 名つきでサーバログに残る。

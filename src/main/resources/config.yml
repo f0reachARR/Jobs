@@ -100,7 +100,7 @@ anti_automation:
   # unplanted_crop_harvest: zero
   # recently_placed_break:      # 破壊側 (作物以外) と設置側 (作物含む) の両方に効く
   #   window_sec: 3600
-  # auto_fed_processing:
+  # auto_fed_processing:        # BrewingStand のみ (かまどは smelting セクションで扱う)
   #   operator_ttl_sec: 60
   # villager_repeat_trade:
   #   cooldown_sec: 60

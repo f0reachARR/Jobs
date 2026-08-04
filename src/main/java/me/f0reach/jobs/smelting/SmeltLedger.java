@@ -45,6 +45,9 @@ public final class SmeltLedger {
         this.itemKey = itemKey;
         this.entries = new ArrayList<>(entries);
         if (this.entries.isEmpty()) this.itemKey = null;
+        // 組み立て直した元帳は未永続として扱う。PDC から読んだものは
+        // FurnaceLedgerStore#load が markClean する。
+        this.dirty = true;
     }
 
     public static SmeltLedger empty() {

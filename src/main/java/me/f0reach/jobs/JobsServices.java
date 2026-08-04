@@ -32,7 +32,7 @@ import me.f0reach.jobs.detection.native_.CraftListener;
 import me.f0reach.jobs.detection.native_.EnchantListener;
 import me.f0reach.jobs.detection.native_.EntityKilledListener;
 import me.f0reach.jobs.detection.native_.FishListener;
-import me.f0reach.jobs.detection.native_.FurnaceExtractListener;
+import me.f0reach.jobs.detection.native_.FurnaceSmeltListener;
 import me.f0reach.jobs.detection.native_.RepairListener;
 import me.f0reach.jobs.detection.native_.ShearListener;
 import me.f0reach.jobs.detection.native_.TameListener;
@@ -92,6 +92,9 @@ import me.f0reach.jobs.registry.ActionKeyDeriver;
 import me.f0reach.jobs.registry.JobRegistry;
 import me.f0reach.jobs.registry.ShadowDetector;
 import me.f0reach.jobs.registry.TagResolver;
+import me.f0reach.jobs.smelting.FurnaceInputWatcher;
+import me.f0reach.jobs.smelting.FurnaceLedgerStore;
+import me.f0reach.jobs.smelting.SmeltRewardCollector;
 import me.f0reach.jobs.specialty.BukkitFirstJoinProvider;
 import me.f0reach.jobs.specialty.CooldownPolicy;
 import me.f0reach.jobs.specialty.FirstJoinProvider;
@@ -178,6 +181,10 @@ public final class JobsServices {
     private TradeRecorder tradeRecorder;
     private OperatorTracker operatorTracker;
 
+    private FurnaceLedgerStore furnaceLedgerStore;
+    private FurnaceInputWatcher furnaceInputWatcher;
+    private SmeltRewardCollector smeltRewardCollector;
+
     private ExtensionModifierChain extensionModifierChain;
     private SplitterChain splitterChain;
     private ActionLogQueryServiceImpl queryService;
@@ -209,6 +216,7 @@ public final class JobsServices {
         wireAntiAutomation();
         wireExtensions();
         wirePipeline();
+        wireSmelting();
         registerListeners();
     }
 
@@ -230,6 +238,21 @@ public final class JobsServices {
      */
     public void fireReadyEvent() {
         plugin.getServer().getPluginManager().callEvent(new JobsPluginReadyEvent(jobsApi));
+    }
+
+    /**
+     * 精錬報酬の元帳と集約を組む。{@code eventDispatcher} を使うので
+     * {@link #wirePipeline()} より後に呼ぶ（ADR-0024）。
+     */
+    private void wireSmelting() {
+        this.furnaceLedgerStore = new FurnaceLedgerStore(plugin);
+        this.furnaceInputWatcher = new FurnaceInputWatcher(plugin, furnaceLedgerStore);
+        this.smeltRewardCollector = new SmeltRewardCollector(
+                plugin,
+                eventDispatcher,
+                config.smelting().flushTicks(),
+                config.smelting().maxPending());
+        this.smeltRewardCollector.start();
     }
 
     private void wireAntiAutomation() {
@@ -406,7 +429,8 @@ public final class JobsServices {
                 new BlockPlaceListener(eventDispatcher, plantedFlagWriter, placementRecorder,
                         specialtyService, jobRegistry),
                 new FishListener(eventDispatcher),
-                new FurnaceExtractListener(eventDispatcher),
+                new FurnaceSmeltListener(furnaceLedgerStore, smeltRewardCollector),
+                furnaceInputWatcher,
                 new CraftListener(eventDispatcher),
                 new EnchantListener(eventDispatcher),
                 new RepairListener(eventDispatcher),
@@ -516,6 +540,12 @@ public final class JobsServices {
         // 停止順は threading.md 「停止時 (onDisable)」に従う。
         // 報酬ワーカーを先に drain する。行動ログの enqueue は段階 11 で行われるので、
         // BatchFlushWorker より後に止めるとログが落ちる。
+
+        // まとめ待ちの精錬ぶんはワーカーの drain より先に流し込む (ADR-0024)。
+        if (smeltRewardCollector != null) {
+            smeltRewardCollector.stop();
+            smeltRewardCollector = null;
+        }
         if (mainWorkDrainTask != null) {
             mainWorkDrainTask.cancel();
             mainWorkDrainTask = null;

@@ -108,23 +108,25 @@ UnifiedDialog dialog = MultiButtonDialog.builder()
 13. `AntiAutomationCoordinator`, `ExtensionModifierChain`, `SplitterChain` を wire。
 14. `ActionLogWriteQueue`, `BatchFlushWorker` を起動。
 15. `RewardPipeline` を組む。`economy_on_main` が true なら `MainWorkQueue` の tick ドレイナを登録。
-16. 全 listener を register。
-17. `JOB_PLUGIN_READY` ライフサイクルイベントを発火（拡張プラグインが Modifier / Splitter を register する契機）。
+16. `FurnaceLedgerStore`, `FurnaceInputWatcher`, `SmeltRewardCollector` を wire し、collector の flush タイマを登録（`EventDispatcher` を要求するのでパイプラインの後）。
+17. 全 listener を register。
+18. `JOB_PLUGIN_READY` ライフサイクルイベントを発火（拡張プラグインが Modifier / Splitter を register する契機）。
 
 ### 停止時（`onDisable`）
 
 順序が重要。
 
 1. 全 listener を unregister（新規イベントを受け付けない）。
-2. `MainWorkQueue` の tick ドレイナを cancel。
-3. `RewardWorker.drainAndStop(drain_timeout_ms)`：段階 4 以降の未処理分を走り切らせる。drain はワーカースレッド自身が行う（呼び出し元でインライン実行すると可変状態の書き手が 2 本になる）。タイムアウトしたら未処理件数を WARNING に出す。
-4. `MainWorkQueue.drainAllInline()`：`onDisable` は main thread なので、ドレイナが止まっていてもここで直接空にすれば送金は正しいスレッドで完了する。
-5. `ActionLogWriteQueue.drain(30s)`：キュー内エントリの INSERT を待つ。段階 11 の enqueue は 3 で終わっているので、この順序でログが落ちない。
-6. `BatchFlushWorker` を join。
-7. `AsyncExecutor` の shutdown、`awaitTermination`。
-8. `MySqlDataSource` を close（HikariCP）。
-9. `InMemoryKVStore` を破棄。
-10. `LocaleRegistry`, `JobRegistry` の解放は GC 任せ。
+2. `SmeltRewardCollector.stop()`：まとめ待ちの精錬ぶんを flush する。報酬ワーカーの drain より先に流し込まないと落ちる（[ADR-0024](../spec/adr/0024-smelt-ledger-on-block-pdc.md)）。
+3. `MainWorkQueue` の tick ドレイナを cancel。
+4. `RewardWorker.drainAndStop(drain_timeout_ms)`：段階 4 以降の未処理分を走り切らせる。drain はワーカースレッド自身が行う（呼び出し元でインライン実行すると可変状態の書き手が 2 本になる）。タイムアウトしたら未処理件数を WARNING に出す。
+5. `MainWorkQueue.drainAllInline()`：`onDisable` は main thread なので、ドレイナが止まっていてもここで直接空にすれば送金は正しいスレッドで完了する。
+6. `ActionLogWriteQueue.drain(30s)`：キュー内エントリの INSERT を待つ。段階 11 の enqueue は 4 で終わっているので、この順序でログが落ちない。
+7. `BatchFlushWorker` を join。
+8. `AsyncExecutor` の shutdown、`awaitTermination`。
+9. `MySqlDataSource` を close（HikariCP）。
+10. `InMemoryKVStore` を破棄。
+11. `LocaleRegistry`, `JobRegistry` の解放は GC 任せ。
 
 ### /jobs reload
 

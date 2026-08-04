@@ -150,7 +150,7 @@ placer を問わず、直近に置かれた block の破壊と、同じ位置へ
 
 ### auto_fed_processing
 
-Furnace 系（Furnace / BlastFurnace / Smoker）と BrewingStand の投入者を追跡する（[ADR-0017](./adr/0017-operator-tracking-common.md)）。
+BrewingStand の投入者を追跡する（[ADR-0017](./adr/0017-operator-tracking-common.md)）。
 
 `InventoryClickEvent` で Player が対象容器の入力 slot に材料を置いた場合、KVS を上書き。
 
@@ -160,14 +160,15 @@ Furnace 系（Furnace / BlastFurnace / Smoker）と BrewingStand の投入者を
 
 `InventoryMoveItemEvent` で hopper / dispenser が同 slot に材料を移した場合、`operator_uuid: null` で上書き。
 
-`FurnaceExtractEvent` と `BrewEvent` の段階 3 直前に `get` する。
+`BrewEvent` の段階 3 直前に `get` する。
 `operator_uuid` が null または未登録なら `via_auto_fed=true` を立てて 0 確定する。
-非 null なら extractor 本人との一致は問わず、通す。
+非 null なら取り出した本人との一致は問わず、通す。
 
-対象容器は 4 種で内蔵固定とし、YAML 側では列挙しない。
+対象容器は BrewingStand のみで内蔵固定とし、YAML 側では列挙しない。
+かまど（Furnace / BlastFurnace / Smoker）は精錬元帳へ移したため、この追跡の対象外である（[ADR-0024](./adr/0024-smelt-ledger-on-block-pdc.md)）。
 
 対象 slot は入力 slot のみとする。
-Furnace 系の燃料 slot と BrewingStand の blaze powder slot は追跡対象外で、石炭のホッパー供給のような正当な運用を巻き込まない。
+BrewingStand の blaze powder slot は追跡対象外で、燃料のホッパー供給のような正当な運用を巻き込まない。
 
 ### villager_repeat_trade
 

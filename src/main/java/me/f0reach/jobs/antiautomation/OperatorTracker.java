@@ -3,7 +3,6 @@ package me.f0reach.jobs.antiautomation;
 import me.f0reach.jobs.kvs.JobsKVStore;
 import me.f0reach.jobs.kvs.KvsKeys;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -11,7 +10,6 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.BrewerInventory;
-import org.bukkit.inventory.FurnaceInventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 
@@ -20,12 +18,15 @@ import java.time.Duration;
 import java.util.UUID;
 
 /**
- * Furnace / BlastFurnace / Smoker / BrewingStand への「投入者」を KVS に記録する。
+ * BrewingStand への「投入者」を KVS に記録する。
  * spec/04-reward-pipeline.md 「auto_fed_processing」および ADR-0017 を参照。
  *
  * <p>Player が UI で投入したら operator = Player UUID + TTL (config.operator_ttl_sec)。
  * Hopper / Dispenser 由来なら operator = null (すぐ AutoFedProcessingCheck が 0 判定する)。
  * どちらの経路でも write-through で最新値が勝つ。
+ *
+ * <p>かまど (Furnace / BlastFurnace / Smoker) は対象外である。投入者と個数を
+ * ブロックの PDC に持つ精錬元帳へ移した (ADR-0024)。
  */
 public final class OperatorTracker implements Listener {
 
@@ -115,52 +116,22 @@ public final class OperatorTracker implements Listener {
         return new UUID(hi, lo);
     }
 
-    /** Furnace / Brewing 系 inventory holder から Block + ContainerKind を推定する。 */
+    /** BrewingStand の inventory holder から Block + ContainerKind を取る。他の容器は null。 */
     private static BlockAndKind holderBlock(InventoryHolder holder, InventoryType type) {
-        if (holder instanceof org.bukkit.block.Furnace furnace) {
-            ContainerKind kind = switch (furnace.getType()) {
-                case BLAST_FURNACE -> ContainerKind.BLAST_FURNACE;
-                case SMOKER -> ContainerKind.SMOKER;
-                default -> ContainerKind.FURNACE;
-            };
-            return new BlockAndKind(furnace.getBlock(), kind);
-        }
         if (holder instanceof org.bukkit.block.BrewingStand stand) {
             return new BlockAndKind(stand.getBlock(), ContainerKind.BREWING_STAND);
         }
-        // Fallback: inventory type だけ見て、location 情報が取れないので null。
-        return switch (type) {
-            case FURNACE, BLAST_FURNACE, SMOKER, BREWING -> holderFromInventory(holder, type);
-            default -> null;
-        };
-    }
-
-    private static BlockAndKind holderFromInventory(InventoryHolder holder, InventoryType type) {
-        Location loc = null;
-        if (holder instanceof FurnaceInventory fi && fi.getHolder() instanceof org.bukkit.block.Furnace f) {
-            loc = f.getLocation();
-        } else if (holder instanceof BrewerInventory bi && bi.getHolder() instanceof org.bukkit.block.BrewingStand b) {
-            loc = b.getLocation();
+        // Fallback: holder が BlockState でない実装のために inventory 経由で location を引く。
+        if (type != InventoryType.BREWING) return null;
+        if (!(holder instanceof BrewerInventory bi)
+                || !(bi.getHolder() instanceof org.bukkit.block.BrewingStand stand)) {
+            return null;
         }
-        if (loc == null || loc.getWorld() == null) return null;
-        Block block = loc.getBlock();
-        ContainerKind kind = switch (type) {
-            case BLAST_FURNACE -> ContainerKind.BLAST_FURNACE;
-            case SMOKER -> ContainerKind.SMOKER;
-            case BREWING -> ContainerKind.BREWING_STAND;
-            default -> ContainerKind.FURNACE;
-        };
-        return new BlockAndKind(block, kind);
+        Location loc = stand.getLocation();
+        if (loc.getWorld() == null) return null;
+        return new BlockAndKind(loc.getBlock(), ContainerKind.BREWING_STAND);
     }
 
     /** {@link ContainerKind} と Block を組で扱うためのローカル値型。 */
     private record BlockAndKind(Block block, ContainerKind kind) {}
-
-    // suppress warnings for unused static import
-    @SuppressWarnings("unused")
-    private static void keepImports() {
-        Material m = Material.FURNACE;
-        // noinspection ResultOfMethodCallIgnored
-        m.name();
-    }
 }

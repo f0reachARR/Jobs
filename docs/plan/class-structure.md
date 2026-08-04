@@ -47,6 +47,7 @@ me.f0reach.jobs
 ├── pipeline                報酬パイプライン (段階 1〜12)
 │   └── stage               各段階の Stage クラス
 ├── antiautomation          自動化対策の各 check と補助 tracker
+├── smelting                精錬元帳 (かまどの Block PDC) と報酬の集約
 ├── modifier                内蔵 Modifier (variety_penalty, daily_cap) と拡張点 chain
 │   ├── variety
 │   └── dailycap
@@ -161,7 +162,7 @@ Track A の listener を「1 イベントタイプ 1 クラス」で分ける。
 - `BlockBreakListener`：`BlockBreakEvent`。作物判定 (`Ageable`), TNT 起爆判定 (`sourceFlags.viaTnt`), 直近配置判定 (`sourceFlags.viaRecentlyPlaced`) は listener の中で決めない。listener はイベント値をそのまま context に載せる。TNT 由来の合成 `BlockBreakEvent` は `EntityExplodeEvent` 側の合流 listener が組む。
 - `BlockPlaceListener`：報酬パイプラインの入口と同時に、`PlantedFlagWriter`（作物）と `PlacementRecorder`（`recently_placed_break`）にマーキングを依頼する。マーキングは pipeline の segment ではなく listener で行う（ADR-0016 は「BlockPlaceEvent で KVS に書く」と明記）。
 - `FishListener`：`PlayerFishEvent.State.CAUGHT_FISH` と `CAUGHT_ENTITY` に限定。`treasure` 判定は `getCaught()` のアイテム内容を fishing/treasure ループテーブル相当集合と照合。
-- `FurnaceExtractListener`：Furnace/BlastFurnace/Smoker 共通の `FurnaceExtractEvent`。`getItemAmount` を amount に流し込む。
+- `FurnaceSmeltListener`：Furnace/BlastFurnace/Smoker 共通の `FurnaceSmeltEvent`。元帳から投入者を引き当て、`SmeltRewardCollector` に積む（[ADR-0024](../spec/adr/0024-smelt-ledger-on-block-pdc.md)）。dispatch は collector が行う。
 - `CraftListener`：`CraftItemEvent`（Player click のみ）。シフトクリック時の取り出し個数を計算して amount に流す。
 - `EnchantListener`：`EnchantItemEvent`。`enchantment` と `level_min` は matcher 側で評価する。
 - `RepairListener`：Anvil の `InventoryClickEvent`（Anvil UI の result slot 取り出し）と `PlayerItemMendEvent` を統合。`source: anvil / mending` を context に載せる。
@@ -236,14 +237,33 @@ Stage は必要に応じて field を書き換える。
 `RecentlyPlacedBreakCheck` と ON/OFF・`window_sec` を共有し、作物も対象にする。
 判定は「この設置より前の記録」を読む必要があるため、`BlockPlaceListener` は dispatch を済ませてから `PlacementRecorder` を呼ぶ。
 
-**AutoFedProcessingCheck / OperatorTracker / ContainerKind**：`item_smelted` と `item_brewed` のとき、KVS の `op:<container-kind>:<coords>` を `get` し、`operator_uuid` が null または未登録なら 0。
+**AutoFedProcessingCheck / OperatorTracker / ContainerKind**：`item_brewed` のとき、KVS の `op:<container-kind>:<coords>` を `get` し、`operator_uuid` が null または未登録なら 0。
 `OperatorTracker` は `InventoryClickEvent` と `InventoryMoveItemEvent` を購読し、Player 由来なら operator を書き、hopper/dispenser 由来なら operator を null で上書きする。
-`ContainerKind` は Furnace / BlastFurnace / Smoker / BrewingStand の 4 値 enum で固定。
+対象は BrewingStand のみで、かまどは `smelting` パッケージの精錬元帳へ移した（[ADR-0024](../spec/adr/0024-smelt-ledger-on-block-pdc.md)）。
+`ContainerKind` は 4 値 enum のまま残す。書き込みは BrewingStand だけになるが、旧バージョンが書いた `op:furnace:*` を `/jobs admin kvs` から読めるようにしておく。
 
 **VillagerRepeatTradeCheck / TradeRecorder**：`villager_traded` のとき、KVS の `trade:<villager-uuid>:<recipe-index>` の `last_traded_at` を確認。残っていれば 0。
 `TradeRecorder` は `VillagerTradeListener` の取引成立で書く。TTL は `cooldown_sec`（デフォルト 60）。
 
 **BreedNonPlayerBreederCheck**：`EntityBreedEvent#getBreeder` が Player でなければ 0。追跡データ不要。
+
+### smelting
+
+`item_smelted` の投入者追跡と報酬の集約（[ADR-0024](../spec/adr/0024-smelt-ledger-on-block-pdc.md)）。
+すべて main thread からのみ触る（PDC と Bukkit スケジューラに依存する）。
+
+**SmeltLedger**：かまど 1 個ぶんの元帳。`(所有者, 個数)` の FIFO と入力アイテム種別を持つ。
+`sync` で入力スロットの実個数へ合わせ、`consumeOne` で先頭 1 個を引き当てる。Bukkit 非依存の純ロジック。
+
+**SmeltLedgerCodec**：元帳と PDC の `BYTE_ARRAY` を相互変換する。壊れた値は空として扱う。
+
+**FurnaceLedgerStore**：`Block#getState(false)` 経由で `jobs:smelt_ledger` を読み書きする。変更が無ければ書かない。
+
+**FurnaceInputWatcher**：`InventoryClickEvent` / `InventoryDragEvent` / `InventoryMoveItemEvent` を購読し、
+1 tick 後に元帳を入力スロットの実個数へ同期する。スロット位置は推測せず、イベントは接触者のヒントとしてのみ使う。
+
+**SmeltRewardCollector**：`(投入者, かまど, アイテム)` 単位で `smelting.flush_ticks` ぶん溜め、
+`amount` に畳んで `EventDispatcher` へ 1 件で流す。オフラインの投入者ぶんは捨てる。
 
 ### modifier
 
